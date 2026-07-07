@@ -370,7 +370,13 @@ const socketManager = {
       return new DummySocket();
     }
 
-    const { userId, companyId } = decodeToken(token);
+    const { userId, companyId } = (() => {
+      const decoded = decodeToken(token);
+      return {
+        userId: decoded.userId || decoded.id,
+        companyId: decoded.companyId
+      };
+    })();
 
     if (companyId !== this.currentCompanyId || userId !== this.currentUserId) {
       if (this.currentSocket) {

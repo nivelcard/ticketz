@@ -1,7 +1,8 @@
 {
+  "REACT_APP_BACKEND_URL": "https://api.fortmax.com.br",
   "BACKEND_PROTOCOL": "https",
-  "BACKEND_HOST": "suporte.fortmax.com.br",
-  "BACKEND_PATH": "/backend",
+  "BACKEND_HOST": "api.fortmax.com.br",
+  "BACKEND_PATH": "",
   "TURNSTILE_SITE_KEY": "0x4AAAAAADhSILt9PsBiVeID",
   "LOG_LEVEL": "info"
 }

@@ -20,26 +20,28 @@ if (!config) {
 }
 
 export function getBackendURL() {
-  return (
-    config.REACT_APP_BACKEND_URL ||
-    (config.BACKEND_PROTOCOL ?? "https") +
-      "://" +
-      config.BACKEND_HOST +
-      ":" +
-      (config.BACKEND_PORT ?? 443) +
-      (config.BACKEND_PATH ?? "")
-  );
+  if (config.REACT_APP_BACKEND_URL) {
+    return config.REACT_APP_BACKEND_URL.replace(/\/$/, "");
+  }
+
+  const protocol = config.BACKEND_PROTOCOL ?? "https";
+  const host = config.BACKEND_HOST;
+  const port = config.BACKEND_PORT ? `:${config.BACKEND_PORT}` : "";
+  const path = config.BACKEND_PATH ?? "";
+
+  return `${protocol}://${host}${port}${path}`;
 }
 
 export function getBackendSocketURL() {
-  return (
-    config.REACT_APP_BACKEND_URL ||
-    (config.BACKEND_PROTOCOL ?? "https") +
-      "://" +
-      config.BACKEND_HOST +
-      ":" +
-      (config.BACKEND_PORT ?? 443)
-  );
+  if (config.REACT_APP_BACKEND_URL) {
+    return config.REACT_APP_BACKEND_URL.replace(/\/$/, "");
+  }
+
+  const protocol = config.BACKEND_PROTOCOL ?? "https";
+  const host = config.BACKEND_HOST;
+  const port = config.BACKEND_PORT ? `:${config.BACKEND_PORT}` : "";
+
+  return `${protocol}://${host}${port}`;
 }
 
 export default config;

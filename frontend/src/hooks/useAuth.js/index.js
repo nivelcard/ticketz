@@ -44,6 +44,26 @@ const isAccessTokenExpired = token => {
   }
 };
 
+const buildUserFromToken = token => {
+  try {
+    const decoded = decodeToken(token);
+    if (!decoded?.id) {
+      return {};
+    }
+
+    return {
+      id: decoded.id,
+      name: decoded.username || "",
+      email: decoded.email || "",
+      profile: decoded.profile || "user",
+      companyId: decoded.companyId,
+      queues: []
+    };
+  } catch {
+    return {};
+  }
+};
+
 const useAuth = () => {
   const history = useHistory();
   const [isAuth, setIsAuth] = useState(false);
@@ -152,10 +172,11 @@ const useAuth = () => {
 
       try {
         const data = await refreshSession();
-        setUser(data.user || {});
+        setUser(data.user || buildUserFromToken(token));
       } catch (err) {
         if (!isAccessTokenExpired(token)) {
           setIsAuth(true);
+          setUser(buildUserFromToken(token));
           refreshSession()
             .then(sessionData => {
               if (sessionData?.user) {
@@ -210,7 +231,7 @@ const useAuth = () => {
 
   useEffect(() => {
     const companyId = localStorage.getItem("companyId");
-    if (!companyId) {
+    if (!companyId || !user?.id) {
       return () => {};
     }
     const socket = socketManager.GetSocket(companyId);
@@ -224,10 +245,9 @@ const useAuth = () => {
     socket.on(`company-${companyId}-user`, onCompanyUserUseAuth);
 
     return () => {
-      socket.disconnect();
+      socket.off(`company-${companyId}-user`, onCompanyUserUseAuth);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user?.id, socketManager]);
 
   const posLogin = (data, impersonated = false) => {
     const {
