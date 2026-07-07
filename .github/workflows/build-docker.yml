@@ -3,12 +3,12 @@ name: Create and publish multi-arch Docker images
 on:
   push:
     branches:
-      - 'main'
       - 'fix/**'
       - 'dev'
       - 'test-**'
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
 env:
   REGISTRY: ghcr.io
   IMAGE_BACKEND: ticketz-oss/ticketz-backend
