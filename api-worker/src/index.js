@@ -1,7 +1,8 @@
 import { Container } from "@cloudflare/containers";
 
 const FRONTEND_ORIGIN = "https://suporte.fortmax.com.br";
-const MAX_PROXY_ATTEMPTS = 6;
+const MAX_PROXY_ATTEMPTS = 4;
+const PROXY_TIMEOUT_MS = 90000;
 const RETRYABLE_ERROR_MARKERS = [
   "blockConcurrencyWhile",
   "waited for too long",
@@ -10,13 +11,16 @@ const RETRYABLE_ERROR_MARKERS = [
   "failed to start",
   "connection refused",
   "ECONNREFUSED",
-  "ERR_API_WARMING_UP"
+  "ERR_API_WARMING_UP",
+  "ERR_UPSTREAM_TIMEOUT"
 ];
 
 function buildContainerEnv(env) {
   const passthroughKeys = [
     "PORT",
     "HOST",
+    "GATEWAY_PORT",
+    "APP_PORT",
     "NODE_ENV",
     "LISTEN_FIRST",
     "FRONTEND_URL",
@@ -62,7 +66,9 @@ function buildContainerEnv(env) {
   ];
 
   const vars = {
-    PORT: "3000",
+    GATEWAY_PORT: "3000",
+    APP_PORT: "3001",
+    PORT: "3001",
     HOST: "0.0.0.0",
     NODE_ENV: "production",
     LISTEN_FIRST: "true"
@@ -128,6 +134,29 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+async function snapshotRequest(request) {
+  const headers = new Headers(request.headers);
+  const method = request.method;
+  const url = request.url;
+
+  if (method === "GET" || method === "HEAD") {
+    return () =>
+      new Request(url, {
+        method,
+        headers
+      });
+  }
+
+  const body = await request.arrayBuffer();
+
+  return () =>
+    new Request(url, {
+      method,
+      headers,
+      body
+    });
+}
+
 export class TicketzBackend extends Container {
   defaultPort = 3000;
   sleepAfter = "720h";
@@ -151,7 +180,7 @@ export class TicketzBackend extends Container {
 async function proxyToContainer(request, env) {
   const id = env.TICKETZ_BACKEND.idFromName("prod");
   const stub = env.TICKETZ_BACKEND.get(id);
-  return stub.fetch(request);
+  return stub.fetch(request, { signal: AbortSignal.timeout(PROXY_TIMEOUT_MS) });
 }
 
 function mergeCorsOntoResponse(response, request) {
@@ -182,15 +211,16 @@ export default {
       return jsonResponse(request, { ok: true, worker: "fortmax-ticketz-api" });
     }
 
+    const createProxyRequest = await snapshotRequest(request);
     let lastError = null;
 
     for (let attempt = 1; attempt <= MAX_PROXY_ATTEMPTS; attempt += 1) {
       try {
-        const response = await proxyToContainer(request, env);
+        const response = await proxyToContainer(createProxyRequest(), env);
 
         if (isRetryableResponse(response) && attempt < MAX_PROXY_ATTEMPTS) {
           await response.body?.cancel?.();
-          await sleep(attempt * 2000);
+          await sleep(Math.min(attempt * 1500, 6000));
           continue;
         }
 
@@ -207,7 +237,7 @@ export default {
           break;
         }
 
-        await sleep(attempt * 2000);
+        await sleep(Math.min(attempt * 1500, 6000));
       }
     }
 
@@ -230,7 +260,9 @@ export default {
     try {
       const id = env.TICKETZ_BACKEND.idFromName("prod");
       const stub = env.TICKETZ_BACKEND.get(id);
-      await stub.fetch("https://api.fortmax.com.br/health");
+      await stub.fetch("https://api.fortmax.com.br/health", {
+        signal: AbortSignal.timeout(30000)
+      });
     } catch (error) {
       console.error("Container keep-warm ping failed:", error);
     }

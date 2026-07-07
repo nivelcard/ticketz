@@ -3,6 +3,7 @@ set -euo pipefail
 
 mkdir -p /data/redis /usr/src/app/public /usr/src/app/private
 
+echo "[entrypoint] Starting Redis..."
 redis-server \
   --daemonize yes \
   --dir /data/redis \
@@ -22,7 +23,21 @@ for _ in $(seq 1 25); do
 done
 
 export HOST="${HOST:-0.0.0.0}"
-export PORT="${PORT:-3000}"
+export GATEWAY_PORT="${GATEWAY_PORT:-3000}"
+export APP_PORT="${APP_PORT:-3001}"
+export PORT="${APP_PORT}"
 export REDIS_URI="${REDIS_URI:-redis://127.0.0.1:6379}"
+export LISTEN_FIRST="${LISTEN_FIRST:-true}"
 
-exec node dist/server.js
+echo "[entrypoint] Starting gateway on port ${GATEWAY_PORT}..."
+node /usr/src/app/docker/cloudflare/gateway.js &
+GATEWAY_PID=$!
+
+cleanup() {
+  kill "${GATEWAY_PID}" 2>/dev/null || true
+}
+
+trap cleanup EXIT
+
+echo "[entrypoint] Starting Ticketz API on port ${APP_PORT}..."
+exec node dist/src/server.js

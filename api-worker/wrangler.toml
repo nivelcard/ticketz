@@ -18,11 +18,13 @@ new_sqlite_classes = ["TicketzBackend"]
 
 [vars]
 HOST = "0.0.0.0"
-PORT = "3000"
+GATEWAY_PORT = "3000"
+APP_PORT = "3001"
+PORT = "3001"
+LISTEN_FIRST = "true"
 FRONTEND_URL = "https://suporte.fortmax.com.br"
 BACKEND_URL = "https://api.fortmax.com.br"
 DB_DIALECT = "postgres"
-LISTEN_FIRST = "true"
 DB_HOST = "aws-0-sa-east-1.pooler.supabase.com"
 DB_PORT = "5432"
 DB_USER = "postgres.tcwtpkadwrsbdvehsmfy"
