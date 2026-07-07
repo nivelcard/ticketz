@@ -1,5 +1,3 @@
-import path from "path";
-import fs from "fs";
 import * as Sentry from "@sentry/node";
 import { isNil, head, keys } from "lodash";
 
@@ -71,6 +69,10 @@ import { verifyContact } from "./verifyContact";
 import { decryptMessageEdit } from "./decryptMessageEdit";
 import GetTicketWbot from "../../helpers/GetTicketWbot";
 import saveMediaToFile from "../../helpers/saveMediaFile";
+import {
+  readMediaBuffer,
+  resolveMediaAccessPath
+} from "../../helpers/mediaStorage";
 import ProcessInboundMessageService from "../AiServices/ProcessInboundMessageService";
 import { getActiveAgent } from "../AiServices/AiHelpers";
 import { _t } from "../TranslationServices/i18nService";
@@ -173,7 +175,6 @@ const processMention = async (body: string, mention: string) => {
     payload.name = contact.name;
     payload.number = contact.number;
   } else {
-    // eslint-disable-next-line prefer-destructuring
     payload.number = mention.split("@")[0];
   }
 
@@ -252,7 +253,6 @@ export const getBodyMessage = async (msg: proto.IMessage): Promise<string> => {
 
     // eslint-disable-next-line no-restricted-syntax
     for (const mention of (msg[type] as any)?.contextInfo?.mentionedJid ?? []) {
-      // eslint-disable-next-line no-await-in-loop
       body = await processMention(body, mention);
     }
 
@@ -498,7 +498,6 @@ const downloadMedia = async (
 
       sendMsg.message.extendedTextMessage.text = `${autoMessage}: ${limitInstructions}.`;
 
-      // eslint-disable-next-line no-use-before-define
       await verifyMessage(sendMsg, ticket, ticket.contact);
     }
     throw new Error("ERR_FILESIZE_OVER_LIMIT");
@@ -518,11 +517,10 @@ const downloadMedia = async (
         tmpMessage.url = "";
       }
 
-      // eslint-disable-next-line no-await-in-loop
       stream = await downloadContentFromMessage(tmpMessage, messageType);
     } catch (error) {
       contDownload += 1;
-      // eslint-disable-next-line no-await-in-loop, no-loop-func
+
       await new Promise(resolve => {
         setTimeout(resolve, 1000 * contDownload * 2);
       });
@@ -586,13 +584,11 @@ const storeQuotedMessage = async (
 
   let mediaUrl = null;
   if (media) {
-    // eslint-disable-next-line no-use-before-define
     mediaUrl = await saveMediaToFile(media, { destination: ticket });
   }
 
   let thumbnailUrl = null;
   if (thumbnailMedia) {
-    // eslint-disable-next-line no-use-before-define
     thumbnailUrl = await saveMediaToFile(thumbnailMedia, {
       destination: ticket
     });
@@ -718,7 +714,8 @@ export const verifyMediaMessage = async (
   let thumbnailUrl = null;
   if (thumbnailMedia) {
     thumbnailUrl = await saveMediaToFile(thumbnailMedia, {
-      destination: ticket
+      destination: ticket,
+      baseFolder: "media/thumbnails"
     });
   }
 
@@ -727,6 +724,8 @@ export const verifyMediaMessage = async (
   const filename = mediaInfo?.filename || media?.filename || "file.bin";
 
   let body = await getBodyMessage(msg?.message);
+
+  const storedMediaUrl = mediaUrl;
 
   if (
     mediaType === "audio" &&
@@ -743,12 +742,13 @@ export const verifyMediaMessage = async (
       "openai"
     );
 
-    if (apiKey) {
+    if (apiKey && storedMediaUrl) {
       try {
+        const audioSource = storedMediaUrl.startsWith("http")
+          ? storedMediaUrl
+          : `${getPublicPath()}/${storedMediaUrl}`;
         const audioTranscription = await transcriber(
-          mediaUrl.startsWith("http")
-            ? mediaUrl
-            : `${getPublicPath()}/${mediaUrl}`,
+          audioSource,
           { apiKey, provider },
           filename
         );
@@ -1220,12 +1220,7 @@ export const startQueue = async (
   let optionsMsg = null;
 
   if (queue.mediaPath !== null && queue.mediaPath !== "") {
-    filePath = path.resolve("public", queue.mediaPath);
-
-    // check if file not exists
-    if (!fs.existsSync(filePath)) {
-      filePath = null;
-    }
+    filePath = await resolveMediaAccessPath(queue.mediaPath, companyId);
   }
 
   if (filePath) {
@@ -1548,10 +1543,10 @@ const handleChartbot = async (
     let filePath = null;
     let optionsMsg = null;
     if (currentOption.mediaPath !== null && currentOption.mediaPath !== "") {
-      filePath = path.resolve("public", currentOption.mediaPath);
-      if (!fs.existsSync(filePath)) {
-        filePath = null;
-      }
+      filePath = await resolveMediaAccessPath(
+        currentOption.mediaPath,
+        ticket.companyId
+      );
     }
 
     if (filePath) {
@@ -2021,11 +2016,10 @@ const handleMessage = async (
       const activeAgent = await getActiveAgent(companyId, ticket.queueId);
       if (activeAgent) {
         let mediaBuffer: Buffer | undefined;
-        if (newMessage?.mediaUrl && !newMessage.mediaUrl.startsWith("http")) {
-          const fullPath = path.join(getPublicPath(), newMessage.mediaUrl);
-          if (fs.existsSync(fullPath)) {
-            mediaBuffer = fs.readFileSync(fullPath);
-          }
+        const rawMediaUrl = newMessage?.getDataValue("mediaUrl");
+        if (rawMediaUrl) {
+          mediaBuffer =
+            (await readMediaBuffer(rawMediaUrl, companyId)) || undefined;
         }
 
         await ProcessInboundMessageService({
@@ -2035,7 +2029,7 @@ const handleMessage = async (
           messageId: newMessage?.id,
           mediaType: newMessage?.mediaType,
           mediaBuffer,
-          mediaFilename: newMessage?.mediaUrl?.split("/").pop()
+          mediaFilename: newMessage?.getDataValue("mediaUrl")?.split("/").pop()
         });
 
         if (justCreated && newMessage) {

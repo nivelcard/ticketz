@@ -21,6 +21,7 @@ import HandoffToHumanService from "./HandoffToHumanService";
 import SendWhatsAppMessage from "../WbotServices/SendWhatsAppMessage";
 import formatBody from "../../helpers/Mustache";
 import StorageService from "../StorageService/StorageService";
+import { isAiFeaturesEnabled } from "./AiPlatformState";
 import { logger } from "../../utils/logger";
 
 type ProcessInboundParams = {
@@ -79,6 +80,14 @@ const ProcessInboundMessageService = async ({
   mediaFilename,
   mediaMimeType
 }: ProcessInboundParams): Promise<void> => {
+  if (!isAiFeaturesEnabled()) {
+    logger.warn(
+      { ticketId: ticket.id, companyId },
+      "AI features disabled — skipping inbound processing"
+    );
+    return;
+  }
+
   await ticket.reload();
 
   if (!(await shouldAiHandleTicket(ticket))) {
@@ -93,6 +102,8 @@ const ProcessInboundMessageService = async ({
   let userText = messageBody?.trim() || "";
 
   try {
+    await StorageService.ensureReady(companyId);
+
     if (mediaBuffer && mediaType === "audio") {
       const upload = await StorageService.uploadBuffer(mediaBuffer, {
         companyId,
@@ -107,7 +118,8 @@ const ProcessInboundMessageService = async ({
         companyId,
         mediaBuffer,
         mediaFilename || "audio.ogg",
-        agent.transcriptionModel
+        agent.transcriptionModel,
+        agent.provider
       );
 
       await MessageMediaFile.create({
@@ -146,7 +158,9 @@ const ProcessInboundMessageService = async ({
       const visionSummary = await analyzeImage(
         companyId,
         imageUrl,
-        agent.visionModel
+        agent.visionModel,
+        undefined,
+        agent.provider
       );
 
       await MessageMediaFile.create({
@@ -195,7 +209,11 @@ const ProcessInboundMessageService = async ({
     let contextBlock = "";
 
     if (knowledgeBaseIds.length) {
-      const queryEmbedding = await createEmbedding(companyId, userText);
+      const queryEmbedding = await createEmbedding(
+        companyId,
+        userText,
+        agent.provider
+      );
       const chunks = await searchKnowledgeChunks(
         companyId,
         knowledgeBaseIds,
@@ -238,6 +256,7 @@ const ProcessInboundMessageService = async ({
       model: agent.textModel,
       temperature: agent.temperature,
       maxTokens: agent.maxTokens,
+      providerId: agent.provider,
       messages: [
         { role: "system", content: systemPrompt },
         ...history.map(h => ({ role: h.role, content: h.content })),

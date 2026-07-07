@@ -38,6 +38,8 @@ export const storeText = async (
     throw new AppError("Knowledge base not found", 404);
   }
 
+  await StorageService.ensureReady(companyId);
+
   const upload = await StorageService.uploadBuffer(
     Buffer.from(content, "utf-8"),
     {
@@ -88,6 +90,8 @@ export const storeFile = async (
   if (!allowed.includes(ext)) {
     throw new AppError("Unsupported file type", 400);
   }
+
+  await StorageService.ensureReady(companyId);
 
   const upload = await StorageService.uploadBuffer(file.buffer, {
     companyId,
@@ -152,7 +156,7 @@ export const remove = async (
 
   if (document.storageUrl) {
     try {
-      await StorageService.delete(document.storageUrl);
+      await StorageService.delete(document.storageUrl, companyId);
     } catch {
       // ignore storage delete errors
     }

@@ -23,6 +23,7 @@ import Title from "../../components/Title";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import { toast } from "react-toastify";
+import AiSetupWizard from "../../components/AiSetupWizard";
 
 const defaultAgent = {
   name: "",
@@ -134,6 +135,7 @@ const AiAgents = () => {
           Novo Agente
         </Button>
       </MainHeader>
+      <AiSetupWizard />
       <Paper>
         <Table>
           <TableHead>

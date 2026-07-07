@@ -10,6 +10,7 @@ import {
   payGatewayInitialize
 } from "./services/PaymentGatewayServices/PaymentGatewayServices";
 import { i18nReady } from "./services/TranslationServices/i18nService";
+import { bootstrapAiPlatform } from "./services/AiServices/bootstrapAiPlatform";
 
 // Environment Variable Validation
 if (!process.env.PORT) {
@@ -73,10 +74,12 @@ gracefulShutdown(server, {
 i18nReady
   .then(async () => {
     logger.trace("i18n initialized");
+    await bootstrapAiPlatform();
     await startServer();
   })
   .catch(async error => {
     logger.error(`i18n initialization failed: ${error.message}`);
+    await bootstrapAiPlatform();
     await startServer();
   });
 

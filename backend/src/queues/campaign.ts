@@ -11,6 +11,7 @@ import CampaignSetting from "../models/CampaignSetting";
 import CampaignShipping from "../models/CampaignShipping";
 import Whatsapp from "../models/Whatsapp";
 import { getMessageFileOptions } from "../services/WbotServices/SendWhatsAppMedia";
+import { resolveMediaAccessPath } from "../helpers/mediaStorage";
 import { getIO } from "../libs/socket";
 import ShowService from "../services/CampaignService/ShowService";
 import sequelize from "../database";
@@ -422,13 +423,23 @@ async function handleDispatchCampaign(job) {
         text: campaignShipping.message
       });
       if (campaign.mediaPath) {
-        const filePath = path.resolve("public", campaign.mediaPath);
-        const content = await getMessageFileOptions(
-          campaign.mediaName,
-          filePath
+        const filePath = await resolveMediaAccessPath(
+          campaign.mediaPath,
+          campaign.companyId
         );
-        if (Object.keys(content).length) {
-          await sendCampaignMessage(campaign.whatsappId, wbot, chatId, content);
+        if (filePath) {
+          const content = await getMessageFileOptions(
+            campaign.mediaName,
+            filePath
+          );
+          if (Object.keys(content).length) {
+            await sendCampaignMessage(
+              campaign.whatsappId,
+              wbot,
+              chatId,
+              content
+            );
+          }
         }
       }
       await campaignShipping.update({ deliveredAt: moment() });

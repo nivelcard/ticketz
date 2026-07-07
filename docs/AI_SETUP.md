@@ -4,17 +4,54 @@ Este documento descreve como configurar e testar o atendimento automático por I
 
 ## Variáveis de ambiente
 
+### WhatsApp — imagens, áudios e documentos
+
+Toda mídia pesada recebida ou enviada nas conversas WhatsApp passa pelo `StorageService`:
+
+- Imagens → `suporte/{companyId}/media/images/...`
+- Áudios → `suporte/{companyId}/media/audio/...`
+- Vídeos → `suporte/{companyId}/media/video/...`
+- Documentos/PDFs → `suporte/{companyId}/media/documents/...`
+- Outros anexos → `suporte/{companyId}/media/attachments/...`
+
+**Textos e metadados das conversas** permanecem no Postgres (`Messages.body`, tickets, etc.).
+
+No banco (`Messages.mediaUrl`) fica a **URL pública do B2** (quando configurado) ou a chave local (fallback).
+
 ### Backblaze B2 (armazenamento de mídias e documentos)
 
+**Produção Fortmax:** as credenciais B2 ficam em **Administração → Configurações → Armazenamento** (tabela `Settings`), não no Wrangler.
+
+Chaves suportadas (com aliases legados):
+
+| Chave canônica | Aliases aceitos |
+|----------------|-----------------|
+| `storageProvider` | `backblaze` (padrão), `s3`, `r2`, `minio` |
+| `b2ApplicationKeyId` | `B2_APPLICATION_KEY_ID`, `B2_KEY_ID` |
+| `b2ApplicationKey` | `B2_APPLICATION_KEY` |
+| `b2Bucket` | `B2_BUCKET`, `B2_BUCKET_NAME` |
+| `b2Endpoint` | `B2_ENDPOINT` |
+| `b2PublicUrl` | `B2_PUBLIC_URL` |
+
+Organização no bucket (mesma branch/conta B2 existente):
+
+```
+suporte/{companyId}/media/...
+suporte/{companyId}/knowledge/...
+```
+
+Override opcional via env (dev/CI):
+
 ```env
-B2_APPLICATION_KEY_ID=sua_key_id
-B2_APPLICATION_KEY=sua_application_key
+STORAGE_ROOT_PREFIX=suporte
+B2_APPLICATION_KEY_ID=...
+B2_APPLICATION_KEY=...
 B2_BUCKET=nome-do-bucket
 B2_ENDPOINT=https://s3.us-west-000.backblazeb2.com
 B2_PUBLIC_URL=https://f000.backblazeb2.com/file/seu-bucket
 ```
 
-> Se as variáveis B2 não estiverem configuradas, o sistema usa armazenamento local em `public/` como fallback.
+> Se nem banco nem env tiverem credenciais, o sistema usa armazenamento local em `public/` como fallback.
 
 ### OpenAI (obrigatório para IA)
 
@@ -36,6 +73,24 @@ Usada para montar URL pública de imagens quando o storage é local.
 
 ## Banco de dados (Supabase / Postgres)
 
+### Migrations automáticas (opcional)
+
+Por padrão, **migrations não rodam sozinhas** em produção — é o comportamento mais seguro.
+
+| Variável | Padrão | Efeito |
+|----------|--------|--------|
+| `AUTO_MIGRATE` | `false` | Se `true`, aplica migrations pendentes na inicialização do backend |
+
+Quando há migrations pendentes e `AUTO_MIGRATE` está desligado:
+
+- O backend **inicia normalmente**, mas **desabilita funcionalidades de IA** até o banco estar atualizado
+- Logs de erro listam as migrations pendentes
+- **Administração → IA → Diagnóstico** mostra o status e as pendências
+
+**Recomendação produção:** rode migrations uma vez com `AUTO_MIGRATE=true` no deploy, ou execute `npm run db:migrate` manualmente, depois mantenha `AUTO_MIGRATE` desligado.
+
+### Tabelas criadas
+
 A migration `20260707100000-create-ai-and-knowledge-tables` cria:
 
 - `AiAgents`
@@ -54,9 +109,63 @@ npm run build
 npm run db:migrate
 ```
 
+### Validar no painel (sem SQL Editor)
+
+**Administração → IA → Diagnóstico** verifica automaticamente:
+
+- Conexão com banco e extensão pgvector
+- Tabelas, índices e migrations pendentes
+- Storage (B2/local), provider de IA e conectividade
+- Embeddings, agente ativo, bases prontas, WhatsApp e último processamento
+
+Use **Executar diagnóstico novamente** para testes ao vivo (inclui ping ao provider).
+
+### Validar via API
+
+```http
+GET /ai/health
+GET /ai/diagnostics
+POST /ai/diagnostics/run
+```
+
+### Validar no Supabase (opcional)
+
+```bash
+# SQL Editor: scripts/validate-ai-setup.sql
+```
+
+### Seed WEBG3 (agente + FAQ)
+
+```bash
+# SQL Editor: scripts/seed-webg3-ai.sql
+cd backend
+npm run ingest:pending
+```
+
 **Requisito:** extensão `vector` habilitada no Postgres/Supabase.
 
 ## Configuração no painel
+
+### Assistente de primeiro uso
+
+Quando não há agente cadastrado, o painel exibe um assistente guiado em **IA → Agentes** e **IA → Base de Conhecimento**:
+
+1. Configurar Provider de IA
+2. Configurar API Key
+3. Criar Agente
+4. Criar Base
+5. Adicionar primeiro documento
+6. Executar teste (Playground ou WhatsApp)
+
+Se não existir nenhuma base, o sistema oferece criar um **ambiente de demonstração** (Base *Teste*, Agente *Assistente de Teste*, documento de horário) — removível pelo painel.
+
+### Playground (teste sem WhatsApp)
+
+**Administração → IA → Playground** permite escolher agente e base, enviar perguntas e ver:
+
+- Resposta da IA
+- Chunks e documentos utilizados
+- Tokens, custo aproximado e tempo de resposta
 
 ### 1. Menu IA → Agentes
 
@@ -134,11 +243,12 @@ Confiança baixa / pedido de humano / tema sensível?
 
 ### Pré-requisitos
 
-- [ ] Migration executada
+- [ ] **IA → Diagnóstico** com status geral OK (sem migrations pendentes)
 - [ ] OpenAI Key configurada no painel
-- [ ] B2 configurado (ou fallback local)
-- [ ] Agente IA ativo criado
+- [ ] B2 configurado (ou fallback local aceito)
+- [ ] Agente IA ativo criado (ou ambiente de demonstração)
 - [ ] Base de conhecimento com documentos em status `ready`
+- [ ] **IA → Playground** respondendo corretamente
 - [ ] WhatsApp conectado
 
 ### Teste 1 — Resposta automática
@@ -193,6 +303,12 @@ Confiança baixa / pedido de humano / tema sensível?
 | POST | `/ai/documents/text` | Texto manual |
 | POST | `/ai/documents/upload` | Upload arquivo |
 | GET | `/ai/logs` | Logs de conversas |
+| GET | `/ai/health` | Health check consolidado |
+| GET | `/ai/diagnostics` | Diagnóstico (cache) |
+| POST | `/ai/diagnostics/run` | Diagnóstico ao vivo |
+| GET | `/ai/setup/status` | Status do assistente de configuração |
+| POST | `/ai/setup/demo` | Criar ambiente de demonstração |
+| POST | `/ai/playground` | Testar agente sem WhatsApp |
 
 ## Segurança
 

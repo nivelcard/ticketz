@@ -39,6 +39,9 @@ TZ = "America/Sao_Paulo"
 USER_LIMIT = "10000"
 CONNECTIONS_LIMIT = "100000"
 CLOSED_SEND_BY_ME = "true"
+STORAGE_ROOT_PREFIX = "suporte"
+# AUTO_MIGRATE=false por padrão — habilite apenas se quiser aplicar migrations no boot
+# AUTO_MIGRATE = "true"
 
 [[routes]]
 pattern = "api.fortmax.com.br/*"

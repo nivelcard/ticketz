@@ -546,6 +546,21 @@ const MainListItems = props => {
                   </ListItemIcon>
                   <ListItemText primary="Logs" />
                 </ListItem>
+                <ListItem
+                  onClick={() => history.push("/ai/diagnostics")}
+                  button
+                >
+                  <ListItemIcon>
+                    <SettingsOutlinedIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Diagnóstico" />
+                </ListItem>
+                <ListItem onClick={() => history.push("/ai/playground")} button>
+                  <ListItemIcon>
+                    <AndroidIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Playground" />
+                </ListItem>
               </List>
             </Collapse>
             <ListItemLink

@@ -50,6 +50,7 @@ export const ingestKnowledgeDocument = async (
 
   try {
     await document.update({ status: "processing" });
+    await StorageService.ensureReady(companyId);
 
     let text = rawText || "";
 
@@ -57,7 +58,7 @@ export const ingestKnowledgeDocument = async (
       if (document.type === "text") {
         const key = document.storageUrl.replace(/^\/public\//, "");
         try {
-          const buffer = await StorageService.download(key);
+          const buffer = await StorageService.download(key, companyId);
           text = buffer.toString("utf-8");
         } catch {
           text = document.storageUrl;
@@ -66,7 +67,7 @@ export const ingestKnowledgeDocument = async (
         const key = document.storageUrl.includes("://")
           ? document.storageUrl.split("/").slice(-3).join("/")
           : document.storageUrl.replace(/^\/public\//, "");
-        const buffer = await StorageService.download(key);
+        const buffer = await StorageService.download(key, companyId);
         text = await extractTextFromBuffer(
           buffer,
           document.type,

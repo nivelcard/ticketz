@@ -5,6 +5,8 @@ import { LocalStorageAdapter } from "@flystorage/local-fs";
 import { getPublicPath } from "../../helpers/GetPublicPath";
 import { makeRandomId } from "../../helpers/MakeRandomId";
 import { BackblazeB2Adapter } from "./BackblazeB2Adapter";
+import { S3CompatibleStorageAdapter } from "./S3CompatibleStorageAdapter";
+import { loadStorageConfig } from "./StorageConfigService";
 import {
   IStorageAdapter,
   StorageProvider,
@@ -27,28 +29,14 @@ class StorageService {
 
   private provider: StorageProvider = "local";
 
-  private isB2Configured(): boolean {
-    return !!(
-      process.env.B2_APPLICATION_KEY_ID &&
-      process.env.B2_APPLICATION_KEY &&
-      process.env.B2_BUCKET &&
-      process.env.B2_ENDPOINT
-    );
-  }
+  private rootPrefix = "suporte";
 
-  private getAdapter(): IStorageAdapter {
-    if (this.adapter) {
-      return this.adapter;
-    }
+  private initializedForCompanyId: number | null = null;
 
-    if (this.isB2Configured()) {
-      this.provider = "backblaze";
-      this.adapter = new BackblazeB2Adapter();
-      return this.adapter;
-    }
+  private initPromise: Promise<void> | null = null;
 
-    this.provider = "local";
-    this.adapter = {
+  private createLocalAdapter(): IStorageAdapter {
+    return {
       upload: async (input: UploadInput): Promise<UploadResult> => {
         const storage = new FileStorage(
           new LocalStorageAdapter(getPublicPath())
@@ -80,13 +68,58 @@ class StorageService {
       },
       getPublicUrl: (key: string): string => `/public/${key}`
     };
+  }
 
-    return this.adapter;
+  private async initialize(companyId: number): Promise<void> {
+    const config = await loadStorageConfig(companyId);
+
+    if (!config) {
+      this.provider = "local";
+      this.adapter = this.createLocalAdapter();
+      this.rootPrefix = (process.env.STORAGE_ROOT_PREFIX || "suporte").replace(
+        /^\/+|\/+$/g,
+        ""
+      );
+      this.initializedForCompanyId = companyId;
+      return;
+    }
+
+    this.rootPrefix = config.rootPrefix;
+
+    if (config.provider === "backblaze") {
+      this.provider = "backblaze";
+      this.adapter = new BackblazeB2Adapter(config);
+    } else {
+      this.provider = config.provider;
+      this.adapter = new S3CompatibleStorageAdapter(config);
+    }
+
+    this.initializedForCompanyId = companyId;
+  }
+
+  async ensureReady(companyId: number): Promise<void> {
+    if (this.adapter && this.initializedForCompanyId === companyId) {
+      return;
+    }
+
+    if (!this.initPromise || this.initializedForCompanyId !== companyId) {
+      this.initPromise = this.initialize(companyId);
+    }
+
+    await this.initPromise;
+  }
+
+  private async getAdapter(companyId: number): Promise<IStorageAdapter> {
+    await this.ensureReady(companyId);
+    return this.adapter as IStorageAdapter;
   }
 
   getProvider(): StorageProvider {
-    this.getAdapter();
     return this.provider;
+  }
+
+  getRootPrefix(): string {
+    return this.rootPrefix;
   }
 
   buildObjectKey(options: StoreFileOptions): string {
@@ -96,7 +129,7 @@ class StorageService {
     const folder = options.folder || "media";
     const randomId = makeRandomId(12);
     const ticketPart = options.ticketId ? `${options.ticketId}/` : "";
-    return `${folder}/${options.companyId}/${ticketPart}${randomId}.${ext}`;
+    return `${this.rootPrefix}/${options.companyId}/${folder}/${ticketPart}${randomId}.${ext}`;
   }
 
   hashBuffer(buffer: Buffer): string {
@@ -110,7 +143,7 @@ class StorageService {
     buffer: Buffer,
     options: StoreFileOptions
   ): Promise<UploadResult & { hash: string }> {
-    const adapter = this.getAdapter();
+    const adapter = await this.getAdapter(options.companyId);
     const key = this.buildObjectKey(options);
 
     const result = await adapter.upload({
@@ -129,16 +162,22 @@ class StorageService {
     };
   }
 
-  async download(key: string): Promise<Buffer> {
-    return this.getAdapter().download(key);
+  async download(key: string, companyId = 1): Promise<Buffer> {
+    const adapter = await this.getAdapter(companyId);
+    return adapter.download(key);
   }
 
-  async delete(key: string): Promise<void> {
-    return this.getAdapter().delete(key);
+  async delete(key: string, companyId = 1): Promise<void> {
+    const adapter = await this.getAdapter(companyId);
+    return adapter.delete(key);
   }
 
   getPublicUrl(key: string): string {
-    return this.getAdapter().getPublicUrl(key);
+    if (!this.adapter) {
+      return `/public/${key}`;
+    }
+
+    return this.adapter.getPublicUrl(key);
   }
 }
 

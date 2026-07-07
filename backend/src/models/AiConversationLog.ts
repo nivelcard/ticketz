@@ -24,7 +24,7 @@ class AiConversationLog extends Model<AiConversationLog> {
   companyId: number;
 
   @ForeignKey(() => Ticket)
-  @Column
+  @Column({ allowNull: true })
   ticketId: number;
 
   @Column

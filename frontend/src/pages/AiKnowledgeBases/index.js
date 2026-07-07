@@ -21,6 +21,7 @@ import Title from "../../components/Title";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import { toast } from "react-toastify";
+import AiSetupWizard from "../../components/AiSetupWizard";
 
 const AiKnowledgeBases = () => {
   const [bases, setBases] = useState([]);
@@ -74,6 +75,7 @@ const AiKnowledgeBases = () => {
           Nova Base
         </Button>
       </MainHeader>
+      <AiSetupWizard />
       <Paper>
         <Table>
           <TableHead>

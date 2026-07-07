@@ -1,10 +1,13 @@
-import { FileContents, FileStorage } from "@flystorage/file-storage";
-import { LocalStorageAdapter } from "@flystorage/local-fs";
 import mime from "mime-types";
-import { getPublicPath } from "./GetPublicPath";
+import { FileContents } from "@flystorage/file-storage";
 import { logger } from "../utils/logger";
-import { makeRandomId } from "./MakeRandomId";
 import Ticket from "../models/Ticket";
+import StorageService from "../services/StorageService/StorageService";
+import {
+  inferMediaFolder,
+  streamToBuffer,
+  toStoredMediaReference
+} from "./mediaStorage";
 
 type SaveMediaOptions = {
   destination: Ticket | number;
@@ -31,34 +34,25 @@ export default async function saveMediaToFile(
     media.filename = `${new Date().getTime()}.${ext}`;
   }
 
-  const randomId = makeRandomId(10);
-
   const companyId =
     typeof destination === "number" ? destination : destination.companyId;
-  const contactId =
-    typeof destination === "number" ? undefined : destination.contactId;
   const ticketId = typeof destination === "number" ? undefined : destination.id;
 
-  const basePath = baseFolder || persistant ? "media-persistant" : "media";
+  await StorageService.ensureReady(companyId);
 
-  let relativePath = `${basePath || "media"}/${companyId}/`;
+  const buffer = await streamToBuffer(media.data);
+  const folder = inferMediaFolder(media.mimetype, baseFolder, persistant);
 
-  if (contactId && ticketId) {
-    relativePath += `${contactId}/${ticketId}/`;
-  }
+  const upload = await StorageService.uploadBuffer(buffer, {
+    companyId,
+    ticketId,
+    filename: media.filename,
+    contentType: media.mimetype.split(";")[0] || "application/octet-stream",
+    folder
+  });
 
-  relativePath += `${randomId}`;
-
-  const storage = new FileStorage(new LocalStorageAdapter(getPublicPath()));
-
-  const mediaPath = `${relativePath}/${media.filename}`;
-
-  try {
-    await storage.write(mediaPath, media.data);
-  } catch (error) {
-    logger.error({ message: error.message }, "Error saving media file");
-    throw new Error("Failed to save media file");
-  }
-
-  return mediaPath;
+  return toStoredMediaReference({
+    key: upload.key,
+    publicUrl: upload.publicUrl
+  });
 }

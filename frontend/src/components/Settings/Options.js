@@ -113,6 +113,12 @@ export default function Options(props) {
   const [apiToken, setApiToken] = useState("");
   const [openAiKey, setOpenAiKey] = useState("");
   const [aiProvider, setAiProvider] = useState("openai");
+  const [storageProvider, setStorageProvider] = useState("backblaze");
+  const [b2ApplicationKeyId, setB2ApplicationKeyId] = useState("");
+  const [b2ApplicationKey, setB2ApplicationKey] = useState("");
+  const [b2Bucket, setB2Bucket] = useState("");
+  const [b2Endpoint, setB2Endpoint] = useState("");
+  const [b2PublicUrl, setB2PublicUrl] = useState("");
   const [audioTranscriptions, setAudioTranscriptions] = useState("disabled");
   const [uploadLimit, setUploadLimit] = useState("15");
   const [downloadLimit, setDownloadLimit] = useState("15");
@@ -248,6 +254,42 @@ export default function Options(props) {
 
       const aiProvider = settings.find(s => s.key === "aiProvider");
       setAiProvider(aiProvider?.value || "openai");
+
+      const storageProviderSetting = settings.find(
+        s => s.key === "storageProvider"
+      );
+      setStorageProvider(storageProviderSetting?.value || "backblaze");
+
+      const b2KeyIdSetting = settings.find(
+        s =>
+          s.key === "b2ApplicationKeyId" ||
+          s.key === "B2_APPLICATION_KEY_ID" ||
+          s.key === "B2_KEY_ID"
+      );
+      setB2ApplicationKeyId(b2KeyIdSetting?.value || "");
+
+      const b2KeySetting = settings.find(
+        s => s.key === "b2ApplicationKey" || s.key === "B2_APPLICATION_KEY"
+      );
+      setB2ApplicationKey(b2KeySetting?.value || "");
+
+      const b2BucketSetting = settings.find(
+        s =>
+          s.key === "b2Bucket" ||
+          s.key === "B2_BUCKET" ||
+          s.key === "B2_BUCKET_NAME"
+      );
+      setB2Bucket(b2BucketSetting?.value || "");
+
+      const b2EndpointSetting = settings.find(
+        s => s.key === "b2Endpoint" || s.key === "B2_ENDPOINT"
+      );
+      setB2Endpoint(b2EndpointSetting?.value || "");
+
+      const b2PublicUrlSetting = settings.find(
+        s => s.key === "b2PublicUrl" || s.key === "B2_PUBLIC_URL"
+      );
+      setB2PublicUrl(b2PublicUrlSetting?.value || "");
 
       const audioTranscriptions = settings.find(
         s => s.key === "audioTranscriptions"
@@ -1134,6 +1176,107 @@ export default function Options(props) {
               }}
               onBlur={async _ => {
                 await handleSetting("openAiKey", openAiKey);
+              }}
+            />
+          </FormControl>
+        </Grid>
+
+        <Grid item xs={12}>
+          <h2 className={classes.groupTitle}>Armazenamento (Backblaze B2)</h2>
+          <Typography variant="body2" color="textSecondary">
+            Arquivos do Suporte Fortmax são gravados em{" "}
+            <strong>suporte/{"{companyId}"}/...</strong> no mesmo bucket B2.
+          </Typography>
+        </Grid>
+
+        <Grid xs={12} sm={6} md={4} item>
+          <FormControl className={classes.selectContainer}>
+            <InputLabel id="storage-provider-label">Provedor</InputLabel>
+            <Select
+              labelId="storage-provider-label"
+              value={storageProvider}
+              onChange={async e => {
+                handleSetting(
+                  "storageProvider",
+                  e.target.value,
+                  setStorageProvider
+                );
+              }}
+            >
+              <MenuItem value="backblaze">Backblaze B2</MenuItem>
+              <MenuItem value="s3">Amazon S3</MenuItem>
+              <MenuItem value="r2">Cloudflare R2</MenuItem>
+              <MenuItem value="minio">MinIO</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+
+        <Grid xs={12} sm={6} md={4} item>
+          <FormControl className={classes.selectContainer}>
+            <TextField
+              label="B2 Key ID"
+              variant="standard"
+              value={b2ApplicationKeyId}
+              onChange={e => setB2ApplicationKeyId(e.target.value)}
+              onBlur={async () => {
+                await handleSetting("b2ApplicationKeyId", b2ApplicationKeyId);
+              }}
+            />
+          </FormControl>
+        </Grid>
+
+        <Grid xs={12} sm={6} md={4} item>
+          <FormControl className={classes.selectContainer}>
+            <TextField
+              label="B2 Application Key"
+              variant="standard"
+              type="password"
+              value={b2ApplicationKey}
+              onChange={e => setB2ApplicationKey(e.target.value)}
+              onBlur={async () => {
+                await handleSetting("b2ApplicationKey", b2ApplicationKey);
+              }}
+            />
+          </FormControl>
+        </Grid>
+
+        <Grid xs={12} sm={6} md={4} item>
+          <FormControl className={classes.selectContainer}>
+            <TextField
+              label="Bucket"
+              variant="standard"
+              value={b2Bucket}
+              onChange={e => setB2Bucket(e.target.value)}
+              onBlur={async () => {
+                await handleSetting("b2Bucket", b2Bucket);
+              }}
+            />
+          </FormControl>
+        </Grid>
+
+        <Grid xs={12} sm={6} md={4} item>
+          <FormControl className={classes.selectContainer}>
+            <TextField
+              label="Endpoint S3"
+              variant="standard"
+              value={b2Endpoint}
+              onChange={e => setB2Endpoint(e.target.value)}
+              onBlur={async () => {
+                await handleSetting("b2Endpoint", b2Endpoint);
+              }}
+            />
+          </FormControl>
+        </Grid>
+
+        <Grid xs={12} sm={12} md={8} item>
+          <FormControl className={classes.selectContainer}>
+            <TextField
+              label="URL pública do bucket"
+              variant="standard"
+              value={b2PublicUrl}
+              onChange={e => setB2PublicUrl(e.target.value)}
+              onBlur={async () => {
+                await handleSetting("b2PublicUrl", b2PublicUrl);
               }}
             />
           </FormControl>

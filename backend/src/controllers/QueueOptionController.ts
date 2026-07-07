@@ -8,10 +8,10 @@ import DeleteService from "../services/QueueOptionService/DeleteService";
 
 import { head } from "lodash";
 import fs from "fs";
-import path from "path";
 import AppError from "../errors/AppError";
 import QueueOption from "../models/QueueOption";
 import saveMediaToFile from "../helpers/saveMediaFile";
+import { deleteStoredMedia } from "../helpers/mediaStorage";
 
 type FilterList = {
   queueId: string;
@@ -119,13 +119,12 @@ export const deleteMedia = async (
   res: Response
 ): Promise<Response> => {
   const { queueOptionId } = req.params;
+  const { companyId } = req.user;
 
   try {
     const queue = await QueueOption.findByPk(queueOptionId);
-    const filePath = path.resolve("public", queue.mediaPath);
-    const fileExists = fs.existsSync(filePath);
-    if (fileExists) {
-      fs.unlinkSync(filePath);
+    if (queue?.mediaPath) {
+      await deleteStoredMedia(queue.mediaPath, companyId);
     }
 
     queue.mediaPath = null;

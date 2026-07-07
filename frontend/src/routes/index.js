@@ -35,6 +35,8 @@ import AiAgents from "../pages/AiAgents";
 import AiKnowledgeBases from "../pages/AiKnowledgeBases";
 import AiDocuments from "../pages/AiDocuments";
 import AiLogs from "../pages/AiLogs";
+import AiDiagnostics from "../pages/AiDiagnostics";
+import AiPlayground from "../pages/AiPlayground";
 import Subscription from "../pages/Subscription/";
 
 const Routes = () => {
@@ -120,6 +122,18 @@ const Routes = () => {
                   isPrivate
                 />
                 <Route exact path="/ai/logs" component={AiLogs} isPrivate />
+                <Route
+                  exact
+                  path="/ai/diagnostics"
+                  component={AiDiagnostics}
+                  isPrivate
+                />
+                <Route
+                  exact
+                  path="/ai/playground"
+                  component={AiPlayground}
+                  isPrivate
+                />
                 <Route
                   exact
                   path="/announcements"
