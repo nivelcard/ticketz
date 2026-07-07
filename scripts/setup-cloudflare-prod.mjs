@@ -125,6 +125,65 @@ async function ensureDomain() {
   console.log(`✅ Domínio adicionado: ${DOMAIN}`);
 }
 
+async function ensureDnsRecord() {
+  if (!ZONE_ID) {
+    console.log("⚠️  CLOUDFLARE_ZONE_ID ausente — DNS manual necessário.");
+    return;
+  }
+
+  const list = await fetch(
+    `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?name=suporte.fortmax.com.br`,
+    { headers: { Authorization: `Bearer ${CF_TOKEN}` } }
+  ).then(r => r.json());
+
+  if (!list.success) throw new Error(`list dns failed: ${JSON.stringify(list)}`);
+
+  const target = `${PROJECT}.pages.dev`;
+  const existing = (list.result || []).find(r => r.name === DOMAIN);
+
+  if (existing) {
+    if (existing.content === target) {
+      console.log(`✅ DNS já aponta para ${target}`);
+      return;
+    }
+    const updated = await fetch(
+      `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${existing.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${CF_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ type: "CNAME", name: "suporte", content: target, proxied: true })
+      }
+    ).then(r => r.json());
+    if (!updated.success) throw new Error(`update dns failed: ${JSON.stringify(updated)}`);
+    console.log(`✅ DNS atualizado: ${DOMAIN} → ${target}`);
+    return;
+  }
+
+  const created = await fetch(
+    `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${CF_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        type: "CNAME",
+        name: "suporte",
+        content: target,
+        proxied: true,
+        comment: "Ticketz Fortmax SPA (Cloudflare Pages)"
+      })
+    }
+  ).then(r => r.json());
+
+  if (!created.success) throw new Error(`create dns failed: ${JSON.stringify(created)}`);
+  console.log(`✅ DNS criado: ${DOMAIN} → ${target}`);
+}
+
 async function purgeZoneCache() {
   if (!ZONE_ID) {
     console.log("⚠️  CLOUDFLARE_ZONE_ID ausente — purge ignorado.");
@@ -152,6 +211,7 @@ async function main() {
   await ensureProject();
   await ensureEnvVars();
   await ensureDomain();
+  await ensureDnsRecord();
   await purgeZoneCache();
   console.log(`\n🎯 Infra pronta: https://${DOMAIN}`);
   console.log(`   Projeto: ${PROJECT}`);
