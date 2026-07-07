@@ -6,6 +6,7 @@ import UpdateSettingService from "../services/SettingServices/UpdateSettingServi
 import ListSettingsService from "../services/SettingServices/ListSettingsService";
 import GetPublicSettingService from "../services/SettingServices/GetPublicSettingService";
 import { GetSettingService } from "../services/SettingServices/GetSettingService";
+import { logger } from "../utils/logger";
 
 type LogoRequest = {
   mode: string;
@@ -54,9 +55,14 @@ export const publicShow = async (
 ): Promise<Response> => {
   const { settingKey: key } = req.params;
 
-  const settingValue = await GetPublicSettingService({ key });
+  try {
+    const settingValue = await GetPublicSettingService({ key });
 
-  return res.status(200).json(settingValue);
+    return res.status(200).json(settingValue);
+  } catch (error) {
+    logger.warn({ error, key }, "Public setting lookup failed");
+    return res.status(200).json(null);
+  }
 };
 
 export const show = async (req: Request, res: Response): Promise<Response> => {
