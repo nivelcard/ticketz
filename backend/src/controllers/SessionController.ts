@@ -15,6 +15,7 @@ import Setting from "../models/Setting";
 import Translation from "../models/Translation";
 import { decodeRefreshToken } from "../helpers/DecodeRefreshToken";
 import { verifyTurnstileToken } from "../services/AuthServices/VerifyTurnstileService";
+import { logger } from "../utils/logger";
 
 export const store = async (req: Request, res: Response): Promise<Response> => {
   const { email, password, turnstileToken } = req.body;
@@ -24,17 +25,23 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     req.ip || req.socket.remoteAddress
   );
 
-  const langs = await Translation.findAll({
-    attributes: ["language"],
-    group: ["language"]
-  });
+  let language = null;
 
-  const availableLanguages = langs.map(l => l.language.replace(/_/g, "-"));
+  try {
+    const langs = await Translation.findAll({
+      attributes: ["language"],
+      group: ["language"]
+    });
 
-  const language = (req.acceptsLanguages(availableLanguages) || null)?.replace(
-    /-/g,
-    "_"
-  );
+    const availableLanguages = langs.map(l => l.language.replace(/_/g, "-"));
+
+    language = (req.acceptsLanguages(availableLanguages) || null)?.replace(
+      /-/g,
+      "_"
+    );
+  } catch (error) {
+    logger.warn({ error }, "Login language detection skipped");
+  }
 
   await ensureAuthSecretsReady();
 
@@ -46,18 +53,22 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
 
   SendRefreshToken(res, refreshToken);
 
-  const io = getIO();
-  io.to(`user-${serializedUser.id}`).emit(
-    `company-${serializedUser.companyId}-auth`,
-    {
-      action: "update",
-      user: {
-        id: serializedUser.id,
-        email: serializedUser.email,
-        companyId: serializedUser.companyId
+  try {
+    const io = getIO();
+    io.to(`user-${serializedUser.id}`).emit(
+      `company-${serializedUser.companyId}-auth`,
+      {
+        action: "update",
+        user: {
+          id: serializedUser.id,
+          email: serializedUser.email,
+          companyId: serializedUser.companyId
+        }
       }
-    }
-  );
+    );
+  } catch (error) {
+    logger.warn({ error }, "Login auth socket notification skipped");
+  }
 
   return res.status(200).json({
     token,

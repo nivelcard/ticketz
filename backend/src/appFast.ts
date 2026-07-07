@@ -3,6 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 
 import { corsOrigin } from "./helpers/corsOrigin";
+import AppError from "./errors/AppError";
+import { logger } from "./utils/logger";
 
 const app = express();
 
@@ -26,6 +28,40 @@ let coreRoutesReady = false;
 let coreRoutesError: Error | null = null;
 let coreRoutesPromise: Promise<void> | null = null;
 
+const publicSettingsKeys = new Set([
+  "allowSignup",
+  "primaryColorLight",
+  "primaryColorDark",
+  "appLogoLight",
+  "appLogoDark",
+  "appLogoFavicon",
+  "appName",
+  "loginPageLinks",
+  "loginSidePanelImage",
+  "loginBackgroundContent",
+  "vapidPublicKey",
+  "extensionDownloadUrl",
+  "turnstileSiteKey",
+  "TURNSTILE_SITE_KEY",
+  "cfTurnstileSiteKey"
+]);
+
+const turnstileSiteKeyAliases = new Set([
+  "turnstileSiteKey",
+  "TURNSTILE_SITE_KEY",
+  "cfTurnstileSiteKey"
+]);
+
+const isTurnstileEnabled = (): boolean =>
+  ["true", "1", "yes", "enabled"].includes(
+    String(process.env.TURNSTILE_ENABLED || "").trim().toLowerCase()
+  );
+
+const readTurnstileSiteKeyFromEnv = (): string | null =>
+  ["TURNSTILE_SITE_KEY", "turnstileSiteKey", "CF_TURNSTILE_SITE_KEY"]
+    .map(key => process.env[key]?.trim())
+    .find(value => Boolean(value)) || null;
+
 app.get("/health", (_req, res) => {
   res.status(200).json({
     ok: true,
@@ -33,6 +69,22 @@ app.get("/health", (_req, res) => {
     routes: coreRoutesReady,
     routesError: coreRoutesError?.message || null
   });
+});
+
+app.get("/public-settings/:settingKey", (req, res) => {
+  const { settingKey } = req.params;
+
+  if (!publicSettingsKeys.has(settingKey)) {
+    return res.status(200).json(null);
+  }
+
+  if (turnstileSiteKeyAliases.has(settingKey)) {
+    return res
+      .status(200)
+      .json(isTurnstileEnabled() ? readTurnstileSiteKeyFromEnv() : null);
+  }
+
+  return res.status(200).json(null);
 });
 
 export async function ensureCoreRoutes(): Promise<void> {
@@ -60,6 +112,15 @@ export async function ensureCoreRoutes(): Promise<void> {
 
         app.use("/auth", authRoutes);
         app.use(settingRoutes);
+        app.use((err, _req, res, _next) => {
+          if (err instanceof AppError) {
+            logger[err.level](err);
+            return res.status(err.statusCode).json({ error: err.message });
+          }
+
+          logger.error(err);
+          return res.status(500).json({ error: "Internal server error" });
+        });
         coreRoutesReady = true;
       } catch (error) {
         coreRoutesError =
