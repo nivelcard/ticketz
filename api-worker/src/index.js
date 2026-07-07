@@ -1,6 +1,7 @@
 import { Container } from "@cloudflare/containers";
 
 const FRONTEND_ORIGIN = "https://suporte.fortmax.com.br";
+const CONTAINER_INSTANCE_NAME = "prod-db-pooler-aws1";
 const MAX_PROXY_ATTEMPTS = 4;
 const PROXY_TIMEOUT_MS = 90000;
 const RETRYABLE_ERROR_MARKERS = [
@@ -175,7 +176,7 @@ export class TicketzBackend extends Container {
 }
 
 async function proxyToContainer(request, env) {
-  const id = env.TICKETZ_BACKEND.idFromName("prod");
+  const id = env.TICKETZ_BACKEND.idFromName(CONTAINER_INSTANCE_NAME);
   const stub = env.TICKETZ_BACKEND.get(id);
   return stub.fetch(request, { signal: AbortSignal.timeout(PROXY_TIMEOUT_MS) });
 }
@@ -255,7 +256,7 @@ export default {
 
   async scheduled(_event, env) {
     try {
-      const id = env.TICKETZ_BACKEND.idFromName("prod");
+      const id = env.TICKETZ_BACKEND.idFromName(CONTAINER_INSTANCE_NAME);
       const stub = env.TICKETZ_BACKEND.get(id);
       await stub.fetch("https://api.fortmax.com.br/health", {
         signal: AbortSignal.timeout(30000)
