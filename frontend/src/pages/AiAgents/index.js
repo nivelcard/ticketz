@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import {
   Button,
   Paper,
@@ -14,7 +15,14 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Typography,
+  Link,
+  CircularProgress
 } from "@material-ui/core";
 import { DeleteOutline, Edit } from "@material-ui/icons";
 import MainContainer from "../../components/MainContainer";
@@ -42,29 +50,70 @@ const defaultAgent = {
   ackMessage: ""
 };
 
+const normalizeQueues = data => {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(data?.queues)) {
+    return data.queues;
+  }
+
+  return [];
+};
+
 const AiAgents = () => {
   const [agents, setAgents] = useState([]);
   const [queues, setQueues] = useState([]);
+  const [queuesLoading, setQueuesLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(defaultAgent);
   const [editingId, setEditingId] = useState(null);
 
-  const load = async () => {
+  const loadAgents = async () => {
     try {
-      const [{ data: agentsData }, { data: queuesData }] = await Promise.all([
-        api.get("/ai/agents"),
-        api.get("/queue")
-      ]);
-      setAgents(agentsData);
-      setQueues(queuesData);
+      const { data } = await api.get("/ai/agents");
+      setAgents(Array.isArray(data) ? data : []);
     } catch (err) {
       toastError(err);
     }
   };
 
-  useEffect(() => {
-    load();
+  const loadQueues = useCallback(async () => {
+    setQueuesLoading(true);
+    try {
+      const { data } = await api.get("/queue");
+      const activeQueues = normalizeQueues(data);
+      setQueues(activeQueues);
+      return activeQueues;
+    } catch (err) {
+      toastError(err);
+      setQueues([]);
+      return [];
+    } finally {
+      setQueuesLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadAgents();
+    loadQueues();
+  }, [loadQueues]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    loadQueues().then(activeQueues => {
+      if (!editingId && activeQueues.length === 1) {
+        setForm(prev => ({
+          ...prev,
+          fallbackQueueId: String(activeQueues[0].id)
+        }));
+      }
+    });
+  }, [open, editingId, loadQueues]);
 
   const handleSave = async () => {
     try {
@@ -87,7 +136,7 @@ const AiAgents = () => {
       setOpen(false);
       setEditingId(null);
       setForm(defaultAgent);
-      load();
+      loadAgents();
     } catch (err) {
       toastError(err);
     }
@@ -105,7 +154,9 @@ const AiAgents = () => {
       basePrompt: agent.basePrompt || "",
       temperature: agent.temperature,
       maxTokens: agent.maxTokens,
-      fallbackQueueId: agent.fallbackQueueId || "",
+      fallbackQueueId: agent.fallbackQueueId
+        ? String(agent.fallbackQueueId)
+        : "",
       handoffMessage: agent.handoffMessage || defaultAgent.handoffMessage,
       ackEnabled: !!agent.ackEnabled,
       ackMessage: agent.ackMessage || ""
@@ -117,10 +168,69 @@ const AiAgents = () => {
     try {
       await api.delete(`/ai/agents/${id}`);
       toast.success("Agente removido");
-      load();
+      loadAgents();
     } catch (err) {
       toastError(err);
     }
+  };
+
+  const handleOpenNewAgent = () => {
+    setEditingId(null);
+    setForm(defaultAgent);
+    setOpen(true);
+  };
+
+  const renderQueueField = () => {
+    if (queuesLoading) {
+      return (
+        <div style={{ display: "flex", alignItems: "center", margin: "8px 0" }}>
+          <CircularProgress size={20} style={{ marginRight: 8 }} />
+          <Typography variant="body2" color="textSecondary">
+            Carregando filas...
+          </Typography>
+        </div>
+      );
+    }
+
+    if (!queues.length) {
+      return (
+        <Typography variant="body2" style={{ marginTop: 8, marginBottom: 8 }}>
+          Nenhuma fila cadastrada.{" "}
+          <Link
+            component={RouterLink}
+            to="/queues"
+            onClick={() => setOpen(false)}
+          >
+            Clique aqui para criar uma.
+          </Link>
+        </Typography>
+      );
+    }
+
+    return (
+      <FormControl fullWidth margin="dense" variant="outlined">
+        <InputLabel id="fallback-queue-label">
+          Fila padrão de transferência
+        </InputLabel>
+        <Select
+          labelId="fallback-queue-label"
+          label="Fila padrão de transferência"
+          value={form.fallbackQueueId}
+          onChange={e =>
+            setForm({ ...form, fallbackQueueId: String(e.target.value) })
+          }
+        >
+          <MenuItem value="">
+            <em>Selecione (opcional)</em>
+          </MenuItem>
+          {queues.map(queue => (
+            <MenuItem key={queue.id} value={String(queue.id)}>
+              {queue.name}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    );
   };
 
   return (
@@ -130,11 +240,7 @@ const AiAgents = () => {
         <Button
           variant="contained"
           color="primary"
-          onClick={() => {
-            setEditingId(null);
-            setForm(defaultAgent);
-            setOpen(true);
-          }}
+          onClick={handleOpenNewAgent}
         >
           Novo Agente
         </Button>
@@ -236,24 +342,7 @@ const AiAgents = () => {
             value={form.maxTokens}
             onChange={e => setForm({ ...form, maxTokens: e.target.value })}
           />
-          <TextField
-            select
-            label="Fila padrão de transferência"
-            fullWidth
-            margin="dense"
-            value={form.fallbackQueueId}
-            onChange={e =>
-              setForm({ ...form, fallbackQueueId: e.target.value })
-            }
-            SelectProps={{ native: true }}
-          >
-            <option value="">Selecione</option>
-            {queues.map(q => (
-              <option key={q.id} value={q.id}>
-                {q.name}
-              </option>
-            ))}
-          </TextField>
+          {renderQueueField()}
           <TextField
             label="Prompt base"
             fullWidth
@@ -298,7 +387,12 @@ const AiAgents = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancelar</Button>
-          <Button color="primary" variant="contained" onClick={handleSave}>
+          <Button
+            color="primary"
+            variant="contained"
+            onClick={handleSave}
+            disabled={!form.name.trim()}
+          >
             Salvar
           </Button>
         </DialogActions>
