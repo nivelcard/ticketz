@@ -3,6 +3,7 @@
  * Whitelabel da API sobrescreve primary em App.js.
  */
 export const brandTokens = {
+  appTitle: "Suporte Fortmax",
   primaryLight: "#D32F2F",
   primaryDark: "#EF5350",
   logo: {
@@ -13,7 +14,7 @@ export const brandTokens = {
   layout: {
     appBarHeight: 40,
     drawerWidth: 200,
-    drawerWidthCollapsed: 56
+    drawerWidthCollapsed: 52
   },
   neutral: {
     backgroundLight: "#F8FAFC",

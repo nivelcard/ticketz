@@ -589,7 +589,14 @@ export const initWASocket = async (
         wsocket.ev.on("creds.update", saveState);
 
         wsocket.ev.on("pair.passkey.request", async () => {
-          logger.info(`Session ${name} requires passkey authentication`);
+          logger.info(
+            `Session ${name} received passkey pairing request — continuing with standard QR flow`
+          );
+
+          if (process.env.ENABLE_PASSKEY_CAPTURE !== "true") {
+            return;
+          }
+
           const token = createCaptureToken(whatsapp.id);
 
           await whatsapp.update({

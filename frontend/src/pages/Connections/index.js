@@ -134,17 +134,21 @@ const Connections = () => {
   const [passkeyInitialToken, setPasskeyInitialToken] = useState("");
   const [connectorReady, setConnectorReady] = useState(false);
 
-  const handleStartWhatsAppSession = async whatsAppId => {
+  const handleStartWhatsAppSession = async whatsApp => {
     try {
-      await api.post(`/whatsappsession/${whatsAppId}`);
+      setSelectedWhatsApp(whatsApp);
+      setQrModalOpen(true);
+      await api.post(`/whatsappsession/${whatsApp.id}`);
     } catch (err) {
       toastError(err);
     }
   };
 
-  const handleRequestNewQrCode = async whatsAppId => {
+  const handleRequestNewQrCode = async whatsApp => {
     try {
-      await api.put(`/whatsappsession/${whatsAppId}`);
+      setSelectedWhatsApp(whatsApp);
+      setQrModalOpen(true);
+      await api.put(`/whatsappsession/${whatsApp.id}`);
     } catch (err) {
       toastError(err);
     }
@@ -160,9 +164,18 @@ const Connections = () => {
     setSelectedWhatsApp(null);
   }, [setSelectedWhatsApp, setWhatsAppModalOpen]);
 
-  const handleOpenQrModal = whatsApp => {
+  const handleOpenQrModal = async whatsApp => {
     setSelectedWhatsApp(whatsApp);
     setQrModalOpen(true);
+
+    if (whatsApp.status === "passkey_required") {
+      try {
+        await api.post(`/whatsappsession/${whatsApp.id}/reset`);
+        await api.put(`/whatsappsession/${whatsApp.id}`);
+      } catch (err) {
+        toastError(err);
+      }
+    }
   };
 
   const handleCloseQrModal = useCallback(() => {
@@ -188,21 +201,6 @@ const Connections = () => {
     setPasskeyInitialToken("");
     setPasskeyModalOpen(false);
   }, [setPasskeyModalOpen, setSelectedWhatsApp, setPasskeyInitialToken]);
-
-  const handleTriggerCaptureFromQr = useCallback(
-    token => {
-      setQrModalOpen(false);
-      setPasskeyInitialToken(token);
-      setPasskeyModalOpen(true);
-    },
-    [setQrModalOpen, setPasskeyInitialToken, setPasskeyModalOpen]
-  );
-
-  const handleOpenInstallInstructionsFromQr = useCallback(() => {
-    setQrModalOpen(false);
-    setPasskeyInitialToken("");
-    setPasskeyModalOpen(true);
-  }, [setQrModalOpen, setPasskeyInitialToken, setPasskeyModalOpen]);
 
   const handleEditWhatsApp = whatsApp => {
     setSelectedWhatsApp(whatsApp);
@@ -285,7 +283,8 @@ const Connections = () => {
   const renderActionButtons = whatsApp => {
     return (
       <>
-        {whatsApp.status === "qrcode" && (
+        {(whatsApp.status === "qrcode" ||
+          whatsApp.status === "passkey_required") && (
           <Tooltip title={i18n.t("connections.toolTips.scan")}>
             <IconButton
               size="small"
@@ -320,7 +319,7 @@ const Connections = () => {
             <Tooltip title={i18n.t("connections.toolTips.retry")}>
               <IconButton
                 size="small"
-                onClick={() => handleStartWhatsAppSession(whatsApp.id)}
+                onClick={() => handleStartWhatsAppSession(whatsApp)}
               >
                 <Replay />
               </IconButton>
@@ -329,7 +328,7 @@ const Connections = () => {
             <Tooltip title={i18n.t("connections.toolTips.newQr")}>
               <IconButton
                 size="small"
-                onClick={() => handleRequestNewQrCode(whatsApp.id)}
+                onClick={() => handleRequestNewQrCode(whatsApp)}
               >
                 <FontAwesomeIcon icon={faWandMagicSparkles} />
               </IconButton>
@@ -426,7 +425,6 @@ const Connections = () => {
       <QrcodeModal
         open={qrModalOpen}
         onClose={handleCloseQrModal}
-        onOpenPasskeyModal={handleOpenInstallInstructionsFromQr}
         connectorReady={connectorReady}
         whatsAppId={
           !whatsAppModalOpen && !privacyModalOpen && selectedWhatsApp?.id

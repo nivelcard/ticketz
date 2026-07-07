@@ -473,6 +473,10 @@ const App = () => {
   }, [mode]);
 
   useEffect(() => {
+    document.title = appName || brandTokens.appTitle;
+  }, [appName]);
+
+  useEffect(() => {
     getPublicSetting("primaryColorLight")
       .then(color => {
         setPrimaryColorLight(color || brandTokens.primaryLight);
@@ -507,10 +511,10 @@ const App = () => {
       .catch(() => {});
     getPublicSetting("appName")
       .then(name => {
-        setAppName(name || "ticketz");
+        setAppName(name || brandTokens.appTitle);
       })
       .catch(() => {
-        setAppName("whitelabel chat");
+        setAppName(brandTokens.appTitle);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

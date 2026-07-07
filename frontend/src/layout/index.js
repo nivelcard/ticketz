@@ -174,10 +174,15 @@ const useStyles = makeStyles(theme => ({
     justifyContent: "space-between",
     minHeight: 40,
     padding: theme.spacing(0.5, 1),
+    overflow: "hidden",
     [theme.breakpoints.down("sm")]: {
       minHeight: 36,
       padding: theme.spacing(0.5, 0.75)
     }
+  },
+  toolbarIconCollapsed: {
+    justifyContent: "center",
+    padding: theme.spacing(0.5, 0.25)
   },
   appBar: {
     zIndex: theme.zIndex.drawer + 1,
@@ -260,6 +265,7 @@ const useStyles = makeStyles(theme => ({
   drawerPaperClose: {
     overflowX: "hidden",
     overflowY: "clip",
+    whiteSpace: "normal",
     transition: theme.transitions.create("width", {
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen
@@ -289,6 +295,40 @@ const useStyles = makeStyles(theme => ({
     overflowY: "auto",
     overflowX: "hidden",
     ...theme.scrollbarStyles
+  },
+  containerCollapsed: {
+    padding: theme.spacing(0.25, 0),
+    "& .MuiListItemText-root": {
+      display: "none !important",
+      width: 0,
+      overflow: "hidden"
+    },
+    "& .MuiListSubheader-root": {
+      display: "none !important"
+    },
+    "& .MuiListItem-root": {
+      justifyContent: "center",
+      paddingLeft: `${theme.spacing(0.5)}px !important`,
+      paddingRight: `${theme.spacing(0.5)}px !important`,
+      minWidth: 0
+    },
+    "& .MuiListItemIcon-root": {
+      minWidth: "0 !important",
+      marginRight: "0 !important",
+      justifyContent: "center"
+    },
+    "& .MuiListItem-root > svg": {
+      display: "none !important"
+    },
+    "& .MuiCollapse-root": {
+      display: "none !important"
+    },
+    "& .MuiBadge-root": {
+      "& .MuiBadge-badge": {
+        right: -4,
+        top: 4
+      }
+    }
   },
   NotificationsPopOver: {
     // color: theme.barraSuperior.secondary.main,
@@ -523,7 +563,10 @@ const LoggedInLayout = ({ children, themeToggle }) => {
         open={drawerOpen}
       >
         <div
-          className={classes.toolbarIcon}
+          className={clsx(
+            classes.toolbarIcon,
+            !drawerOpen && classes.toolbarIconCollapsed
+          )}
           onClick={handleDrawerToggle}
           style={{ cursor: "pointer" }}
         >
@@ -539,7 +582,12 @@ const LoggedInLayout = ({ children, themeToggle }) => {
           />
         </div>
         <Divider />
-        <List className={classes.containerWithScroll}>
+        <List
+          className={clsx(
+            classes.containerWithScroll,
+            !drawerOpen && classes.containerCollapsed
+          )}
+        >
           <MainListItems
             drawerClose={drawerClose}
             drawerOpen={drawerOpen}

@@ -64,6 +64,7 @@ const useStyles = makeStyles(theme => ({
     paddingTop: 2,
     paddingBottom: 2,
     minHeight: 32,
+    overflow: "hidden",
     "&:hover": {
       backgroundColor: theme.palette.action.hover
     }

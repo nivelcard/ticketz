@@ -1,20 +1,10 @@
 {
-  "short_name": "Fortmax",
-  "name": "Fortmax Sistemas",
+  "short_name": "Suporte Fortmax",
+  "name": "Suporte Fortmax",
   "icons": [
     {
       "src": "vector/fortmax-logo.png",
       "sizes": "512x512 192x192 64x64 32x32 24x24 16x16",
-      "type": "image/png"
-    },
-    {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "/android-chrome-192x192.png",
-      "sizes": "192x192",
       "type": "image/png"
     }
   ],

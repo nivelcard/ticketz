@@ -33,13 +33,7 @@ const useStyles = makeStyles(theme => ({
   }
 }));
 
-const QrcodeModal = ({
-  open,
-  onClose,
-  whatsAppId,
-  onOpenPasskeyModal,
-  connectorReady = false
-}) => {
+const QrcodeModal = ({ open, onClose, whatsAppId, connectorReady = false }) => {
   const [requestingCapture, setRequestingCapture] = useState(false);
   const classes = useStyles();
   const [qrCode, setQrCode] = useState("");
@@ -52,7 +46,9 @@ const QrcodeModal = ({
 
       try {
         const { data } = await api.get(`/whatsapp/${whatsAppId}`);
-        setQrCode(data.qrcode);
+        if (data.status === "qrcode" && data.qrcode) {
+          setQrCode(data.qrcode);
+        }
       } catch (err) {
         toastError(err);
       }
@@ -67,10 +63,8 @@ const QrcodeModal = ({
 
     const onCompanyWhatsappSession = data => {
       if (data.action === "update" && data.session.id === whatsAppId) {
-        setQrCode(data.session.qrcode);
-
-        if (data.session.status === "passkey_required" && onOpenPasskeyModal) {
-          onOpenPasskeyModal();
+        if (data.session.status === "qrcode" && data.session.qrcode) {
+          setQrCode(data.session.qrcode);
         }
       }
 
@@ -123,18 +117,6 @@ const QrcodeModal = ({
               }}
             >
               {i18n.t("qrCode.startCapture")}
-            </Button>
-          )}
-          {!connectorReady && onOpenPasskeyModal && (
-            <Button
-              className={classes.extensionAction}
-              variant="outlined"
-              color="primary"
-              size="small"
-              startIcon={<ExtensionOutlined />}
-              onClick={onOpenPasskeyModal}
-            >
-              {i18n.t("qrCode.installExtension")}
             </Button>
           )}
         </Paper>
