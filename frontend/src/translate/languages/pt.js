@@ -1269,7 +1269,7 @@ const messages = {
         ERR_WAPP_NOT_FOUND: "Conexão indisponível",
         ERR_SUBSCRIPTION_EXPIRED: "Assinatura expirada",
         ERR_AI_MIGRATIONS_PENDING:
-          "As tabelas de IA ainda não foram criadas no banco. Aguarde o deploy da API concluir (AUTO_MIGRATE) e tente novamente em 1–2 minutos.",
+          "Não foi possível salvar o agente agora. Atualize a página e tente novamente.",
         ERR_AI_PLATFORM_NOT_READY:
           "A plataforma de IA ainda não está pronta. Verifique Administração → IA → Diagnóstico.",
         ERR_UNKOWN: "Erro desconhecido"

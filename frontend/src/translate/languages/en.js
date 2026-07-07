@@ -1264,7 +1264,7 @@ const messages = {
         ERR_WAPP_NOT_FOUND: "Connection unavailable.",
         ERR_SUBSCRIPTION_EXPIRED: "Your subscription has expired.",
         ERR_AI_MIGRATIONS_PENDING:
-          "AI database tables are not ready yet. Wait for the API deploy to finish (AUTO_MIGRATE) and try again in 1–2 minutes.",
+          "Could not save the agent right now. Refresh the page and try again.",
         ERR_AI_PLATFORM_NOT_READY:
           "The AI platform is not ready yet. Check Administration → AI → Diagnostics.",
         ERR_UNKOWN: "Unknown error."

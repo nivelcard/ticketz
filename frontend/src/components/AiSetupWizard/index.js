@@ -23,8 +23,8 @@ const AiSetupWizard = () => {
     try {
       const { data } = await api.get("/ai/setup/status");
       setSetup(data);
-    } catch (err) {
-      toastError(err);
+    } catch (_err) {
+      setSetup(null);
     }
   };
 

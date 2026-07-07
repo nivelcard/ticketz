@@ -53,8 +53,11 @@ const useTickets = ({
           setTickets(data.tickets);
           setLoading(false);
         } catch (err) {
+          setTickets([]);
           setLoading(false);
-          toastError(err);
+          if (err?.response?.status && err.response.status < 500) {
+            toastError(err);
+          }
         }
       };
       fetchTickets();

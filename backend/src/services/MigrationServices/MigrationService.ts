@@ -3,6 +3,7 @@ import path from "path";
 import { Sequelize } from "sequelize";
 import sequelize from "../../database";
 import { logger } from "../../utils/logger";
+import { applyAiSchema, isAiSchemaApplied } from "./ApplyAiSchemaService";
 
 const getMigrationsDir = (): string => {
   const candidates = [
@@ -24,15 +25,6 @@ const AI_MIGRATION_NAMES = new Set([
   "20260707100000-create-ai-and-knowledge-tables",
   "20260708120000-add-ai-agent-ack-fields"
 ]);
-
-const AI_TABLE_NAMES = [
-  "AiAgents",
-  "AiAgentQueues",
-  "KnowledgeBases",
-  "KnowledgeDocuments",
-  "KnowledgeChunks",
-  "AiConversationLogs"
-];
 
 const listMigrationFiles = (): string[] => {
   const dir = getMigrationsDir();
@@ -77,43 +69,8 @@ export const getAiPendingMigrations = async (): Promise<string[]> => {
   return pending.filter(name => AI_MIGRATION_NAMES.has(name));
 };
 
-export const isAiSchemaReady = async (): Promise<boolean> => {
-  const schema = getSchema();
-
-  try {
-    const [tableRows] = await sequelize.query(
-      `
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = :schema
-        AND table_name IN (:tables)
-      `,
-      { replacements: { schema, tables: AI_TABLE_NAMES } }
-    );
-
-    if (
-      (tableRows as { table_name: string }[]).length < AI_TABLE_NAMES.length
-    ) {
-      return false;
-    }
-
-    const [columnRows] = await sequelize.query(
-      `
-      SELECT column_name
-      FROM information_schema.columns
-      WHERE table_schema = :schema
-        AND table_name = 'AiAgents'
-        AND column_name IN ('ackEnabled', 'ackMessage')
-      `,
-      { replacements: { schema } }
-    );
-
-    return (columnRows as { column_name: string }[]).length === 2;
-  } catch (error) {
-    logger.warn({ error }, "Failed to verify AI schema readiness");
-    return false;
-  }
-};
+export const isAiSchemaReady = async (): Promise<boolean> =>
+  isAiSchemaApplied();
 
 const runMigrationBatch = async (pending: string[]): Promise<string[]> => {
   const dir = getMigrationsDir();
@@ -177,24 +134,32 @@ export const ensureAiSchemaReady = async (): Promise<{
     return { ready: true, applied: [], pending: [] };
   }
 
-  const pending = await getAiPendingMigrations();
-  if (!pending.length) {
-    return { ready: false, applied: [], pending: [] };
-  }
-
   if (process.env.AUTO_MIGRATE !== "true") {
+    const pending = await getAiPendingMigrations();
     return { ready: false, applied: [], pending };
   }
 
   try {
-    const applied = await runAiMigrations();
-    const stillPending = await getAiPendingMigrations();
-    const ready = (await isAiSchemaReady()) || stillPending.length === 0;
-
-    return { ready, applied, pending: stillPending };
+    await applyAiSchema();
+    const ready = await isAiSchemaReady();
+    const pending = ready ? [] : await getAiPendingMigrations();
+    return {
+      ready,
+      applied: ready
+        ? [
+            "20260707100000-create-ai-and-knowledge-tables",
+            "20260708120000-add-ai-agent-ack-fields"
+          ]
+        : [],
+      pending
+    };
   } catch (error) {
-    logger.error({ error, pending }, "Failed to apply AI migrations");
-    return { ready: false, applied: [], pending };
+    logger.error({ error }, "Failed to apply AI schema");
+    return {
+      ready: false,
+      applied: [],
+      pending: await getAiPendingMigrations()
+    };
   }
 };
 
@@ -207,14 +172,26 @@ export const initializeMigrations = async (): Promise<{
   let pending = await getPendingMigrations();
   let applied: string[] = [];
 
+  if (autoMigrateEnabled && !(await isAiSchemaReady())) {
+    try {
+      await applyAiSchema();
+      applied = [
+        "20260707100000-create-ai-and-knowledge-tables",
+        "20260708120000-add-ai-agent-ack-fields"
+      ];
+    } catch (error) {
+      logger.error({ error }, "AI schema bootstrap failed");
+    }
+    pending = await getPendingMigrations();
+  }
+
   const aiPending = pending.filter(name => AI_MIGRATION_NAMES.has(name));
 
   if (aiPending.length && autoMigrateEnabled) {
     logger.warn(
       { count: aiPending.length, migrations: aiPending },
-      "AUTO_MIGRATE=true — applying pending AI migrations"
+      "AI schema still pending after ensure step"
     );
-    applied = await runAiMigrations();
     pending = await getPendingMigrations();
   } else if (aiPending.length) {
     logger.error(
