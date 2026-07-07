@@ -87,6 +87,7 @@ const messages = {
         },
         buttons: {
           submit: "Entrar",
+          submitting: "Entrando...",
           register: "Não tem uma conta? Cadastre-se!"
         }
       },
@@ -1244,8 +1245,10 @@ const messages = {
         ERR_EDITING_WAPP_MSG: "Não foi possível editar a mensagem do WhatsApp.",
         ERR_OTHER_OPEN_TICKET: "Já existe um tíquete aberto para este contato.",
         ERR_SESSION_EXPIRED: "Sessão expirada. Por favor entre.",
-        ERR_TURNSTILE_REQUIRED: "Confirme o desafio de segurança antes de entrar.",
-        ERR_TURNSTILE_INVALID: "Verificação de segurança inválida. Tente novamente.",
+        ERR_TURNSTILE_REQUIRED:
+          "Confirme o desafio de segurança antes de entrar.",
+        ERR_TURNSTILE_INVALID:
+          "Verificação de segurança inválida. Tente novamente.",
         ERR_TURNSTILE_NOT_CONFIGURED:
           "Verificação de segurança não configurada no servidor.",
         ERR_USER_CREATION_DISABLED:

@@ -148,6 +148,21 @@ jobs:
           workingDirectory: api-worker
           command: deploy
 
+      - name: Aguardar API ficar pronta
+        run: |
+          set -euo pipefail
+          API_URL="https://${{ env.API_HOST }}"
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 20 "${API_URL}/health" >/dev/null 2>&1; then
+              echo "API health OK on attempt ${attempt}"
+              exit 0
+            fi
+            echo "Attempt ${attempt}/30: API ainda aquecendo..."
+            sleep 10
+          done
+          echo "::warning::API /health não respondeu em 5 minutos — verifique logs do container."
+          curl -fsS --max-time 10 "${API_URL}/__worker_health" || true
+
       - name: Summary API
         run: |
           echo "## Ticketz API publicada" >> $GITHUB_STEP_SUMMARY

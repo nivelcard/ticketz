@@ -1,19 +1,8 @@
+import http from "http";
+import type { Application } from "express";
 import gracefulShutdown from "http-graceful-shutdown";
-import app from "./app";
-import { initIO } from "./libs/socket";
 import { logger } from "./utils/logger";
-import { StartAllWhatsAppsSessions } from "./services/WbotServices/StartAllWhatsAppsSessions";
-import Company from "./models/Company";
-import { startQueueProcess } from "./queues";
-import {
-  checkOpenInvoices,
-  payGatewayInitialize
-} from "./services/PaymentGatewayServices/PaymentGatewayServices";
-import { i18nReady } from "./services/TranslationServices/i18nService";
-import { bootstrapAiPlatform } from "./services/AiServices/bootstrapAiPlatform";
-import { seedTurnstileSettingsFromEnv } from "./services/AuthServices/SeedTurnstileSettingsService";
 
-// Environment Variable Validation
 if (!process.env.PORT) {
   logger.error("PORT environment variable is not set.");
   process.exit(1);
@@ -21,9 +10,16 @@ if (!process.env.PORT) {
 
 const HOST = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT);
+const LISTEN_FIRST = process.env.LISTEN_FIRST === "true";
 
-// Function to start server and initialize services
-async function startServer() {
+async function startBackgroundServices() {
+  const { StartAllWhatsAppsSessions } =
+    await import("./services/WbotServices/StartAllWhatsAppsSessions");
+  const Company = (await import("./models/Company")).default;
+  const { startQueueProcess } = await import("./queues");
+  const { checkOpenInvoices, payGatewayInitialize } =
+    await import("./services/PaymentGatewayServices/PaymentGatewayServices");
+
   try {
     const companies = await Company.findAll();
     const sessionPromises = companies.map(async company => {
@@ -54,55 +50,149 @@ async function startServer() {
   }
 }
 
-// Listen immediately so container health checks pass; init i18n/services in background.
-const server = app.listen(port, HOST, () => {
-  logger.info(`Server is listening on ${HOST}:${port}`);
-});
+async function runPostListenBootstrap(_server: http.Server) {
+  const { i18nReady } =
+    await import("./services/TranslationServices/i18nService");
+  const { bootstrapAiPlatform } =
+    await import("./services/AiServices/bootstrapAiPlatform");
+  const { seedTurnstileSettingsFromEnv } =
+    await import("./services/AuthServices/SeedTurnstileSettingsService");
 
-initIO(server);
+  const bootstrapServices = async () => {
+    await seedTurnstileSettingsFromEnv().catch(error => {
+      logger.warn({ error }, "Turnstile settings sync skipped");
+    });
+    await bootstrapAiPlatform();
+    await startBackgroundServices();
+  };
 
-setImmediate(() => {
   i18nReady
     .then(async () => {
       logger.trace("i18n initialized");
-      await seedTurnstileSettingsFromEnv().catch(error => {
-        logger.warn({ error }, "Turnstile settings sync skipped");
-      });
-      await bootstrapAiPlatform();
-      await startServer();
+      await bootstrapServices();
     })
     .catch(async error => {
       logger.error(`i18n initialization failed: ${error.message}`);
-      await seedTurnstileSettingsFromEnv().catch(seedError => {
-        logger.warn({ error: seedError }, "Turnstile settings sync skipped");
-      });
-      await bootstrapAiPlatform();
-      await startServer();
+      await bootstrapServices();
     });
-});
+}
 
-gracefulShutdown(server, {
-  signals: "SIGINT SIGTERM",
-  timeout: 30000,
-  onShutdown: async () => {
-    logger.info("Shutdown initiated. Cleaning up...");
-  },
-  finally: () => {
-    logger.info("Server has shut down.");
-  }
-});
+function setupGracefulShutdown(server: http.Server) {
+  gracefulShutdown(server, {
+    signals: "SIGINT SIGTERM",
+    timeout: 30000,
+    onShutdown: async () => {
+      logger.info("Shutdown initiated. Cleaning up...");
+    },
+    finally: () => {
+      logger.info("Server has shut down.");
+    }
+  });
+}
 
-// Global Exception Handlers
-process.on("uncaughtException", err => {
-  logger.error({ err }, `Uncaught Exception: ${err.message}`);
-  if (err["code"] && ["ERR_OSSL_BAD_DECRYPT", "ENOENT"].includes(err["code"])) {
-    return;
-  }
-  process.exit(1);
-});
+function setupProcessHandlers() {
+  process.on("uncaughtException", err => {
+    logger.error({ err }, `Uncaught Exception: ${err.message}`);
+    if (
+      err["code"] &&
+      ["ERR_OSSL_BAD_DECRYPT", "ENOENT"].includes(err["code"])
+    ) {
+      return;
+    }
+    process.exit(1);
+  });
 
-// Global Exception Handlers for logging only
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-process.on("unhandledRejection", (reason: any, promise) => {
-  logger.debug({ promise, reason }, "Unhandled Rejection");
-});
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  process.on("unhandledRejection", (reason: any, promise) => {
+    logger.debug({ promise, reason }, "Unhandled Rejection");
+  });
+}
+
+function createWarmingHandler(appReady: { value: boolean }) {
+  return (req: http.IncomingMessage, res: http.ServerResponse) => {
+    const path = (req.url || "").split("?")[0];
+
+    if (path === "/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          ok: true,
+          warming: !appReady.value
+        })
+      );
+      return;
+    }
+
+    res.writeHead(503, {
+      "Content-Type": "application/json",
+      "Retry-After": "3"
+    });
+    res.end(
+      JSON.stringify({
+        ok: false,
+        error: "ERR_API_WARMING_UP"
+      })
+    );
+  };
+}
+
+async function startListenFirst() {
+  const appReady = { value: false };
+  let requestHandler: (
+    req: http.IncomingMessage,
+    res: http.ServerResponse
+  ) => void = createWarmingHandler(appReady);
+
+  const server = http.createServer((req, res) => requestHandler(req, res));
+
+  server.listen(port, HOST, () => {
+    logger.info(`[listen-first] Accepting connections on ${HOST}:${port}`);
+  });
+
+  setupGracefulShutdown(server);
+  setupProcessHandlers();
+
+  setImmediate(async () => {
+    try {
+      const { default: app } = await import("./app");
+      const { initIO } = await import("./libs/socket");
+
+      requestHandler = app as Application;
+      appReady.value = true;
+      initIO(server);
+      logger.info("[listen-first] Express app attached");
+
+      await runPostListenBootstrap(server);
+    } catch (error) {
+      logger.error(
+        { error },
+        `[listen-first] Failed to attach application: ${
+          error instanceof Error ? error.message : error
+        }`
+      );
+    }
+  });
+}
+
+async function startDefault() {
+  const { default: app } = await import("./app");
+  const { initIO } = await import("./libs/socket");
+
+  const server = app.listen(port, HOST, () => {
+    logger.info(`Server is listening on ${HOST}:${port}`);
+  });
+
+  initIO(server);
+  setupGracefulShutdown(server);
+  setupProcessHandlers();
+
+  setImmediate(() => {
+    runPostListenBootstrap(server);
+  });
+}
+
+if (LISTEN_FIRST) {
+  startListenFirst();
+} else {
+  startDefault();
+}

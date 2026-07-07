@@ -88,6 +88,7 @@ const messages = {
         },
         buttons: {
           submit: "Log In",
+          submitting: "Signing in...",
           register: "Don't have an account? Sign up!"
         }
       },

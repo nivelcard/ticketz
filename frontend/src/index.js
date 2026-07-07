@@ -7,7 +7,7 @@ import { i18n } from "./translate/i18n";
 import axios from "axios";
 
 const BACKEND_RETRY_INTERVAL_SECONDS = 15;
-const BACKEND_PROBE_TIMEOUT_MS = 8000;
+const BACKEND_PROBE_TIMEOUT_MS = 45000;
 let backendRetryTimeout = null;
 let backendProbeStarted = false;
 let appMounted = false;
@@ -18,6 +18,13 @@ function isBackendHealthy(response) {
   }
 
   if (response.status >= 200 && response.status < 500) {
+    return true;
+  }
+
+  if (
+    response.status === 503 &&
+    response.data?.error === "ERR_API_WARMING_UP"
+  ) {
     return true;
   }
 

@@ -41,6 +41,7 @@ module.exports = {
   seederStorageTableSchema: schema,
   dialectOptions: {
     ...sslDialectOptions,
+    connectTimeout: parseInt(process.env.DB_CONNECT_TIMEOUT, 10) || 15000,
     options: `-c search_path=${schema},public,extensions`
   }
 };

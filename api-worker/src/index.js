@@ -1,14 +1,17 @@
 import { Container } from "@cloudflare/containers";
 
 const FRONTEND_ORIGIN = "https://suporte.fortmax.com.br";
-const MAX_PROXY_ATTEMPTS = 4;
+const MAX_PROXY_ATTEMPTS = 6;
+const CONTAINER_PORT_READY_TIMEOUT_MS = 120000;
 const RETRYABLE_ERROR_MARKERS = [
   "blockConcurrencyWhile",
   "waited for too long",
+  "waited too long",
   "container is not running",
   "failed to start",
   "connection refused",
-  "ECONNREFUSED"
+  "ECONNREFUSED",
+  "ERR_API_WARMING_UP"
 ];
 
 function buildContainerEnv(env) {
@@ -16,6 +19,7 @@ function buildContainerEnv(env) {
     "PORT",
     "HOST",
     "NODE_ENV",
+    "LISTEN_FIRST",
     "FRONTEND_URL",
     "BACKEND_URL",
     "DB_DIALECT",
@@ -30,6 +34,7 @@ function buildContainerEnv(env) {
     "DB_TIMEZONE",
     "DB_MAX_CONNECTIONS",
     "DB_MIN_CONNECTIONS",
+    "DB_CONNECT_TIMEOUT",
     "REDIS_URI",
     "VERIFY_TOKEN",
     "SOCKET_ADMIN",
@@ -55,7 +60,8 @@ function buildContainerEnv(env) {
   const vars = {
     PORT: "3000",
     HOST: "0.0.0.0",
-    NODE_ENV: "production"
+    NODE_ENV: "production",
+    LISTEN_FIRST: "true"
   };
 
   for (const key of passthroughKeys) {
@@ -102,6 +108,18 @@ function isRetryableError(error) {
   );
 }
 
+function isRetryableResponse(response) {
+  if (!response) {
+    return false;
+  }
+
+  if (response.status === 503 || response.status === 502 || response.status === 504) {
+    return true;
+  }
+
+  return false;
+}
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -117,8 +135,22 @@ export class TicketzBackend extends Container {
     this.envVars = buildContainerEnv(env);
   }
 
+  onStart() {
+    console.log("Ticketz container started and port 3000 is ready");
+  }
+
   onError(error) {
     console.error("Ticketz container error:", error);
+  }
+
+  async fetch(request) {
+    await this.startAndWaitForPorts(3000, {
+      portReadyTimeoutMS: CONTAINER_PORT_READY_TIMEOUT_MS,
+      instanceGetTimeoutMS: CONTAINER_PORT_READY_TIMEOUT_MS,
+      waitInterval: 500
+    });
+
+    return this.containerFetch(request);
   }
 }
 
@@ -161,6 +193,13 @@ export default {
     for (let attempt = 1; attempt <= MAX_PROXY_ATTEMPTS; attempt += 1) {
       try {
         const response = await proxyToContainer(request, env);
+
+        if (isRetryableResponse(response) && attempt < MAX_PROXY_ATTEMPTS) {
+          await response.body?.cancel?.();
+          await sleep(attempt * 2000);
+          continue;
+        }
+
         return mergeCorsOntoResponse(response, request);
       } catch (error) {
         lastError = error;
@@ -174,7 +213,7 @@ export default {
           break;
         }
 
-        await sleep(attempt * 1500);
+        await sleep(attempt * 2000);
       }
     }
 
