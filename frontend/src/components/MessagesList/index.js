@@ -46,8 +46,6 @@ import {
 import WhatsMarked from "react-whatsmarked";
 import PdfPreview from "../PdfPreview";
 import MessageOptionsMenu from "../MessageOptionsMenu";
-import whatsBackground from "../../assets/wa-background.webp";
-import whatsBackgroundDark from "../../assets/wa-background-dark.png";
 import MediaGalleryLightbox, {
   buildMediaGalleryData
 } from "../MediaGalleryLightbox";
@@ -80,10 +78,7 @@ const useStyles = makeStyles(theme => ({
   },
 
   stickedMessages: {
-    backgroundImage:
-      theme.mode === "light"
-        ? `url(${whatsBackground})`
-        : `url(${whatsBackgroundDark})`,
+    backgroundColor: theme.palette.background.paper,
     flexDirection: "column",
     flexGrow: 1,
     padding: "5px 20px 20px 20px",
@@ -110,14 +105,11 @@ const useStyles = makeStyles(theme => ({
   },
 
   messagesList: {
-    backgroundImage:
-      theme.mode === "light"
-        ? `url(${whatsBackground})`
-        : `url(${whatsBackgroundDark})`,
+    backgroundColor: theme.palette.chatBackground.main,
     display: "flex",
     flexDirection: "column",
     flexGrow: 1,
-    padding: "20px 20px 20px 20px",
+    padding: "16px 20px",
     overflowY: "scroll",
     ...theme.scrollbarStyles
   },
@@ -147,8 +139,8 @@ const useStyles = makeStyles(theme => ({
     },
 
     whiteSpace: "pre-wrap",
-    backgroundColor: theme.mode === "light" ? "#ffffff" : "#024481",
-    color: theme.mode === "light" ? "#303030" : "#ffffff",
+    backgroundColor: theme.palette.chatBubbleReceived.main,
+    color: theme.palette.text.primary,
     alignSelf: "flex-start",
     borderTopLeftRadius: 0,
     borderTopRightRadius: 8,
@@ -158,8 +150,9 @@ const useStyles = makeStyles(theme => ({
     paddingRight: 5,
     paddingTop: 5,
     paddingBottom: 0,
+    border: `1px solid ${theme.palette.borderPrimary}`,
     boxShadow:
-      theme.mode === "light" ? "0 1px 1px #b3b3b3" : "0 1px 1px #000000",
+      theme.mode === "light" ? "0 1px 2px rgba(15, 23, 42, 0.06)" : "none",
     transition: "background-color 0.5s ease-in-out"
   },
 
@@ -209,8 +202,8 @@ const useStyles = makeStyles(theme => ({
       right: 0
     },
     whiteSpace: "pre-wrap",
-    backgroundColor: theme.mode === "light" ? "#dcf8c6" : "#005c4b",
-    color: theme.mode === "light" ? "#303030" : "#ffffff",
+    backgroundColor: theme.palette.chatBubbleFromMe.main,
+    color: theme.palette.text.primary,
     alignSelf: "flex-end",
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
@@ -220,8 +213,9 @@ const useStyles = makeStyles(theme => ({
     paddingRight: 5,
     paddingTop: 5,
     paddingBottom: 0,
+    border: `1px solid ${theme.palette.borderPrimary}`,
     boxShadow:
-      theme.mode === "light" ? "0 1px 1px #b3b3b3" : "0 1px 1px #000000",
+      theme.mode === "light" ? "0 1px 2px rgba(15, 23, 42, 0.06)" : "none",
     transition: "background-color 0.5s ease-in-out"
   },
 

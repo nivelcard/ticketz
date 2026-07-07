@@ -26,6 +26,7 @@ import useSettings from "../../hooks/useSettings";
 import { getBackendURL } from "../../services/config";
 import ColorModeContext from "../../layout/themeContext";
 import { loadJSON } from "../../helpers/loadJSON";
+import brandTokens from "../../theme/brandTokens";
 
 const gitinfo = loadJSON("/gitinfo.json");
 
@@ -65,34 +66,44 @@ const useStyles = makeStyles(theme => ({
     inset: 0,
     display: "flex",
     flexDirection: "column",
-    overflow: "hidden"
+    overflow: "hidden",
+    backgroundColor: theme.palette.background.default
   },
   backgroundLayer: {
     position: "absolute",
     inset: 0,
-    background: `linear-gradient(to right, ${theme.palette.background.default}, ${theme.palette.background.default}, ${theme.palette.primary.main}, ${theme.palette.background.default}, ${theme.palette.background.default})`,
-    backgroundColor: theme.palette.background.default,
-    backgroundSize: "200% 200%",
-    animation: "$gradientDrift 18s ease-in-out infinite",
-    willChange: "background-position",
-    "@media (prefers-reduced-motion: reduce)": {
-      animation: "none"
-    }
+    background:
+      theme.mode === "light"
+        ? `radial-gradient(ellipse at 20% 0%, rgba(211, 47, 47, 0.06) 0%, transparent 55%),
+           radial-gradient(ellipse at 80% 100%, rgba(211, 47, 47, 0.04) 0%, transparent 50%),
+           ${theme.palette.background.default}`
+        : `radial-gradient(ellipse at 20% 0%, rgba(239, 83, 80, 0.08) 0%, transparent 55%),
+           radial-gradient(ellipse at 80% 100%, rgba(239, 83, 80, 0.05) 0%, transparent 50%),
+           ${theme.palette.background.default}`,
+    backgroundColor: theme.palette.background.default
   },
   backgroundLayerImage: {
     position: "absolute",
     inset: 0,
     backgroundSize: "cover",
     backgroundPosition: "center",
-    animation: "none",
-    willChange: "auto"
+    "&::after": {
+      content: '""',
+      position: "absolute",
+      inset: 0,
+      background:
+        theme.mode === "light"
+          ? "rgba(248, 250, 252, 0.82)"
+          : "rgba(11, 17, 32, 0.78)"
+    }
   },
   backgroundVideo: {
     position: "absolute",
     inset: 0,
     width: "100%",
     height: "100%",
-    objectFit: "cover"
+    objectFit: "cover",
+    opacity: theme.mode === "light" ? 0.25 : 0.2
   },
   content: {
     position: "relative",
@@ -104,59 +115,30 @@ const useStyles = makeStyles(theme => ({
     justifyContent: "center",
     padding: theme.spacing(3),
     [theme.breakpoints.down("xs")]: {
-      padding: theme.spacing(1.5)
+      padding: theme.spacing(2, 1.5),
+      alignItems: "flex-start",
+      paddingTop: theme.spacing(8)
     }
   },
-  themeToggle: {
+  topBar: {
     position: "absolute",
     top: theme.spacing(2),
     right: theme.spacing(2),
     zIndex: 2,
-    color: theme.palette.type === "light" ? "#142033" : "#fff",
-    background:
-      theme.palette.type === "light"
-        ? "rgba(255,255,255,0.68)"
-        : "rgba(6,12,22,0.5)",
-    border:
-      theme.palette.type === "light"
-        ? "1px solid rgba(255,255,255,0.8)"
-        : "1px solid rgba(255,255,255,0.18)",
-    backdropFilter: "blur(12px)",
-    "&:hover": {
-      background:
-        theme.palette.type === "light"
-          ? "rgba(255,255,255,0.84)"
-          : "rgba(10,18,31,0.68)"
-    },
+    display: "flex",
+    gap: theme.spacing(0.5),
     [theme.breakpoints.down("xs")]: {
       top: theme.spacing(1),
       right: theme.spacing(1)
     }
   },
-  languageToggle: {
-    position: "absolute",
-    top: theme.spacing(2),
-    right: theme.spacing(10),
-    zIndex: 2,
-    color: theme.palette.type === "light" ? "#142033" : "#fff",
-    background:
-      theme.palette.type === "light"
-        ? "rgba(255,255,255,0.68)"
-        : "rgba(6,12,22,0.5)",
-    border:
-      theme.palette.type === "light"
-        ? "1px solid rgba(255,255,255,0.8)"
-        : "1px solid rgba(255,255,255,0.18)",
-    backdropFilter: "blur(12px)",
+  topBarButton: {
+    color: theme.palette.text.secondary,
+    backgroundColor: theme.palette.background.paper,
+    border: `1px solid ${theme.palette.borderPrimary}`,
+    padding: 6,
     "&:hover": {
-      background:
-        theme.palette.type === "light"
-          ? "rgba(255,255,255,0.84)"
-          : "rgba(10,18,31,0.68)"
-    },
-    [theme.breakpoints.down("xs")]: {
-      top: theme.spacing(1),
-      right: theme.spacing(7)
+      backgroundColor: theme.palette.action.hover
     }
   },
   langMenu: {
@@ -164,47 +146,45 @@ const useStyles = makeStyles(theme => ({
   },
   langMenuPaper: {
     minWidth: 160,
-    borderRadius: theme.spacing(1),
+    borderRadius: brandTokens.shape.borderRadius,
     overflow: "hidden",
-    transformOrigin: "top center",
-    transition: "transform 180ms ease, opacity 180ms ease"
+    border: `1px solid ${theme.palette.borderPrimary}`,
+    boxShadow: brandTokens.elevation.popover
   },
   layout: {
     width: "100%",
-    maxWidth: 980,
+    maxWidth: 920,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: theme.spacing(2),
-    [theme.breakpoints.down("sm")]: {
-      maxWidth: 440
-    }
+    gap: theme.spacing(2)
   },
   loginBox: {
-    width: "fit-content",
-    maxWidth: "100%",
+    width: "100%",
+    maxWidth: 420,
     display: "flex",
-    alignItems: "center",
     overflow: "hidden",
-    borderRadius: 28,
+    borderRadius: brandTokens.shape.borderRadiusLg,
     backgroundColor: theme.palette.background.paper,
     boxShadow:
-      theme.palette.type === "light"
-        ? "0 24px 72px rgba(45, 67, 89, 0.18)"
-        : "0 24px 80px rgba(0,0,0,0.35)",
-    border: `1px solid ${theme.palette.backgroundContrast.border}`,
-    [theme.breakpoints.down("sm")]: {
-      display: "block",
-      maxWidth: 420
+      theme.mode === "light" ? brandTokens.elevation.cardHover : "none",
+    border: `1px solid ${theme.palette.borderPrimary}`,
+    [theme.breakpoints.down("xs")]: {
+      maxWidth: "100%",
+      borderRadius: brandTokens.shape.borderRadius
     }
+  },
+  loginBoxWithMedia: {
+    maxWidth: 820
   },
   mediaPane: {
     position: "relative",
-    flex: "0 0 clamp(280px, 34vw, 360px)",
+    flex: "0 0 340px",
     alignSelf: "stretch",
     minHeight: 0,
     overflow: "hidden",
     backgroundColor: theme.palette.background.default,
+    borderRight: `1px solid ${theme.palette.borderPrimary}`,
     [theme.breakpoints.down("sm")]: {
       display: "none"
     }
@@ -218,96 +198,99 @@ const useStyles = makeStyles(theme => ({
     objectFit: "cover"
   },
   formColumn: {
-    flex: "0 0 420px",
+    flex: 1,
     display: "flex",
     flexDirection: "column",
-    alignItems: "center",
-    gap: theme.spacing(2),
-    [theme.breakpoints.down("sm")]: {
-      width: "100%"
-    }
-  },
-  formCardWrap: {
-    width: "100%"
+    minWidth: 0
   },
   paper: {
     width: "100%",
-    backgroundColor: theme.palette.background.paper,
+    backgroundColor: "transparent",
     color: theme.palette.text.primary,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    padding: "32px 32px 28px",
-    minHeight: 0,
-    borderRadius: 0,
-    boxShadow: "none",
-    border: "none",
+    padding: theme.spacing(4, 3.5, 3),
     [theme.breakpoints.down("xs")]: {
-      padding: "24px 16px 20px",
-      borderRadius: 16
-    },
-    [theme.breakpoints.down("sm")]: {
-      borderRadius: 24
+      padding: theme.spacing(3, 2, 2.5)
     }
   },
-  form: {
-    width: "100%",
-    marginTop: theme.spacing(1)
-  },
-  submit: {
-    margin: theme.spacing(2, 0, 1)
+  logoSection: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    marginBottom: theme.spacing(2.5),
+    width: "100%"
   },
   logoImg: {
     width: "100%",
-    maxWidth: 200,
-    margin: "0 auto 8px",
-    content: `url("${theme.calculatedLogo()}")`
+    maxWidth: 220,
+    maxHeight: 56,
+    objectFit: "contain",
+    marginBottom: theme.spacing(0.5)
+  },
+  brandTagline: {
+    fontSize: "0.75rem",
+    fontWeight: 500,
+    color: theme.palette.text.secondary,
+    letterSpacing: "0.02em"
+  },
+  form: {
+    width: "100%"
+  },
+  input: {
+    marginBottom: theme.spacing(1.5),
+    "& .MuiOutlinedInput-root": {
+      backgroundColor:
+        theme.mode === "light"
+          ? brandTokens.neutral.backgroundLight
+          : brandTokens.neutral.paperDark
+    }
+  },
+  submit: {
+    marginTop: theme.spacing(2),
+    marginBottom: theme.spacing(1),
+    padding: "10px 0",
+    fontWeight: 600,
+    fontSize: "0.875rem",
+    boxShadow: "none",
+    "&:hover": {
+      boxShadow: brandTokens.elevation.card
+    }
+  },
+  signupLink: {
+    fontSize: "0.8125rem",
+    color: theme.palette.text.secondary,
+    "& a": {
+      color: theme.palette.primary.main,
+      fontWeight: 500
+    }
   },
   linksContainer: {
     width: "100%",
-    maxWidth: 980,
+    maxWidth: 420,
     display: "flex",
     flexWrap: "wrap",
     justifyContent: "center",
-    gap: theme.spacing(1),
-    [theme.breakpoints.down("sm")]: {
-      maxWidth: 420
-    }
+    gap: theme.spacing(0.75)
   },
   footerLink: {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 40,
-    padding: theme.spacing(1, 2),
-    borderRadius: 999,
+    minHeight: 32,
+    padding: theme.spacing(0.5, 1.5),
+    borderRadius: brandTokens.shape.borderRadiusSm,
     textDecoration: "none",
-    color: theme.palette.type === "light" ? "#142033" : "#fff",
-    fontWeight: 600,
-    fontSize: "0.85rem",
-    letterSpacing: 0.2,
-    lineHeight: 1.25,
-    textAlign: "center",
-    background:
-      theme.palette.type === "light"
-        ? "rgba(255,255,255,0.72)"
-        : "rgba(6,12,22,0.62)",
-    border:
-      theme.palette.type === "light"
-        ? "1px solid rgba(255,255,255,0.82)"
-        : "1px solid rgba(255,255,255,0.18)",
-    boxShadow:
-      theme.palette.type === "light"
-        ? "0 12px 28px rgba(45, 67, 89, 0.12)"
-        : "none",
-    backdropFilter: "blur(14px)",
-    transition: "transform 160ms ease, background-color 160ms ease",
+    color: theme.palette.text.secondary,
+    fontWeight: 500,
+    fontSize: "0.75rem",
+    backgroundColor: theme.palette.background.paper,
+    border: `1px solid ${theme.palette.borderPrimary}`,
+    transition: "background-color 150ms ease, color 150ms ease",
     "&:hover": {
-      transform: "translateY(-1px)",
-      background:
-        theme.palette.type === "light"
-          ? "rgba(255,255,255,0.9)"
-          : "rgba(10,18,31,0.78)",
+      backgroundColor: theme.palette.action.hover,
+      color: theme.palette.text.primary,
       textDecoration: "none"
     }
   },
@@ -316,29 +299,14 @@ const useStyles = makeStyles(theme => ({
     right: theme.spacing(2),
     bottom: theme.spacing(1.25),
     zIndex: 2,
-    fontSize: "12px",
-    fontWeight: "bold",
+    fontSize: "0.625rem",
+    fontWeight: 500,
     textAlign: "right",
-    color: theme.palette.type === "light" ? "#0e1726" : "#ffffff",
-    textShadow:
-      theme.palette.type === "light"
-        ? "1px 0 2px rgba(255,255,255,0.9), -1px 0 2px rgba(255,255,255,0.9), 0 1px 2px rgba(255,255,255,0.9), 0 -1px 2px rgba(255,255,255,0.9), 0 2px 6px rgba(0,0,0,0.35)"
-        : "1px 0 2px rgba(0,0,0,0.9), -1px 0 2px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.9), 0 -1px 2px rgba(0,0,0,0.9), 0 2px 6px rgba(0,0,0,0.65)",
+    color: theme.palette.text.secondary,
+    opacity: 0.6,
     [theme.breakpoints.down("xs")]: {
       right: theme.spacing(1),
-      bottom: theme.spacing(0.75),
-      fontSize: "11px"
-    }
-  },
-  "@keyframes gradientDrift": {
-    "0%": {
-      backgroundPosition: "0% 50%"
-    },
-    "50%": {
-      backgroundPosition: "100% 50%"
-    },
-    "100%": {
-      backgroundPosition: "0% 50%"
+      bottom: theme.spacing(0.75)
     }
   }
 }));
@@ -408,17 +376,35 @@ const Login = () => {
   const shouldRenderBackgroundVideo = isVideoFile(backgroundContent);
   const showSidePanelImage = !!sidePanelImageUrl;
   const isLightMode = theme.palette.type === "light";
+  const logoSrc = theme.calculatedLogo();
 
   return (
     <div className={classes.root}>
       <CssBaseline />
-      <IconButton
-        className={classes.languageToggle}
-        onClick={event => setLangMenuAnchor(event.currentTarget)}
-        aria-label={i18n.t("mainDrawer.appBar.i18n.language")}
-      >
-        <LanguageIcon />
-      </IconButton>
+      <div className={classes.topBar}>
+        <IconButton
+          className={classes.topBarButton}
+          onClick={event => setLangMenuAnchor(event.currentTarget)}
+          aria-label={i18n.t("mainDrawer.appBar.i18n.language")}
+          size="small"
+        >
+          <LanguageIcon fontSize="small" />
+        </IconButton>
+        <IconButton
+          className={classes.topBarButton}
+          onClick={colorMode.toggleColorMode}
+          aria-label={
+            isLightMode ? "Switch to dark mode" : "Switch to light mode"
+          }
+          size="small"
+        >
+          {isLightMode ? (
+            <Brightness4Icon fontSize="small" />
+          ) : (
+            <Brightness7Icon fontSize="small" />
+          )}
+        </IconButton>
+      </div>
       <Popover
         className={classes.langMenu}
         open={Boolean(langMenuAnchor)}
@@ -438,15 +424,16 @@ const Login = () => {
         }}
         disableScrollLock
       >
-        <Paper className={classes.langMenuPaper} elevation={4}>
-          <MenuList>
+        <Paper className={classes.langMenuPaper} elevation={0}>
+          <MenuList dense>
             {Object.keys(messages).map(lang => (
               <MenuItem
                 key={lang}
                 onClick={() => handleChooseLanguage(lang)}
                 selected={currentLanguage === lang}
                 style={{
-                  fontWeight: currentLanguage === lang ? "bold" : "normal"
+                  fontWeight: currentLanguage === lang ? 600 : 400,
+                  fontSize: "0.8125rem"
                 }}
               >
                 {messages[lang].translations.mainDrawer.appBar.i18n.language}
@@ -455,15 +442,6 @@ const Login = () => {
           </MenuList>
         </Paper>
       </Popover>
-      <IconButton
-        className={classes.themeToggle}
-        onClick={colorMode.toggleColorMode}
-        aria-label={
-          isLightMode ? "Switch to dark mode" : "Switch to light mode"
-        }
-      >
-        {isLightMode ? <Brightness4Icon /> : <Brightness7Icon />}
-      </IconButton>
       {shouldRenderBackgroundVideo ? (
         <video
           className={classes.backgroundVideo}
@@ -485,13 +463,9 @@ const Login = () => {
         />
       )}
       <div className={classes.content}>
-        <div
-          className={classes.layout}
-          style={!showSidePanelImage ? { maxWidth: 440 } : undefined}
-        >
+        <div className={classes.layout}>
           <div
-            className={classes.loginBox}
-            style={!showSidePanelImage ? { maxWidth: 420 } : undefined}
+            className={`${classes.loginBox}${showSidePanelImage ? ` ${classes.loginBoxWithMedia}` : ""}`}
           >
             {showSidePanelImage && (
               <div className={classes.mediaPane}>
@@ -503,70 +477,74 @@ const Login = () => {
               </div>
             )}
             <div className={classes.formColumn}>
-              <div className={classes.formCardWrap}>
-                <div className={classes.paper}>
-                  <div>
-                    <img
-                      className={classes.logoImg}
-                      alt={i18n.t("login.title")}
-                    />
-                  </div>
-                  <form
-                    className={classes.form}
-                    noValidate
-                    onSubmit={handlSubmit}
-                  >
-                    <TextField
-                      variant="outlined"
-                      margin="normal"
-                      required
-                      fullWidth
-                      id="email"
-                      label={i18n.t("login.form.email")}
-                      name="email"
-                      value={user.email}
-                      onChange={handleChangeInput}
-                      autoComplete="email"
-                      autoFocus
-                    />
-                    <TextField
-                      variant="outlined"
-                      margin="normal"
-                      required
-                      fullWidth
-                      name="password"
-                      label={i18n.t("login.form.password")}
-                      type="password"
-                      id="password"
-                      value={user.password}
-                      onChange={handleChangeInput}
-                      autoComplete="current-password"
-                    />
-                    <Button
-                      type="submit"
-                      fullWidth
-                      variant="contained"
-                      color="primary"
-                      className={classes.submit}
-                    >
-                      {i18n.t("login.buttons.submit")}
-                    </Button>
-                    {allowSignup && (
-                      <Grid container>
-                        <Grid item>
-                          <Link
-                            href="#"
-                            variant="body2"
-                            component={RouterLink}
-                            to="/signup"
-                          >
-                            {i18n.t("login.buttons.register")}
-                          </Link>
-                        </Grid>
-                      </Grid>
-                    )}
-                  </form>
+              <div className={classes.paper}>
+                <div className={classes.logoSection}>
+                  <img
+                    className={classes.logoImg}
+                    src={logoSrc}
+                    alt="Fortmax Sistemas"
+                  />
+                  <Typography className={classes.brandTagline}>
+                    Sistema de atendimento
+                  </Typography>
                 </div>
+                <form
+                  className={classes.form}
+                  noValidate
+                  onSubmit={handlSubmit}
+                >
+                  <TextField
+                    className={classes.input}
+                    variant="outlined"
+                    required
+                    fullWidth
+                    size="small"
+                    id="email"
+                    label={i18n.t("login.form.email")}
+                    name="email"
+                    value={user.email}
+                    onChange={handleChangeInput}
+                    autoComplete="email"
+                    autoFocus
+                  />
+                  <TextField
+                    className={classes.input}
+                    variant="outlined"
+                    required
+                    fullWidth
+                    size="small"
+                    name="password"
+                    label={i18n.t("login.form.password")}
+                    type="password"
+                    id="password"
+                    value={user.password}
+                    onChange={handleChangeInput}
+                    autoComplete="current-password"
+                  />
+                  <Button
+                    type="submit"
+                    fullWidth
+                    variant="contained"
+                    color="primary"
+                    className={classes.submit}
+                  >
+                    {i18n.t("login.buttons.submit")}
+                  </Button>
+                  {allowSignup && (
+                    <Grid container justifyContent="center">
+                      <Grid item className={classes.signupLink}>
+                        <Link
+                          href="#"
+                          variant="body2"
+                          component={RouterLink}
+                          to="/signup"
+                        >
+                          {i18n.t("login.buttons.register")}
+                        </Link>
+                      </Grid>
+                    </Grid>
+                  )}
+                </form>
               </div>
             </div>
           </div>

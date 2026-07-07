@@ -25,12 +25,12 @@ import { has, isObject } from "lodash";
 
 import { AuthContext } from "../../context/Auth/AuthContext";
 import withWidth, { isWidthUp } from "@material-ui/core/withWidth";
-import whatsBackground from "../../assets/wa-background.webp";
-import whatsBackgroundDark from "../../assets/wa-background-dark.png";
 
 import { i18n } from "../../translate/i18n";
 import toastError from "../../errors/toastError";
 import Title from "../../components/Title";
+import brandTokens from "../../theme/brandTokens";
+
 const useStyles = makeStyles(theme => ({
   mainContainer: {
     display: "flex",
@@ -38,22 +38,17 @@ const useStyles = makeStyles(theme => ({
     position: "relative",
     flex: 1,
     padding: theme.spacing(2),
-    height: `calc(100% - 48px)`,
+    height: `calc(100% - ${brandTokens.layout.appBarHeight}px)`,
     overflowY: "hidden",
-    border: "1px solid rgba(0, 0, 0, 0.12)",
-    backgroundImage:
-      theme.mode === "light"
-        ? `url(${whatsBackground})`
-        : `url(${whatsBackgroundDark})`,
-    backgroundPosition: "center",
-    backgroundSize: "cover",
-    backgroundRepeat: "no-repeat"
+    backgroundColor: theme.palette.background.default
   },
   gridContainer: {
     flex: 1,
     height: "100%",
-    border: "1px solid rgba(0, 0, 0, 0.12)",
-    backgroundColor: "inherit"
+    border: `1px solid ${theme.palette.borderPrimary}`,
+    borderRadius: theme.shape.borderRadius,
+    backgroundColor: theme.palette.background.paper,
+    overflow: "hidden"
   },
   gridItem: {
     height: "100%"

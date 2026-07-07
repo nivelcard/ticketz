@@ -49,7 +49,11 @@ import GoogleAnalytics from "../components/GoogleAnalytics";
 import OnlyForSuperUser from "../components/OnlyForSuperUser";
 import NewTicketModal from "../components/NewTicketModal/index.js";
 
-const drawerWidth = 240;
+import brandTokens from "../theme/brandTokens";
+
+const drawerWidth = brandTokens.layout.drawerWidth;
+const drawerWidthCollapsed = brandTokens.layout.drawerWidthCollapsed;
+const appBarHeight = brandTokens.layout.appBarHeight;
 const DRAWER_STORAGE_KEY = "drawerOpen";
 
 function getStoredDrawerOpen() {
@@ -77,9 +81,9 @@ const useStyles = makeStyles(theme => ({
     }
   },
   avatar: {
-    width: 30,
-    height: 30,
-    fontSize: theme.typography.pxToRem(14),
+    width: 26,
+    height: 26,
+    fontSize: theme.typography.pxToRem(13),
     display: "block",
     boxSizing: "border-box",
     flexShrink: 0
@@ -92,27 +96,29 @@ const useStyles = makeStyles(theme => ({
     display: "flex",
     alignItems: "center",
     width: "fit-content",
-    minWidth: 40,
+    minWidth: 36,
     maxWidth: 160,
-    borderRadius: 20,
+    borderRadius: 6,
     overflow: "hidden",
     cursor: "pointer",
-    backgroundColor:
-      theme.mode === "dark"
-        ? "rgba(0, 0, 0, 0.2)"
-        : "rgba(255, 255, 255, 0.15)",
+    border: `1px solid ${theme.palette.borderPrimary}`,
+    backgroundColor: theme.palette.background.paper,
+    transition: "background-color 0.15s ease",
+    "&:hover": {
+      backgroundColor: theme.palette.action.hover
+    },
     [theme.breakpoints.down("xs")]: {
-      borderRadius: 20
+      borderRadius: 6
     }
   },
   profileAvatarSlot: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    borderRadius: "0 20px 20px 0"
+    borderRadius: 6
   },
   userInfoPanel: {
     display: "none",
@@ -123,18 +129,17 @@ const useStyles = makeStyles(theme => ({
       maxWidth: 120,
       flexDirection: "column",
       justifyContent: "center",
-      height: 40,
-      paddingLeft: 14,
-      paddingRight: 8,
-      borderRadius: "20px 0 0 20px",
+      height: 32,
+      paddingLeft: 10,
+      paddingRight: 6,
       boxSizing: "border-box",
       overflow: "hidden"
     }
   },
   userInfoName: {
-    color: theme.palette.primary.contrastText,
+    color: theme.palette.text.primary,
     fontSize: 11,
-    lineHeight: "15px",
+    lineHeight: "14px",
     fontWeight: 600,
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -142,32 +147,37 @@ const useStyles = makeStyles(theme => ({
     maxWidth: "100%"
   },
   userInfoCompany: {
-    color: theme.palette.primary.contrastText,
-    fontSize: 11,
-    lineHeight: "15px",
-    opacity: 0.75,
+    color: theme.palette.text.secondary,
+    fontSize: 10,
+    lineHeight: "13px",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
     maxWidth: "100%"
   },
   toolbar: {
-    paddingRight: 24,
-    minHeight: 52,
-    color:
-      localStorage.getItem("impersonated") === "true"
-        ? theme.palette.secondary.contrastText
-        : theme.palette.primary.contrastText,
-    background:
-      localStorage.getItem("impersonated") === "true"
-        ? theme.palette.secondary.main
-        : theme.palette.primary.main
+    paddingRight: 16,
+    paddingLeft: 8,
+    minHeight: appBarHeight,
+    color: theme.palette.text.primary,
+    background: theme.palette.background.paper,
+    borderBottom: `1px solid ${theme.palette.borderPrimary}`,
+    boxShadow: "none",
+    [theme.breakpoints.down("sm")]: {
+      paddingRight: 8,
+      paddingLeft: 4
+    }
   },
   toolbarIcon: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    minHeight: "48px"
+    minHeight: 40,
+    padding: theme.spacing(0.5, 1),
+    [theme.breakpoints.down("sm")]: {
+      minHeight: 36,
+      padding: theme.spacing(0.5, 0.75)
+    }
   },
   appBar: {
     zIndex: theme.zIndex.drawer + 1,
@@ -175,9 +185,10 @@ const useStyles = makeStyles(theme => ({
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen
     }),
+    boxShadow: "none",
     [theme.breakpoints.up("sm")]: {
-      marginLeft: theme.spacing(9),
-      width: `calc(100% - ${theme.spacing(9)}px)`
+      marginLeft: drawerWidthCollapsed,
+      width: `calc(100% - ${drawerWidthCollapsed}px)`
     }
   },
   appBarShift: {
@@ -192,24 +203,26 @@ const useStyles = makeStyles(theme => ({
     }
   },
   menuButton: {
-    marginRight: 36,
-    color: theme.palette.primary.contrastText
+    marginRight: 8,
+    color: theme.palette.text.secondary,
+    padding: 6
   },
   menuButtonHidden: {
     display: "none"
   },
   title: {
     flexGrow: 1,
-    fontSize: 14,
-    color: "white"
+    fontSize: 13,
+    fontWeight: 600,
+    color: theme.palette.text.primary
   },
   wsConnectionAlertButton: {
-    marginRight: theme.spacing(1.5),
-    color: theme.palette.primary.contrastText,
-    padding: theme.spacing(0.5)
+    marginRight: theme.spacing(0.5),
+    color: theme.palette.text.secondary,
+    padding: 4
   },
   wsConnectionAlertIcon: {
-    fontSize: 20
+    fontSize: 18
   },
   wsConnectionBadge: {
     "& .MuiBadge-badge": {
@@ -240,8 +253,8 @@ const useStyles = makeStyles(theme => ({
     }),
     overflowY: "clip",
     borderRight: `1px solid ${theme.palette.borderPrimary}`,
-    boxShadow:
-      theme.mode === "light" ? "2px 0 8px rgba(15, 23, 42, 0.06)" : "none",
+    boxShadow: "none",
+    backgroundColor: theme.palette.background.paper,
     ...theme.scrollbarStylesSoft
   },
   drawerPaperClose: {
@@ -251,13 +264,10 @@ const useStyles = makeStyles(theme => ({
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen
     }),
-    width: theme.spacing(7),
-    [theme.breakpoints.up("sm")]: {
-      width: theme.spacing(9)
-    }
+    width: drawerWidthCollapsed
   },
   appBarSpacer: {
-    minHeight: "48px"
+    minHeight: `${appBarHeight}px`
   },
   content: {
     flex: 1,
@@ -275,7 +285,7 @@ const useStyles = makeStyles(theme => ({
   },
   containerWithScroll: {
     flex: 1,
-    padding: theme.spacing(1),
+    padding: theme.spacing(0.25, 0),
     overflowY: "auto",
     overflowX: "hidden",
     ...theme.scrollbarStyles
@@ -284,18 +294,22 @@ const useStyles = makeStyles(theme => ({
     // color: theme.barraSuperior.secondary.main,
   },
   logo: {
-    maxWidth: "192px",
-    maxHeight: "72px",
-    logo: theme.logo,
+    maxWidth: "160px",
+    maxHeight: "36px",
     margin: "auto",
-    content: `url("${theme.calculatedLogo()}")`
+    objectFit: "contain",
+    content: `url("${theme.calculatedLogo()}")`,
+    [theme.breakpoints.down("sm")]: {
+      maxWidth: "130px",
+      maxHeight: "28px"
+    }
   },
   logoIcon: {
-    width: "40px",
-    height: "40px",
-    logo: theme.logo,
+    width: "32px",
+    height: "32px",
     margin: "auto",
-    content: `url("${theme.appLogoFavicon ? theme.appLogoFavicon : "/vector/favicon.svg"}")`
+    objectFit: "contain",
+    content: `url("${theme.appLogoFavicon ? theme.appLogoFavicon : "/vector/fortmax-logo.png"}")`
   },
   hideLogo: {
     display: "none"
@@ -547,6 +561,7 @@ const LoggedInLayout = ({ children, themeToggle }) => {
         position="absolute"
         className={clsx(classes.appBar, drawerOpen && classes.appBarShift)}
         color="primary"
+        elevation={0}
       >
         <Toolbar variant="dense" className={classes.toolbar}>
           <IconButton
@@ -627,7 +642,7 @@ const LoggedInLayout = ({ children, themeToggle }) => {
               <div className={classes.profileAvatarSlot}>
                 <AccountCircle
                   className={classes.avatar}
-                  style={{ color: theme.palette.primary.contrastText }}
+                  style={{ color: theme.palette.primary.main }}
                 />
               </div>
             </div>

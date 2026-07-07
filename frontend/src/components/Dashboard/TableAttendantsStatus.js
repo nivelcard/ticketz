@@ -21,16 +21,41 @@ import { i18n } from "../../translate/i18n";
 import { formatTimeInterval } from "../../helpers/formatTimeInterval.js";
 
 const useStyles = makeStyles(theme => ({
+  tableWrapper: {
+    overflowX: "auto",
+    ...theme.scrollbarStyles
+  },
+  tablePaper: {
+    border: `1px solid ${theme.palette.borderPrimary}`,
+    boxShadow: "none",
+    borderRadius: theme.shape.borderRadius
+  },
   on: {
     color: green[600],
-    fontSize: "20px"
+    fontSize: "18px"
   },
   off: {
     color: red[600],
-    fontSize: "20px"
+    fontSize: "18px"
   },
   pointer: {
     cursor: "pointer"
+  },
+  tableCell: {
+    fontSize: "0.75rem",
+    whiteSpace: "nowrap",
+    [theme.breakpoints.down("sm")]: {
+      fontSize: "0.6875rem",
+      padding: theme.spacing(0.75, 1)
+    }
+  },
+  tableHeadCell: {
+    fontSize: "0.6875rem",
+    whiteSpace: "nowrap",
+    [theme.breakpoints.down("sm")]: {
+      fontSize: "0.625rem",
+      padding: theme.spacing(0.75, 1)
+    }
   }
 }));
 
@@ -80,20 +105,26 @@ export default function TableAttendantsStatus(props) {
   function renderList() {
     return attendants.map(a => (
       <TableRow key={a.id}>
-        <TableCell>{a.name}</TableCell>
+        <TableCell className={classes.tableCell}>{a.name}</TableCell>
         <TableCell align="center" className={classes.pointer}>
           <RatingBox rating={a.averageRating} />
         </TableCell>
-        <TableCell align="center">{a.totalTickets}</TableCell>
-        <TableCell align="center">{a.openTickets}</TableCell>
-        <TableCell align="center">{a.closedTickets}</TableCell>
-        <TableCell align="center">
+        <TableCell align="center" className={classes.tableCell}>
+          {a.totalTickets}
+        </TableCell>
+        <TableCell align="center" className={classes.tableCell}>
+          {a.openTickets}
+        </TableCell>
+        <TableCell align="center" className={classes.tableCell}>
+          {a.closedTickets}
+        </TableCell>
+        <TableCell align="center" className={classes.tableCell}>
           {formatTimeInterval(a.avgWaitTime, 2)}
         </TableCell>
-        <TableCell align="center">
+        <TableCell align="center" className={classes.tableCell}>
           {formatTimeInterval(a.avgServiceTime, 2)}
         </TableCell>
-        <TableCell align="center">
+        <TableCell align="center" className={classes.tableCell}>
           {a.online ? (
             <CheckCircleIcon className={classes.on} />
           ) : (
@@ -105,35 +136,41 @@ export default function TableAttendantsStatus(props) {
   }
 
   return !loading ? (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>{i18n.t("common.user")}</TableCell>
-            <TableCell align="center">{i18n.t("common.rating")}</TableCell>
-            <TableCell align="center">
-              {i18n.t("dashboard.totalTickets")}
-            </TableCell>
-            <TableCell align="center">
-              {i18n.t("dashboard.ticketsOpen")}
-            </TableCell>
-            <TableCell align="center">
-              {i18n.t("dashboard.ticketsDone")}
-            </TableCell>
-            <TableCell align="center">
-              {i18n.t("dashboard.avgWaitTime")}
-            </TableCell>
-            <TableCell align="center">
-              {i18n.t("dashboard.avgServiceTime")}
-            </TableCell>
-            <TableCell align="center">
-              {i18n.t("dashboard.userCurrentStatus")}
-            </TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>{renderList()}</TableBody>
-      </Table>
-    </TableContainer>
+    <div className={classes.tableWrapper}>
+      <TableContainer component={Paper} className={classes.tablePaper}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell className={classes.tableHeadCell}>
+                {i18n.t("common.user")}
+              </TableCell>
+              <TableCell align="center" className={classes.tableHeadCell}>
+                {i18n.t("common.rating")}
+              </TableCell>
+              <TableCell align="center" className={classes.tableHeadCell}>
+                {i18n.t("dashboard.totalTickets")}
+              </TableCell>
+              <TableCell align="center" className={classes.tableHeadCell}>
+                {i18n.t("dashboard.ticketsOpen")}
+              </TableCell>
+              <TableCell align="center" className={classes.tableHeadCell}>
+                {i18n.t("dashboard.ticketsDone")}
+              </TableCell>
+              <TableCell align="center" className={classes.tableHeadCell}>
+                {i18n.t("dashboard.avgWaitTime")}
+              </TableCell>
+              <TableCell align="center" className={classes.tableHeadCell}>
+                {i18n.t("dashboard.avgServiceTime")}
+              </TableCell>
+              <TableCell align="center" className={classes.tableHeadCell}>
+                {i18n.t("dashboard.userCurrentStatus")}
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>{renderList()}</TableBody>
+        </Table>
+      </TableContainer>
+    </div>
   ) : (
     <Skeleton variant="rect" height={150} />
   );

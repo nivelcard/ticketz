@@ -121,20 +121,46 @@ const App = () => {
           },
           scrollbarStylesSoft: {
             "&::-webkit-scrollbar": {
-              width: "8px"
+              width: "6px"
             },
             "&::-webkit-scrollbar-thumb": {
-              backgroundColor: mode === "light" ? "#F3F3F3" : "#333333"
+              backgroundColor:
+                mode === "light"
+                  ? brandTokens.neutral.borderLight
+                  : brandTokens.neutral.borderDark,
+              borderRadius: 3
             }
           },
+          layout: brandTokens.layout,
           palette: {
             type: mode,
             primary: {
-              main: mode === "light" ? primaryColorLight : primaryColorDark
+              main: mode === "light" ? primaryColorLight : primaryColorDark,
+              contrastText: "#FFFFFF"
             },
+            secondary: {
+              main: mode === "light" ? "#64748B" : "#94A3B8"
+            },
+            text: {
+              primary:
+                mode === "light"
+                  ? brandTokens.neutral.textPrimaryLight
+                  : brandTokens.neutral.textPrimaryDark,
+              secondary:
+                mode === "light"
+                  ? brandTokens.neutral.textSecondaryLight
+                  : brandTokens.neutral.textSecondaryDark
+            },
+            divider:
+              mode === "light"
+                ? brandTokens.neutral.borderLight
+                : brandTokens.neutral.borderDark,
             textPrimary:
               mode === "light" ? primaryColorLight : primaryColorDark,
-            textCommon: mode === "light" ? "#0F172A" : "#F8FAFC",
+            textCommon:
+              mode === "light"
+                ? brandTokens.neutral.textPrimaryLight
+                : brandTokens.neutral.textPrimaryDark,
             borderPrimary:
               mode === "light"
                 ? brandTokens.neutral.borderLight
@@ -160,13 +186,13 @@ const App = () => {
             dark: { main: mode === "light" ? "#1E293B" : "#CBD5E1" },
             light: { main: mode === "light" ? "#F1F5F9" : "#334155" },
             chatBubbleFromMe: {
-              main: mode === "light" ? "#DCFCE7" : "#14532D"
+              main: mode === "light" ? "#FEE2E2" : "#7F1D1D"
             },
             chatBubbleReceived: {
-              main: mode === "light" ? "#FFFFFF" : "#1E3A5F"
+              main: mode === "light" ? "#FFFFFF" : "#1E293B"
             },
             chatBackground: {
-              main: mode === "light" ? "#F1F5F9" : "#0F172A"
+              main: mode === "light" ? "#F1F5F9" : "#0B1120"
             },
             tabHeaderBackground: mode === "light" ? "#F1F5F9" : "#334155",
             optionsBackground: mode === "light" ? "#F8FAFC" : "#1E293B",
@@ -198,13 +224,207 @@ const App = () => {
             ticketzproad: { main: "#39ACE7", contrastText: "white" }
           },
           typography: {
-            fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-            h6: { fontWeight: 600 },
-            subtitle1: { fontWeight: 500 },
-            button: { textTransform: "none", fontWeight: 600 }
+            fontFamily: brandTokens.typography.fontFamily,
+            fontSize: 14,
+            h1: { fontWeight: 700, fontSize: "2rem", letterSpacing: "-0.02em" },
+            h2: {
+              fontWeight: 700,
+              fontSize: "1.5rem",
+              letterSpacing: "-0.02em"
+            },
+            h3: {
+              fontWeight: 600,
+              fontSize: "1.25rem",
+              letterSpacing: "-0.01em"
+            },
+            h4: { fontWeight: 600, fontSize: "1.125rem" },
+            h5: { fontWeight: 600, fontSize: "1rem" },
+            h6: { fontWeight: 600, fontSize: "0.875rem" },
+            subtitle1: { fontWeight: 500, fontSize: "0.875rem" },
+            subtitle2: { fontWeight: 500, fontSize: "0.8125rem" },
+            body1: { fontSize: "0.875rem", lineHeight: 1.5 },
+            body2: { fontSize: "0.8125rem", lineHeight: 1.5 },
+            caption: { fontSize: "0.75rem", lineHeight: 1.4 },
+            button: {
+              textTransform: "none",
+              fontWeight: 500,
+              fontSize: "0.8125rem"
+            }
           },
           shape: {
             borderRadius: brandTokens.shape.borderRadius
+          },
+          overrides: {
+            MuiCssBaseline: {
+              "@global": {
+                body: {
+                  fontFeatureSettings: '"cv02", "cv03", "cv04", "cv11"'
+                }
+              }
+            },
+            MuiPaper: {
+              rounded: {
+                borderRadius: brandTokens.shape.borderRadius
+              },
+              elevation1: {
+                boxShadow: brandTokens.elevation.card
+              },
+              elevation2: {
+                boxShadow: brandTokens.elevation.card
+              },
+              elevation4: {
+                boxShadow: brandTokens.elevation.cardHover
+              },
+              elevation6: {
+                boxShadow: brandTokens.elevation.cardHover
+              }
+            },
+            MuiCard: {
+              root: {
+                boxShadow: brandTokens.elevation.card,
+                border: `1px solid ${
+                  mode === "light"
+                    ? brandTokens.neutral.borderLight
+                    : brandTokens.neutral.borderDark
+                }`
+              }
+            },
+            MuiButton: {
+              root: {
+                borderRadius: brandTokens.shape.borderRadiusSm,
+                padding: "6px 14px",
+                fontSize: "0.8125rem"
+              },
+              contained: {
+                boxShadow: "none",
+                "&:hover": {
+                  boxShadow: brandTokens.elevation.card
+                }
+              },
+              outlined: {
+                borderColor:
+                  mode === "light"
+                    ? brandTokens.neutral.borderLight
+                    : brandTokens.neutral.borderDark
+              }
+            },
+            MuiOutlinedInput: {
+              root: {
+                borderRadius: brandTokens.shape.borderRadiusSm,
+                fontSize: "0.875rem",
+                "& fieldset": {
+                  borderColor:
+                    mode === "light"
+                      ? brandTokens.neutral.borderLight
+                      : brandTokens.neutral.borderDark
+                },
+                "&:hover fieldset": {
+                  borderColor: mode === "light" ? "#CBD5E1" : "#475569"
+                }
+              },
+              input: {
+                padding: "10px 12px"
+              }
+            },
+            MuiInputLabel: {
+              root: {
+                fontSize: "0.875rem"
+              }
+            },
+            MuiTab: {
+              root: {
+                minHeight: 40,
+                fontSize: "0.8125rem",
+                fontWeight: 500,
+                textTransform: "none"
+              }
+            },
+            MuiTabs: {
+              root: {
+                minHeight: 40
+              }
+            },
+            MuiListItem: {
+              root: {
+                borderRadius: brandTokens.shape.borderRadiusSm
+              },
+              dense: {
+                paddingTop: 4,
+                paddingBottom: 4
+              }
+            },
+            MuiListItemIcon: {
+              root: {
+                minWidth: 32
+              }
+            },
+            MuiIconButton: {
+              root: {
+                padding: 6
+              }
+            },
+            MuiSelect: {
+              root: {
+                fontSize: "0.875rem"
+              }
+            },
+            MuiTableCell: {
+              root: {
+                fontSize: "0.8125rem",
+                borderBottom: `1px solid ${
+                  mode === "light"
+                    ? brandTokens.neutral.borderLight
+                    : brandTokens.neutral.borderDark
+                }`
+              },
+              head: {
+                fontWeight: 600,
+                fontSize: "0.75rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                color:
+                  mode === "light"
+                    ? brandTokens.neutral.textSecondaryLight
+                    : brandTokens.neutral.textSecondaryDark
+              }
+            },
+            MuiAppBar: {
+              colorPrimary: {
+                backgroundColor:
+                  mode === "light"
+                    ? brandTokens.neutral.paperLight
+                    : brandTokens.neutral.paperDark,
+                color:
+                  mode === "light"
+                    ? brandTokens.neutral.textPrimaryLight
+                    : brandTokens.neutral.textPrimaryDark
+              }
+            },
+            MuiDrawer: {
+              paper: {
+                backgroundColor:
+                  mode === "light"
+                    ? brandTokens.neutral.paperLight
+                    : brandTokens.neutral.paperDark
+              }
+            },
+            MuiMenu: {
+              paper: {
+                boxShadow: brandTokens.elevation.popover,
+                border: `1px solid ${
+                  mode === "light"
+                    ? brandTokens.neutral.borderLight
+                    : brandTokens.neutral.borderDark
+                }`
+              }
+            },
+            MuiBadge: {
+              badge: {
+                fontSize: "0.625rem",
+                height: 16,
+                minWidth: 16
+              }
+            }
           },
           mode,
           appLogoLight,

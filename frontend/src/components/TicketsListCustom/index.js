@@ -35,7 +35,7 @@ const useStyles = makeStyles(theme => ({
     maxHeight: "100%",
     overflowY: "scroll",
     ...theme.scrollbarStyles,
-    borderTop: "2px solid rgba(0, 0, 0, 0.12)"
+    borderTop: `1px solid ${theme.palette.borderPrimary}`
   },
 
   ticketsListHeader: {

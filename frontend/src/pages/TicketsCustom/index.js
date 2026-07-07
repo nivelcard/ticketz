@@ -9,10 +9,12 @@ import Ticket from "../../components/Ticket/";
 
 import { i18n } from "../../translate/i18n";
 
+import brandTokens from "../../theme/brandTokens";
+
 const useStyles = makeStyles(theme => ({
   chatContainer: {
     flex: 1,
-    height: `calc(100% - 48px)`,
+    height: `calc(100% - ${brandTokens.layout.appBarHeight}px)`,
     overflowY: "hidden"
   },
 
@@ -27,7 +29,8 @@ const useStyles = makeStyles(theme => ({
     height: "100%",
     flexDirection: "column",
     overflowY: "hidden",
-    maxWidth: 534
+    maxWidth: 534,
+    borderRight: `1px solid ${theme.palette.borderPrimary}`
   },
   messagesWrapper: {
     overflow: "hidden",
@@ -39,10 +42,13 @@ const useStyles = makeStyles(theme => ({
   },
   welcomeMsg: {
     display: "flex",
-    justifyContent: "space-evenly",
+    justifyContent: "center",
     alignItems: "center",
     height: "100%",
-    textAlign: "center"
+    textAlign: "center",
+    backgroundColor: theme.palette.background.default,
+    color: theme.palette.text.secondary,
+    borderLeft: `1px solid ${theme.palette.borderPrimary}`
   }
 }));
 

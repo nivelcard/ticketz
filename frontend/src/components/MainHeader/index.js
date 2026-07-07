@@ -1,21 +1,14 @@
 import React from "react";
 
 import { makeStyles } from "@material-ui/core/styles";
-import whatsBackground from "../../assets/wa-background.webp";
-import whatsBackgroundDark from "../../assets/wa-background-dark.png";
 
 const useStyles = makeStyles(theme => ({
   contactsHeader: {
     display: "flex",
     alignItems: "center",
-    padding: "0px 6px 6px 6px",
-    backgroundImage:
-      theme.mode === "light"
-        ? `url(${whatsBackground})`
-        : `url(${whatsBackgroundDark})`,
-    backgroundPosition: "center",
-    backgroundSize: "cover",
-    backgroundRepeat: "no-repeat"
+    padding: theme.spacing(1, 0, 1.5, 0),
+    borderBottom: `1px solid ${theme.palette.borderPrimary}`,
+    marginBottom: theme.spacing(1)
   }
 }));
 

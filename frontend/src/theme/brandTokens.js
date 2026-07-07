@@ -1,33 +1,48 @@
 /**
- * Tokens de identidade visual — ponto único para futura troca de logo e paleta.
- * Valores temporários neutros/modernos; whitelabel da API sobrescreve primary em App.js.
+ * Tokens de identidade visual — ponto único para logo, paleta e layout.
+ * Whitelabel da API sobrescreve primary em App.js.
  */
 export const brandTokens = {
-  primaryLight: "#2563EB",
-  primaryDark: "#60A5FA",
+  primaryLight: "#D32F2F",
+  primaryDark: "#EF5350",
   logo: {
-    light: "/vector/logo.svg",
-    dark: "/vector/logo-dark.svg",
-    favicon: "/vector/favicon.svg"
+    light: "/vector/fortmax-logo.png",
+    dark: "/vector/fortmax-logo.png",
+    favicon: "/vector/fortmax-logo.png"
+  },
+  layout: {
+    appBarHeight: 40,
+    drawerWidth: 200,
+    drawerWidthCollapsed: 56
   },
   neutral: {
     backgroundLight: "#F8FAFC",
-    backgroundDark: "#0F172A",
+    backgroundDark: "#0B1120",
     paperLight: "#FFFFFF",
-    paperDark: "#1E293B",
+    paperDark: "#151D2E",
     borderLight: "#E2E8F0",
-    borderDark: "#334155",
+    borderDark: "#2A3548",
     textSecondaryLight: "#64748B",
-    textSecondaryDark: "#94A3B8"
+    textSecondaryDark: "#94A3B8",
+    textPrimaryLight: "#0F172A",
+    textPrimaryDark: "#F1F5F9"
   },
   shape: {
-    borderRadius: 10,
-    borderRadiusSm: 8,
+    borderRadius: 8,
+    borderRadiusSm: 6,
     borderRadiusLg: 12
   },
   elevation: {
-    card: "0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.06)",
-    drawer: "2px 0 8px rgba(15, 23, 42, 0.06)"
+    card: "0 1px 2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.08)",
+    cardHover:
+      "0 2px 4px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.08)",
+    drawer: "1px 0 0 rgba(15, 23, 42, 0.06)",
+    popover:
+      "0 4px 16px rgba(15, 23, 42, 0.12), 0 2px 4px rgba(15, 23, 42, 0.06)",
+    appBar: "0 1px 0 rgba(15, 23, 42, 0.06)"
+  },
+  typography: {
+    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif'
   }
 };
 

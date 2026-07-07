@@ -17,7 +17,6 @@ import CheckCircleIcon from "@material-ui/icons/CheckCircle";
 import TimerIcon from "@material-ui/icons/Timer";
 
 import { makeStyles } from "@material-ui/core/styles";
-import { grey, blue } from "@material-ui/core/colors";
 import { toast } from "react-toastify";
 
 import TableAttendantsStatus from "../../components/Dashboard/TableAttendantsStatus";
@@ -35,40 +34,119 @@ import { getTimezoneOffset } from "../../helpers/getTimezoneOffset.js";
 import api from "../../services/api.js";
 import { SocketContext } from "../../context/Socket/SocketContext.js";
 import { formatTimeInterval } from "../../helpers/formatTimeInterval.js";
+import brandTokens from "../../theme/brandTokens";
 
 const useStyles = makeStyles(theme => ({
   container: {
-    paddingTop: theme.spacing(3),
-    paddingBottom: theme.spacing(4),
-    maxWidth: 1400
+    paddingTop: theme.spacing(2),
+    paddingBottom: theme.spacing(3),
+    maxWidth: 1280,
+    [theme.breakpoints.down("sm")]: {
+      paddingTop: theme.spacing(1),
+      paddingBottom: theme.spacing(2),
+      paddingLeft: theme.spacing(1),
+      paddingRight: theme.spacing(1)
+    }
   },
   fixedHeightPaper: {
-    padding: theme.spacing(2.5),
+    padding: theme.spacing(2),
     display: "flex",
     flexDirection: "column",
-    minHeight: 240,
+    minHeight: 220,
     height: "auto",
     overflowY: "auto",
     borderRadius: theme.shape.borderRadius,
-    border: `1px solid ${theme.palette.divider}`,
-    boxShadow:
-      theme.mode === "light" ? "0 1px 3px rgba(15, 23, 42, 0.08)" : "none",
-    ...theme.scrollbarStyles
+    border: `1px solid ${theme.palette.borderPrimary}`,
+    boxShadow: theme.mode === "light" ? brandTokens.elevation.card : "none",
+    backgroundColor: theme.palette.background.paper,
+    ...theme.scrollbarStyles,
+    [theme.breakpoints.down("sm")]: {
+      padding: theme.spacing(1.5),
+      minHeight: 180
+    }
   },
-  cardAvatar: {
-    fontSize: "55px",
-    color: grey[500],
-    backgroundColor: "#ffffff",
-    width: theme.spacing(7),
-    height: theme.spacing(7)
+  cardSolid: {
+    padding: theme.spacing(1.5, 2),
+    display: "flex",
+    overflow: "hidden",
+    flexDirection: "row",
+    alignItems: "center",
+    height: "100%",
+    borderRadius: theme.shape.borderRadius,
+    border: `1px solid ${theme.palette.borderPrimary}`,
+    backgroundColor: theme.palette.background.paper,
+    boxShadow: theme.mode === "light" ? brandTokens.elevation.card : "none",
+    [theme.breakpoints.down("sm")]: {
+      padding: theme.spacing(1.25, 1.5)
+    }
   },
-  cardTitle: {
-    fontSize: "18px",
-    color: blue[700]
+  cardGray: {
+    padding: theme.spacing(1.5, 2),
+    display: "flex",
+    overflow: "hidden",
+    flexDirection: "row",
+    alignItems: "center",
+    height: "100%",
+    borderRadius: theme.shape.borderRadius,
+    border: `1px solid ${theme.palette.borderPrimary}`,
+    backgroundColor: theme.palette.background.paper,
+    boxShadow: theme.mode === "light" ? brandTokens.elevation.card : "none",
+    [theme.breakpoints.down("sm")]: {
+      padding: theme.spacing(1.25, 1.5)
+    }
   },
-  cardSubtitle: {
-    color: grey[600],
-    fontSize: "14px"
+  cardData: {
+    display: "block",
+    flex: 1,
+    minWidth: 0,
+    zIndex: 1
+  },
+  cardLabel: {
+    fontSize: "0.6875rem",
+    fontWeight: 500,
+    color: theme.palette.text.secondary,
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+    marginBottom: theme.spacing(0.25),
+    lineHeight: 1.3
+  },
+  cardValue: {
+    fontSize: "1.25rem",
+    fontWeight: 700,
+    color: theme.palette.text.primary,
+    letterSpacing: "-0.02em",
+    lineHeight: 1.2,
+    [theme.breakpoints.down("sm")]: {
+      fontSize: "1.125rem"
+    }
+  },
+  cardIcon: {
+    width: 40,
+    height: 40,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: theme.shape.borderRadiusSm || 6,
+    backgroundColor:
+      theme.mode === "light"
+        ? "rgba(211, 47, 47, 0.08)"
+        : "rgba(239, 83, 80, 0.12)",
+    color: theme.palette.primary.main,
+    flexShrink: 0,
+    marginLeft: theme.spacing(1),
+    "& svg": {
+      fontSize: 20
+    }
+  },
+  cardRingGraph: {
+    width: 72,
+    height: 72,
+    flexShrink: 0,
+    marginLeft: theme.spacing(0.5),
+    [theme.breakpoints.down("sm")]: {
+      width: 56,
+      height: 56
+    }
   },
   alignRight: {
     textAlign: "right"
@@ -80,39 +158,27 @@ const useStyles = makeStyles(theme => ({
     width: "100%",
     textAlign: "left"
   },
-  cardSolid: {
-    padding: theme.spacing(2),
+  filterRow: {
     display: "flex",
-    overflow: "hidden",
-    flexDirection: "row",
-    height: "100%",
-    backgroundColor: theme.palette.primary.main,
-    color: theme.palette.primary.contrastText
+    alignItems: "flex-end",
+    gap: theme.spacing(1),
+    flexWrap: "wrap",
+    padding: theme.spacing(1.25, 1.5),
+    borderRadius: theme.shape.borderRadius,
+    border: `1px solid ${theme.palette.borderPrimary}`,
+    backgroundColor: theme.palette.background.paper,
+    [theme.breakpoints.down("sm")]: {
+      padding: theme.spacing(1),
+      gap: theme.spacing(0.75)
+    }
   },
-  cardGray: {
-    padding: theme.spacing(2),
-    display: "flex",
-    overflow: "hidden",
-    flexDirection: "row",
-    height: "100%",
-    color: theme.palette.primary.main
-  },
-  cardData: {
-    display: "block",
-    width: "100%",
-    zIndex: 1
-  },
-  cardIcon: {
-    width: 100,
-    color: theme.palette.primary.light,
-    position: "sticky",
-    opacity: 0.4,
-    right: 0
-  },
-  cardRingGraph: {
-    width: 100,
-    position: "sticky",
-    right: 0
+  filterItem: {
+    flex: "1 1 160px",
+    minWidth: 140,
+    [theme.breakpoints.down("sm")]: {
+      flex: "1 1 100%",
+      minWidth: "100%"
+    }
   }
 }));
 
@@ -121,14 +187,10 @@ const InfoCard = ({ title, value, icon }) => {
 
   return (
     <Grid item xs={12} sm={6} md={3}>
-      <Paper className={classes.cardGray} elevation={6}>
+      <Paper className={classes.cardGray} elevation={0}>
         <div className={classes.cardData}>
-          <Typography component="h3" variant="h6" paragraph>
-            {title}
-          </Typography>
-          <Typography component="h1" variant="h4">
-            {value}
-          </Typography>
+          <Typography className={classes.cardLabel}>{title}</Typography>
+          <Typography className={classes.cardValue}>{value}</Typography>
         </div>
         <div className={classes.cardIcon}>{icon}</div>
       </Paper>
@@ -139,19 +201,13 @@ const InfoCard = ({ title, value, icon }) => {
 const InfoRingCard = ({ title, value, graph }) => {
   const classes = useStyles();
   return (
-    <Grid item xs={12} sm={4}>
-      <Paper className={classes.cardSolid} elevation={4}>
+    <Grid item xs={12} sm={6} md={4}>
+      <Paper className={classes.cardSolid} elevation={0}>
         <div className={classes.cardData}>
-          <Typography component="h3" variant="h6" paragraph>
-            {title}
-          </Typography>
-          <Typography component="h1" variant="h4">
-            {value}
-          </Typography>
+          <Typography className={classes.cardLabel}>{title}</Typography>
+          <Typography className={classes.cardValue}>{value}</Typography>
         </div>
-        <div className={classes.cardRingGraph}>
-          <div style={{ width: "100px", height: "100px" }}>{graph}</div>
-        </div>
+        <div className={classes.cardRingGraph}>{graph}</div>
       </Paper>
     </Grid>
   );
@@ -235,12 +291,12 @@ const Dashboard = () => {
           {
             name: "Online",
             value: usersOnlineTotal,
-            color: "#00ff00"
+            color: "#22C55E"
           },
           {
             name: "Offline",
             value: usersOfflineTotal,
-            color: "#ff0000"
+            color: "#94A3B8"
           }
         ]);
 
@@ -341,9 +397,9 @@ const Dashboard = () => {
 
   function renderFilters() {
     return (
-      <>
-        <Grid item xs={12} sm={6} md={3}>
-          <FormControl className={classes.selectContainer}>
+      <Grid item xs={12}>
+        <div className={classes.filterRow}>
+          <FormControl className={classes.filterItem} size="small">
             <InputLabel id="period-selector-label">
               {i18n.t("dashboard.filter.period")}
             </InputLabel>
@@ -371,38 +427,36 @@ const Dashboard = () => {
               </MenuItem>
             </Select>
           </FormControl>
-        </Grid>
-        {!period && (
-          <>
-            <Grid item xs={12} sm={6} md={3}>
+          {!period && (
+            <>
               <TextField
                 label={i18n.t("dashboard.date.start")}
                 type="datetime-local"
                 value={dateFrom}
                 onChange={e => setDateFrom(e.target.value)}
                 onBlur={fetchData}
-                className={classes.fullWidth}
+                className={classes.filterItem}
+                size="small"
                 InputLabelProps={{
                   shrink: true
                 }}
               />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
               <TextField
                 label={i18n.t("dashboard.date.end")}
                 type="datetime-local"
                 value={dateTo}
                 onChange={e => setDateTo(e.target.value)}
                 onBlur={fetchData}
-                className={classes.fullWidth}
+                className={classes.filterItem}
+                size="small"
                 InputLabelProps={{
                   shrink: true
                 }}
               />
-            </Grid>
-          </>
-        )}
-      </>
+            </>
+          )}
+        </div>
+      </Grid>
     );
   }
 
@@ -413,7 +467,7 @@ const Dashboard = () => {
   return (
     <div>
       <Container maxWidth="lg" className={classes.container}>
-        <Grid container spacing={3} justifyContent="flex-start">
+        <Grid container spacing={1.5} justifyContent="flex-start">
           {/* USUARIOS ONLINE */}
           <InfoRingCard
             title={i18n.t("dashboard.usersOnline")}
@@ -442,14 +496,14 @@ const Dashboard = () => {
           <InfoCard
             title={i18n.t("dashboard.ticketsDone")}
             value={ticketsData.ticketStatistics?.totalClosed || 0}
-            icon={<CheckCircleIcon style={{ fontSize: 100 }} />}
+            icon={<CheckCircleIcon />}
           />
 
           {/* NOVOS CONTATOS */}
           <InfoCard
             title={i18n.t("dashboard.newContacts")}
             value={ticketsData.ticketStatistics?.newContacts || 0}
-            icon={<GroupAddIcon style={{ fontSize: 100 }} />}
+            icon={<GroupAddIcon />}
           />
 
           {/* T.M. DE ATENDIMENTO */}
@@ -458,7 +512,7 @@ const Dashboard = () => {
             value={formatTimeInterval(
               ticketsData.ticketStatistics?.avgServiceTime
             )}
-            icon={<TimerIcon style={{ fontSize: 100 }} />}
+            icon={<TimerIcon />}
           />
 
           {/* T.M. DE ESPERA */}
@@ -467,12 +521,12 @@ const Dashboard = () => {
             value={formatTimeInterval(
               ticketsData.ticketStatistics?.avgWaitTime
             )}
-            icon={<HourglassEmptyIcon style={{ fontSize: 100 }} />}
+            icon={<HourglassEmptyIcon />}
           />
 
           {/* DASHBOARD ATENDIMENTOS NO PERÍODO */}
           <Grid item xs={12}>
-            <Paper className={classes.fixedHeightPaper}>
+            <Paper className={classes.fixedHeightPaper} elevation={0}>
               <TicketCountersChart
                 ticketCounters={ticketsData.ticketCounters}
               />

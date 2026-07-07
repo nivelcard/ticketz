@@ -45,17 +45,25 @@ const gitinfo = loadJSON("/gitinfo.json");
 
 const useStyles = makeStyles(theme => ({
   ListSubheader: {
-    height: 26,
-    marginTop: "-15px",
-    marginBottom: "-10px",
+    height: 18,
+    marginTop: theme.spacing(0.5),
+    marginBottom: 0,
+    paddingTop: theme.spacing(0.5),
+    paddingBottom: theme.spacing(0.25),
     fontWeight: 600,
-    letterSpacing: "0.02em",
-    color: theme.palette.text.secondary
+    fontSize: "0.625rem",
+    letterSpacing: "0.07em",
+    textTransform: "uppercase",
+    color: theme.palette.text.secondary,
+    lineHeight: "18px"
   },
   listItem: {
-    borderRadius: theme.shape.borderRadius,
-    margin: theme.spacing(0.25, 1),
+    borderRadius: theme.shape.borderRadiusSm || 6,
+    margin: theme.spacing(0, 0.5),
     width: "auto",
+    paddingTop: 2,
+    paddingBottom: 2,
+    minHeight: 32,
     "&:hover": {
       backgroundColor: theme.palette.action.hover
     }
@@ -63,13 +71,13 @@ const useStyles = makeStyles(theme => ({
   listItemSelected: {
     backgroundColor:
       theme.mode === "light"
-        ? "rgba(37, 99, 235, 0.1)"
-        : "rgba(96, 165, 250, 0.16)",
+        ? "rgba(211, 47, 47, 0.08)"
+        : "rgba(239, 83, 80, 0.12)",
     "&:hover": {
       backgroundColor:
         theme.mode === "light"
-          ? "rgba(37, 99, 235, 0.14)"
-          : "rgba(96, 165, 250, 0.2)"
+          ? "rgba(211, 47, 47, 0.12)"
+          : "rgba(239, 83, 80, 0.16)"
     },
     "& .MuiListItemIcon-root": {
       color: theme.palette.primary.main
@@ -80,8 +88,32 @@ const useStyles = makeStyles(theme => ({
     }
   },
   listItemIcon: {
-    minWidth: 40,
-    color: theme.palette.text.secondary
+    minWidth: 28,
+    color: theme.palette.text.secondary,
+    "& svg": {
+      fontSize: 16
+    }
+  },
+  listItemText: {
+    marginTop: 0,
+    marginBottom: 0,
+    "& .MuiListItemText-primary": {
+      fontSize: "0.75rem",
+      fontWeight: 500,
+      lineHeight: 1.3
+    }
+  },
+  divider: {
+    margin: theme.spacing(0.25, 1),
+    backgroundColor: theme.palette.borderPrimary
+  },
+  versionInfo: {
+    fontSize: "0.625rem",
+    padding: theme.spacing(0.5, 1),
+    textAlign: "right",
+    fontWeight: 500,
+    color: theme.palette.text.secondary,
+    opacity: 0.7
   }
 }));
 
@@ -119,7 +151,10 @@ function ListItemLink(props) {
         {icon ? (
           <ListItemIcon className={classes.listItemIcon}>{icon}</ListItemIcon>
         ) : null}
-        <ListItemText primary={primary} />
+        <ListItemText
+          primary={primary}
+          classes={{ root: classes.listItemText }}
+        />
       </ListItem>
     </li>
   );
@@ -183,6 +218,7 @@ const reducer = (state, action) => {
 
 const MainListItems = props => {
   const { drawerClose, drawerOpen } = props;
+  const classes = useStyles();
   const { whatsApps } = useContext(WhatsAppsContext);
   const { user } = useContext(AuthContext);
   const [connectionWarning, setConnectionWarning] = useState(false);
@@ -298,12 +334,7 @@ const MainListItems = props => {
           <>
             <ListSubheader
               hidden={!drawerOpen}
-              style={{
-                position: "relative",
-                fontSize: "17px",
-                textAlign: "left",
-                paddingLeft: 20
-              }}
+              className={classes.ListSubheader}
               inset
               color="inherit"
             >
@@ -364,15 +395,10 @@ const MainListItems = props => {
         perform={"drawer-admin-items:view"}
         yes={() => (
           <>
-            <Divider />
+            <Divider className={classes.divider} />
             <ListSubheader
               hidden={!drawerOpen}
-              style={{
-                position: "relative",
-                fontSize: "17px",
-                textAlign: "left",
-                paddingLeft: 20
-              }}
+              className={classes.ListSubheader}
               inset
               color="inherit"
             >
@@ -392,15 +418,10 @@ const MainListItems = props => {
         perform="drawer-admin-items:view"
         yes={() => (
           <>
-            <Divider />
+            <Divider className={classes.divider} />
             <ListSubheader
               hidden={!drawerOpen}
-              style={{
-                position: "relative",
-                fontSize: "17px",
-                textAlign: "left",
-                paddingLeft: 20
-              }}
+              className={classes.ListSubheader}
               inset
               color="inherit"
             >
@@ -505,15 +526,8 @@ const MainListItems = props => {
 
             {drawerOpen && (
               <>
-                <Divider />
-                <Typography
-                  style={{
-                    fontSize: "12px",
-                    padding: "10px",
-                    textAlign: "right",
-                    fontWeight: "bold"
-                  }}
-                >
+                <Divider className={classes.divider} />
+                <Typography className={classes.versionInfo}>
                   {`${gitinfo.tagName || gitinfo.branchName + " " + gitinfo.commitHash}`}
                   &nbsp;/&nbsp;
                   {`${gitinfo.buildTimestamp}`}
@@ -523,7 +537,7 @@ const MainListItems = props => {
           </>
         )}
       />
-      <Divider />
+      <Divider className={classes.divider} />
     </div>
   );
 };

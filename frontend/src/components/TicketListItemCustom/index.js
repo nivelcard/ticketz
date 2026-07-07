@@ -41,7 +41,7 @@ import TagsLine from "../TagsLine";
 const useStyles = makeStyles(theme => ({
   ticket: {
     position: "relative",
-    height: 98,
+    height: 80,
     paddingHorizontal: 10,
     paddingVertical: 0,
     paddingTop: 0,
@@ -63,8 +63,8 @@ const useStyles = makeStyles(theme => ({
 
   noTicketsText: {
     textAlign: "center",
-    color: "rgb(104, 121, 146)",
-    fontSize: "14px",
+    color: theme.palette.text.secondary,
+    fontSize: "0.875rem",
     lineHeight: "1.4"
   },
 

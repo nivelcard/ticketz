@@ -54,13 +54,13 @@ const useStyles = makeStyles(theme => ({
   },
 
   tabWithGroups: {
-    minWidth: 90,
-    width: 90
+    minWidth: 80,
+    width: 80
   },
 
   tab: {
-    minWidth: 120,
-    width: 120
+    minWidth: 100,
+    width: 100
   },
 
   ticketOptionsBox: {
@@ -75,11 +75,11 @@ const useStyles = makeStyles(theme => ({
   serachInputWrapper: {
     flex: 1,
     display: "flex",
-    borderRadius: 24,
-    padding: theme.spacing(0.5, 1),
+    borderRadius: 6,
+    padding: theme.spacing(0.25, 1),
     marginRight: theme.spacing(1),
     backgroundColor: theme.palette.action.hover,
-    border: `1px solid ${theme.palette.divider}`
+    border: `1px solid ${theme.palette.borderPrimary}`
   },
 
   searchIcon: {

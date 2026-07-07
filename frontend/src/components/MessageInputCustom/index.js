@@ -62,23 +62,24 @@ const useStyles = makeStyles(theme => ({
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    borderTop: "1px solid rgba(0, 0, 0, 0.12)"
+    borderTop: `1px solid ${theme.palette.borderPrimary}`,
+    backgroundColor: theme.palette.background.paper
   },
 
   newMessageBox: {
     width: "100%",
     display: "flex",
-    padding: "7px",
+    padding: "8px",
     alignItems: "center"
   },
 
   messageInputWrapper: {
     padding: 6,
     marginRight: 7,
-    //background: "#fff",
-    border: "1px solid #ccc",
+    border: `1px solid ${theme.palette.borderPrimary}`,
+    backgroundColor: theme.palette.inputBackground,
     display: "flex",
-    borderRadius: 20,
+    borderRadius: 8,
     flex: 1
   },
 
@@ -89,11 +90,11 @@ const useStyles = makeStyles(theme => ({
   },
 
   cameraIcon: {
-    color: "grey"
+    color: theme.palette.text.secondary
   },
 
   sendMessageIcons: {
-    color: "grey"
+    color: theme.palette.text.secondary
   },
 
   uploadInput: {
@@ -106,8 +107,8 @@ const useStyles = makeStyles(theme => ({
     position: "relative",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#eee",
-    borderTop: "1px solid rgba(0, 0, 0, 0.12)"
+    backgroundColor: theme.palette.backgroundContrast.paper,
+    borderTop: `1px solid ${theme.palette.borderPrimary}`
   },
 
   emojiBox: {

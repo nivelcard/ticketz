@@ -130,6 +130,7 @@ const messages = {
           created: "Creado",
           closed: "Cerrado"
         },
+        noChartData: "Sin datos para el período seleccionado",
         blog: {
           title: "El blog de Ticketz",
           loading: "Cargando publicaciones...",

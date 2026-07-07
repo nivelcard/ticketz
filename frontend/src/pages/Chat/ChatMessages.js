@@ -43,7 +43,7 @@ const useStyles = makeStyles(theme => ({
     overflow: "hidden",
     borderRadius: 0,
     height: "100%",
-    borderLeft: "1px solid rgba(0, 0, 0, 0.12)"
+    borderLeft: `1px solid ${theme.palette.borderPrimary}`
   },
   messageList: {
     position: "relative",
