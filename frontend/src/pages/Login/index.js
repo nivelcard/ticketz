@@ -399,9 +399,7 @@ const Login = () => {
           setBackgroundContent(backgroundContentValue || "");
         }
       )
-      .catch(error => {
-        console.log("Error reading setting", error);
-      });
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

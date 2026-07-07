@@ -26,6 +26,7 @@ import BlogFeedCarousel from "../../components/Dashboard/BlogFeedCarousel";
 import { isEmpty } from "lodash";
 import moment from "moment";
 import { i18n } from "../../translate/i18n";
+import toastError from "../../errors/toastError";
 import OnlyForSuperUser from "../../components/OnlyForSuperUser";
 import useAuth from "../../hooks/useAuth.js";
 import { loadJSON } from "../../helpers/loadJSON";
@@ -45,15 +46,21 @@ const gitinfo = loadJSON("/gitinfo.json");
 
 const useStyles = makeStyles(theme => ({
   container: {
-    paddingTop: theme.spacing(4),
-    paddingBottom: theme.spacing(4)
+    paddingTop: theme.spacing(3),
+    paddingBottom: theme.spacing(4),
+    maxWidth: 1400
   },
   fixedHeightPaper: {
-    padding: theme.spacing(2),
+    padding: theme.spacing(2.5),
     display: "flex",
     flexDirection: "column",
-    height: 240,
+    minHeight: 240,
+    height: "auto",
     overflowY: "auto",
+    borderRadius: theme.shape.borderRadius,
+    border: `1px solid ${theme.palette.divider}`,
+    boxShadow:
+      theme.mode === "light" ? "0 1px 3px rgba(15, 23, 42, 0.08)" : "none",
     ...theme.scrollbarStyles
   },
   pixkey: {
@@ -455,7 +462,7 @@ const Dashboard = () => {
           setTicketsData(result.data);
         }
       })
-      .catch(() => {});
+      .catch(toastError);
 
     setLoadingUsers(true);
     api
@@ -466,7 +473,10 @@ const Dashboard = () => {
           setLoadingUsers(false);
         }
       })
-      .catch(() => {});
+      .catch(err => {
+        setLoadingUsers(false);
+        toastError(err);
+      });
   }
 
   useEffect(() => {

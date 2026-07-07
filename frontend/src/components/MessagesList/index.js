@@ -46,7 +46,7 @@ import {
 import WhatsMarked from "react-whatsmarked";
 import PdfPreview from "../PdfPreview";
 import MessageOptionsMenu from "../MessageOptionsMenu";
-import whatsBackground from "../../assets/wa-background.png";
+import whatsBackground from "../../assets/wa-background.webp";
 import whatsBackgroundDark from "../../assets/wa-background-dark.png";
 import MediaGalleryLightbox, {
   buildMediaGalleryData
@@ -790,15 +790,24 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
     loadData();
   }
 
-  useEffect(async () => {
+  useEffect(() => {
+    let active = true;
+
     dispatch({ type: "RESET" });
     setContactPresence("available");
 
     currentTicketId.current = ticketId;
 
-    await loadPageMutex.runExclusive(async () => {
+    loadPageMutex.runExclusive(async () => {
+      if (!active) {
+        return;
+      }
       loadData();
     });
+
+    return () => {
+      active = false;
+    };
   }, [ticketId]);
 
   useEffect(() => {
@@ -909,12 +918,6 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
 
     socket.on(`company-${companyId}-presence`, data => {
       const { scrollTop, clientHeight, scrollHeight } = scrollRef.current;
-      console.log({
-        presence: data.presence,
-        scrollTop,
-        clientHeight,
-        scrollHeight
-      });
       const isAtBottom =
         scrollTop + clientHeight >= scrollHeight - clientHeight / 4;
       if (data?.ticketId === ticket.id) {
@@ -1341,7 +1344,9 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
           )}
           <WhatsMarked>{getQuotedMessageText(message.quotedMsg)}</WhatsMarked>
         </div>
-        {imageUrl && <img className={classes.quotedThumbnail} src={imageUrl} />}
+        {imageUrl && (
+          <img className={classes.quotedThumbnail} src={imageUrl} alt="" />
+        )}
       </div>
     );
   };
@@ -1441,7 +1446,7 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
             )}
           </div>
           {!message.thumbnailUrl && imageUrl && (
-            <img className={classes.quotedThumbnail} src={imageUrl} />
+            <img className={classes.quotedThumbnail} src={imageUrl} alt="" />
           )}
         </div>
       </a>
@@ -1598,7 +1603,6 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
         return <></>;
       }
       const parsedVCard = vCard.parse(message);
-      console.debug("vCard data:", { message, parsedVCard });
 
       const name = stringOrFirstElement(
         parsedVCard["X-WA-BIZ-NAME"]?.[0]?.value ||
@@ -1717,6 +1721,7 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
             <img
               src={`data:image/png;base64, ${location.jpegThumbnail}`}
               className={classes.imageLocation}
+              alt=""
             />
           ) : (
             <LocationOn
@@ -1855,6 +1860,7 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
                 <img
                   className={classes.previewThumbnail}
                   src={message.thumbnailUrl}
+                  alt=""
                 />
               )}
 
@@ -1961,6 +1967,7 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
                 <img
                   className={classes.previewThumbnail}
                   src={message.thumbnailUrl}
+                  alt=""
                 />
               )}
 

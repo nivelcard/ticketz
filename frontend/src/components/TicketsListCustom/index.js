@@ -39,27 +39,28 @@ const useStyles = makeStyles(theme => ({
   },
 
   ticketsListHeader: {
-    color: "rgb(67, 83, 105)",
+    color: theme.palette.text.primary,
     zIndex: 2,
-    backgroundColor: "white",
-    borderBottom: "1px solid rgba(0, 0, 0, 0.12)",
+    backgroundColor: theme.palette.background.paper,
+    borderBottom: `1px solid ${theme.palette.divider}`,
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between"
+    justifyContent: "space-between",
+    padding: theme.spacing(0.5, 1)
   },
 
   ticketsCount: {
-    fontWeight: "normal",
-    color: "rgb(104, 121, 146)",
-    marginLeft: "8px",
-    fontSize: "14px"
+    fontWeight: 500,
+    color: theme.palette.text.secondary,
+    marginLeft: theme.spacing(1),
+    fontSize: "0.875rem"
   },
 
   noTicketsText: {
     textAlign: "center",
-    color: "rgb(104, 121, 146)",
-    fontSize: "14px",
-    lineHeight: "1.4"
+    color: theme.palette.text.secondary,
+    fontSize: "0.875rem",
+    lineHeight: 1.5
   },
 
   noTicketsTitle: {
@@ -333,7 +334,6 @@ const TicketsListCustom = props => {
     };
 
     const onCompanyAppMessage = data => {
-      console.debug("appMessage event received", data);
       if (showTabGroups && !!data.ticket?.isGroup !== !!groups) {
         return;
       }

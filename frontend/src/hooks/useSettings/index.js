@@ -9,6 +9,8 @@ import {
 } from "../../helpers/settingsCache";
 
 const cachedSettingsMutex = new Mutex();
+const publicSettingsInFlight = new Map();
+const PUBLIC_SETTING_PREFIX = "public:";
 const safeSettingsKeys = new Set([
   "groupsTab",
   "CheckMsgIsGroup",
@@ -67,11 +69,41 @@ const useSettings = () => {
   };
 
   const getPublicSetting = async key => {
-    const { data } = await openApi.request({
-      url: `/public-settings/${key}`,
-      method: "GET"
+    const cacheKey = `${PUBLIC_SETTING_PREFIX}${key}`;
+
+    return cachedSettingsMutex.runExclusive(async () => {
+      const cached = sessionStorage.getItem(cacheKey);
+      const timestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
+      if (cached) {
+        if (timestamp && Date.now() - timestamp > 10 * 60 * 1000) {
+          clearCachedSettingsKey(cacheKey);
+        } else {
+          return JSON.parse(cached);
+        }
+      }
+
+      if (publicSettingsInFlight.has(key)) {
+        return publicSettingsInFlight.get(key);
+      }
+
+      const request = openApi
+        .request({
+          url: `/public-settings/${key}`,
+          method: "GET"
+        })
+        .then(({ data }) => {
+          setCachedSettingValue(cacheKey, data);
+          publicSettingsInFlight.delete(key);
+          return data;
+        })
+        .catch(error => {
+          publicSettingsInFlight.delete(key);
+          throw error;
+        });
+
+      publicSettingsInFlight.set(key, request);
+      return request;
     });
-    return data;
   };
 
   const getSetting = async (key, defaultValue = "") => {

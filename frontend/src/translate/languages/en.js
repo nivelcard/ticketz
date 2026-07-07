@@ -44,6 +44,10 @@ const messages = {
         yes: "Yes",
         no: "No",
         noqueue: "No queue",
+        location: "Location",
+        accountAccessedElsewhere:
+          "Your account was accessed from another device.",
+        accessNotAllowed: "Access not allowed",
         rating: "Rating",
         transferTo: "Transfer to",
         key: "Key",
@@ -205,7 +209,9 @@ const messages = {
         }
       },
       internalChat: {
-        title: "Internal Chat"
+        title: "Internal Chat",
+        deleteTitle: "Delete conversation",
+        deleteConfirm: "This action cannot be undone. Do you want to confirm?"
       },
       whatsappModal: {
         title: {
@@ -408,7 +414,8 @@ const messages = {
         successKanban: "Lane saved successfully."
       },
       chat: {
-        noTicketMessage: "Select a ticket to start the conversation."
+        noTicketMessage: "Select a ticket to start the conversation.",
+        selectTicketButton: "Select ticket"
       },
       uploads: {
         titles: {
@@ -473,6 +480,12 @@ const messages = {
         assignedHeader: "Assigned",
         noTicketsTitle: "Nothing here!",
         noTicketsMessage: "No ticket found with this status or searched term",
+        tooltips: {
+          closeConversation: "Close conversation",
+          spyConversation: "Spy conversation",
+          acceptConversation: "Accept conversation",
+          chatbot: "Chatbot"
+        },
         buttons: {
           accept: "Accept"
         }

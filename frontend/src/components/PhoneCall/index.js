@@ -44,7 +44,6 @@ export function PhoneCall() {
   };
 
   const handleEndCall = () => {
-    console.log("Call ended");
     disconnect();
     handleClosePopover();
   };

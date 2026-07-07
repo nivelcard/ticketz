@@ -42,8 +42,9 @@ const useStyles = makeStyles(theme => ({
   },
 
   tabsHeader: {
-    flex: "none"
-    // backgroundColor: "#eee",
+    flex: "none",
+    backgroundColor: theme.palette.background.paper,
+    borderBottom: `1px solid ${theme.palette.divider}`
   },
 
   settingsIcon: {
@@ -66,21 +67,23 @@ const useStyles = makeStyles(theme => ({
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    // background: "#fafafa",
-    padding: theme.spacing(1)
+    padding: theme.spacing(1, 1.5),
+    backgroundColor: theme.palette.background.paper,
+    borderBottom: `1px solid ${theme.palette.divider}`
   },
 
   serachInputWrapper: {
     flex: 1,
-    // background: "#fff",
     display: "flex",
-    borderRadius: 40,
-    padding: 4,
-    marginRight: theme.spacing(1)
+    borderRadius: 24,
+    padding: theme.spacing(0.5, 1),
+    marginRight: theme.spacing(1),
+    backgroundColor: theme.palette.action.hover,
+    border: `1px solid ${theme.palette.divider}`
   },
 
   searchIcon: {
-    color: "grey",
+    color: theme.palette.text.secondary,
     marginLeft: 6,
     marginRight: 6,
     alignSelf: "center"

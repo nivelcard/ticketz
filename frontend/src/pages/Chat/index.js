@@ -25,10 +25,11 @@ import { has, isObject } from "lodash";
 
 import { AuthContext } from "../../context/Auth/AuthContext";
 import withWidth, { isWidthUp } from "@material-ui/core/withWidth";
-import whatsBackground from "../../assets/wa-background.png";
+import whatsBackground from "../../assets/wa-background.webp";
 import whatsBackgroundDark from "../../assets/wa-background-dark.png";
 
 import { i18n } from "../../translate/i18n";
+import toastError from "../../errors/toastError";
 import Title from "../../components/Title";
 const useStyles = makeStyles(theme => ({
   mainContainer: {
@@ -345,7 +346,8 @@ function Chat(props) {
       const { data } = await api.get("/chats");
       return data;
     } catch (err) {
-      console.log(err);
+      toastError(err);
+      return { records: [] };
     }
   };
 

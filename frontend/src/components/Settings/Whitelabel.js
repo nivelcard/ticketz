@@ -323,14 +323,7 @@ export default function Whitelabel(props) {
     formData.append("mode", mode);
 
     api
-      .post("/settings/logo", formData, {
-        onUploadProgress: progressEvent => {
-          const progress = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          console.log(`A imagem está ${progress}% carregada... `);
-        }
-      })
+      .post("/settings/logo", formData)
       .then(response => {
         updateSettingsLoaded(`appLogo${mode}`, response.data);
         colorMode[`setAppLogo${mode}`](
@@ -338,10 +331,7 @@ export default function Whitelabel(props) {
         );
         i18nToast.success("settings.success");
       })
-      .catch(error => {
-        console.error("Houve um problema ao realizar o upload da imagem.");
-        console.log(error);
-      })
+      .catch(() => {})
       .finally(() => {
         event.target.value = "";
       });
@@ -359,22 +349,12 @@ export default function Whitelabel(props) {
     formData.append("settingKey", settingKey);
 
     api
-      .post("/settings/publicFile", formData, {
-        onUploadProgress: progressEvent => {
-          const progress = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          console.log(`O arquivo está ${progress}% carregado... `);
-        }
-      })
+      .post("/settings/publicFile", formData)
       .then(response => {
         updateSettingsLoaded(settingKey, response.data);
         i18nToast.success("settings.success");
       })
-      .catch(error => {
-        console.error("Houve um problema ao realizar o upload do arquivo.");
-        console.log(error);
-      })
+      .catch(() => {})
       .finally(() => {
         event.target.value = "";
       });

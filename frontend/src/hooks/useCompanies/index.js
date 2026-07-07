@@ -10,14 +10,6 @@ const useCompanies = () => {
     return responseData;
   };
 
-  const findAll = async id => {
-    const { data } = await api.request({
-      url: `/companies`,
-      method: "GET"
-    });
-    return data;
-  };
-
   const list = async id => {
     const { data } = await api.request({
       url: `/companies/list`,
@@ -27,14 +19,6 @@ const useCompanies = () => {
   };
 
   const find = async id => {
-    const { data } = await api.request({
-      url: `/companies/${id}`,
-      method: "GET"
-    });
-    return data;
-  };
-
-  const finding = async id => {
     const { data } = await api.request({
       url: `/companies/${id}`,
       method: "GET"
@@ -74,8 +58,6 @@ const useCompanies = () => {
     remove,
     list,
     find,
-    finding,
-    findAll,
     updateSchedules
   };
 };

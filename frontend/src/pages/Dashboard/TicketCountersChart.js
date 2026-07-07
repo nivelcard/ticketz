@@ -1,15 +1,6 @@
 import { useTheme } from "@material-ui/core";
 import React, { useEffect, useState } from "react";
 import { i18n } from "../../translate/i18n";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis
-} from "recharts";
 import CustomTooltip from "./CustomTooltip";
 import Title from "./Title";
 import { getTimezoneOffset } from "../../helpers/getTimezoneOffset";
@@ -36,6 +27,13 @@ export function TicketCountersChart({ ticketCounters }) {
   const t = (...params) => i18n.t(...params);
 
   const [chartData, setChartData] = useState([]);
+  const [recharts, setRecharts] = useState(null);
+
+  useEffect(() => {
+    import("recharts").then(mod => {
+      setRecharts(mod);
+    });
+  }, []);
 
   useEffect(() => {
     if (!ticketCounters?.create?.field) return;
@@ -86,6 +84,25 @@ export function TicketCountersChart({ ticketCounters }) {
 
     setChartData(chartData);
   }, [ticketCounters]);
+
+  if (!recharts) {
+    return (
+      <React.Fragment>
+        <Title>{t("dashboard.ticketsOnPeriod")}</Title>
+        <div style={{ width: "100%", height: 300 }} />
+      </React.Fragment>
+    );
+  }
+
+  const {
+    Area,
+    AreaChart,
+    CartesianGrid,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis
+  } = recharts;
 
   return (
     <React.Fragment>

@@ -87,7 +87,7 @@ const AboutModal = ({ open, onClose }) => {
           {currentUser?.super ? (
             <>
               <div>
-                <img className={classes.ticketzLogoImg} />
+                <img className={classes.ticketzLogoImg} alt="" />
               </div>
               <Typography variant="body1" gutterBottom>
                 <b>
@@ -173,7 +173,7 @@ const AboutModal = ({ open, onClose }) => {
           ) : (
             <>
               <div>
-                <img className={classes.logoImg} />
+                <img className={classes.logoImg} alt="" />
               </div>
               <Typography className={classes.textCenter}>
                 <Link target="_blank" href="https://ticke.tz">

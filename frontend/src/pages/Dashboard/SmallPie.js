@@ -1,10 +1,22 @@
 import { useTheme } from "@material-ui/core/styles";
-import React from "react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import React, { useEffect, useState } from "react";
 import CustomTooltip from "./CustomTooltip";
 
 export function SmallPie({ chartData }) {
   const theme = useTheme();
+  const [recharts, setRecharts] = useState(null);
+
+  useEffect(() => {
+    import("recharts").then(mod => {
+      setRecharts(mod);
+    });
+  }, []);
+
+  if (!recharts) {
+    return <div style={{ width: "100px", height: "100px" }} />;
+  }
+
+  const { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } = recharts;
 
   return (
     <div style={{ width: "100px", height: "100px" }}>

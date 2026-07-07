@@ -114,7 +114,6 @@ export default function PixTicketzSettings(props) {
       ) {
         setShowCreateForm(false);
       }
-      console.debug(newSettings);
     }
   }, [settings]);
 
@@ -140,12 +139,10 @@ export default function PixTicketzSettings(props) {
         values,
         { timeout: 3000 }
       );
-      console.debug("createFormResult", r);
       toast.success(r.data.message);
       setShowCreateForm(false);
     } catch (error) {
       toast.caller(error?.message || "Erro enviando formulário");
-      console.error("createFormResult", error);
     }
   }
 

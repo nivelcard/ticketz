@@ -1,24 +1,22 @@
 import React, { useState, useEffect, useMemo } from "react";
 
 import "react-toastify/dist/ReactToastify.css";
-import { QueryClient, QueryClientProvider } from "react-query";
 
 import { ptBR } from "@material-ui/core/locale";
 import { createTheme, ThemeProvider } from "@material-ui/core/styles";
-import { useMediaQuery } from "@material-ui/core";
 import ColorModeContext from "./layout/themeContext";
 import { PhoneCallProvider } from "./context/PhoneCall/PhoneCallContext";
 import { SocketContext, socketManager } from "./context/Socket/SocketContext";
 import useSettings from "./hooks/useSettings";
 import Favicon from "react-favicon";
 import { getBackendURL } from "./services/config";
+import brandTokens from "./theme/brandTokens";
 
 import Routes from "./routes";
 
-const queryClient = new QueryClient();
-const defaultLogoLight = "/vector/logo.svg";
-const defaultLogoDark = "/vector/logo-dark.svg";
-const defaultLogoFavicon = "/vector/favicon.svg";
+const defaultLogoLight = brandTokens.logo.light;
+const defaultLogoDark = brandTokens.logo.dark;
+const defaultLogoFavicon = brandTokens.logo.favicon;
 
 function useViewportHeight() {
   useEffect(() => {
@@ -54,8 +52,12 @@ const App = () => {
   const [mode, setMode] = useState(
     preferredTheme ? preferredTheme : prefersDarkMode ? "dark" : "light"
   );
-  const [primaryColorLight, setPrimaryColorLight] = useState("#888");
-  const [primaryColorDark, setPrimaryColorDark] = useState("#888");
+  const [primaryColorLight, setPrimaryColorLight] = useState(
+    brandTokens.primaryLight
+  );
+  const [primaryColorDark, setPrimaryColorDark] = useState(
+    brandTokens.primaryDark
+  );
   const [appLogoLight, setAppLogoLight] = useState("");
   const [appLogoDark, setAppLogoDark] = useState("");
   const [appLogoFavicon, setAppLogoFavicon] = useState("");
@@ -132,47 +134,77 @@ const App = () => {
             },
             textPrimary:
               mode === "light" ? primaryColorLight : primaryColorDark,
-            textCommon: mode === "light" ? "#000" : "#fff",
+            textCommon: mode === "light" ? "#0F172A" : "#F8FAFC",
             borderPrimary:
-              mode === "light" ? primaryColorLight : primaryColorDark,
+              mode === "light"
+                ? brandTokens.neutral.borderLight
+                : brandTokens.neutral.borderDark,
             background: {
-              default: mode === "light" ? "#fafafa" : "#303030",
-              paper: mode === "light" ? "#fff" : "#424242"
+              default:
+                mode === "light"
+                  ? brandTokens.neutral.backgroundLight
+                  : brandTokens.neutral.backgroundDark,
+              paper:
+                mode === "light"
+                  ? brandTokens.neutral.paperLight
+                  : brandTokens.neutral.paperDark
             },
             backgroundContrast: {
-              default: mode === "light" ? "#ddd" : "#888",
-              paper: mode === "light" ? "#ddd" : "#888",
-              border: mode === "light" ? "#aaa" : "#444"
+              default: mode === "light" ? "#E2E8F0" : "#475569",
+              paper: mode === "light" ? "#F1F5F9" : "#334155",
+              border:
+                mode === "light"
+                  ? brandTokens.neutral.borderLight
+                  : brandTokens.neutral.borderDark
             },
-            dark: { main: mode === "light" ? "#333333" : "#666" },
-            light: { main: mode === "light" ? "#F3F3F3" : "#333333" },
+            dark: { main: mode === "light" ? "#1E293B" : "#CBD5E1" },
+            light: { main: mode === "light" ? "#F1F5F9" : "#334155" },
             chatBubbleFromMe: {
-              main: mode === "light" ? "#dcf8c6" : "#005c4b"
+              main: mode === "light" ? "#DCFCE7" : "#14532D"
             },
-            chatBubbleReceived: { main: mode === "light" ? "#fff" : "#024481" },
-            chatBackground: { main: mode === "light" ? "#f3f3f3" : "#333" },
-            tabHeaderBackground: mode === "light" ? "#EEE" : "#666",
-            optionsBackground: mode === "light" ? "#fafafa" : "#333",
-            options: mode === "light" ? "#fafafa" : "#666",
+            chatBubbleReceived: {
+              main: mode === "light" ? "#FFFFFF" : "#1E3A5F"
+            },
+            chatBackground: {
+              main: mode === "light" ? "#F1F5F9" : "#0F172A"
+            },
+            tabHeaderBackground: mode === "light" ? "#F1F5F9" : "#334155",
+            optionsBackground: mode === "light" ? "#F8FAFC" : "#1E293B",
+            options: mode === "light" ? "#F8FAFC" : "#475569",
             fontecor: mode === "light" ? primaryColorLight : primaryColorDark,
-            fancyBackground: mode === "light" ? "#fafafa" : "#333",
-            bordabox: mode === "light" ? "#eee" : "#333",
-            newmessagebox: mode === "light" ? "#eee" : "#333",
-            inputdigita: mode === "light" ? "#fff" : "#666",
-            contactdrawer: mode === "light" ? "#fff" : "#666",
-            announcements: mode === "light" ? "#ededed" : "#333",
-            login: mode === "light" ? "#fff" : "#1C1C1C",
-            announcementspopover: mode === "light" ? "#fff" : "#666",
-            chatlist: { main: mode === "light" ? "#dfdfdf" : "#555" },
-            boxlist: mode === "light" ? "#ededed" : "#666",
-            boxchatlist: mode === "light" ? "#ededed" : "#333",
-            total: mode === "light" ? "#fff" : "#222",
-            messageIcons: mode === "light" ? "grey" : "#F3F3F3",
-            inputBackground: mode === "light" ? "#FFFFFF" : "#333",
-            barraSuperior: mode === "light" ? primaryColorLight : "#666",
-            boxticket: mode === "light" ? "#EEE" : "#666",
-            campaigntab: mode === "light" ? "#ededed" : "#666",
+            fancyBackground:
+              mode === "light"
+                ? brandTokens.neutral.backgroundLight
+                : brandTokens.neutral.backgroundDark,
+            bordabox:
+              mode === "light"
+                ? brandTokens.neutral.borderLight
+                : brandTokens.neutral.borderDark,
+            newmessagebox: mode === "light" ? "#E2E8F0" : "#334155",
+            inputdigita: mode === "light" ? "#FFFFFF" : "#475569",
+            contactdrawer: mode === "light" ? "#FFFFFF" : "#1E293B",
+            announcements: mode === "light" ? "#F1F5F9" : "#334155",
+            login: mode === "light" ? "#FFFFFF" : "#0F172A",
+            announcementspopover: mode === "light" ? "#FFFFFF" : "#334155",
+            chatlist: { main: mode === "light" ? "#E2E8F0" : "#475569" },
+            boxlist: mode === "light" ? "#F1F5F9" : "#475569",
+            boxchatlist: mode === "light" ? "#F1F5F9" : "#334155",
+            total: mode === "light" ? "#FFFFFF" : "#0F172A",
+            messageIcons: mode === "light" ? "#64748B" : "#CBD5E1",
+            inputBackground: mode === "light" ? "#FFFFFF" : "#1E293B",
+            barraSuperior: mode === "light" ? primaryColorLight : "#334155",
+            boxticket: mode === "light" ? "#F1F5F9" : "#475569",
+            campaigntab: mode === "light" ? "#F1F5F9" : "#475569",
             ticketzproad: { main: "#39ACE7", contrastText: "white" }
+          },
+          typography: {
+            fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+            h6: { fontWeight: 600 },
+            subtitle1: { fontWeight: 500 },
+            button: { textTransform: "none", fontWeight: 600 }
+          },
+          shape: {
+            borderRadius: brandTokens.shape.borderRadius
           },
           mode,
           appLogoLight,
@@ -223,18 +255,14 @@ const App = () => {
   useEffect(() => {
     getPublicSetting("primaryColorLight")
       .then(color => {
-        setPrimaryColorLight(color || "#0000FF");
+        setPrimaryColorLight(color || brandTokens.primaryLight);
       })
-      .catch(error => {
-        console.log("Error reading setting", error);
-      });
+      .catch(() => {});
     getPublicSetting("primaryColorDark")
       .then(color => {
-        setPrimaryColorDark(color || "#39ACE7");
+        setPrimaryColorDark(color || brandTokens.primaryDark);
       })
-      .catch(error => {
-        console.log("Error reading setting", error);
-      });
+      .catch(() => {});
     getPublicSetting("appLogoLight")
       .then(
         file => {
@@ -244,31 +272,24 @@ const App = () => {
         },
         _ => {}
       )
-      .catch(error => {
-        console.log("Error reading setting", error);
-      });
+      .catch(() => {});
     getPublicSetting("appLogoDark")
       .then(file => {
         setAppLogoDark(
           file ? `${getBackendURL()}/public/${file}` : defaultLogoDark
         );
       })
-      .catch(error => {
-        console.log("Error reading setting", error);
-      });
+      .catch(() => {});
     getPublicSetting("appLogoFavicon")
       .then(file => {
         setAppLogoFavicon(file ? `${getBackendURL()}/public/${file}` : null);
       })
-      .catch(error => {
-        console.log("Error reading setting", error);
-      });
+      .catch(() => {});
     getPublicSetting("appName")
       .then(name => {
         setAppName(name || "ticketz");
       })
-      .catch(error => {
-        console.log("Error reading setting", error);
+      .catch(() => {
         setAppName("whitelabel chat");
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -284,11 +305,9 @@ const App = () => {
       <ColorModeContext.Provider value={{ colorMode }}>
         <PhoneCallProvider>
           <ThemeProvider theme={theme}>
-            <QueryClientProvider client={queryClient}>
-              <SocketContext.Provider value={socketManager}>
-                <Routes />
-              </SocketContext.Provider>
-            </QueryClientProvider>
+            <SocketContext.Provider value={socketManager}>
+              <Routes />
+            </SocketContext.Provider>
           </ThemeProvider>
         </PhoneCallProvider>
       </ColorModeContext.Provider>

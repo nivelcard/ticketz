@@ -412,7 +412,6 @@ export default function ChatMessages({
     try {
       await api.post(`/chats/${chat.id}/messages`, formData);
     } catch (err) {
-      console.log(err);
       toastError(err);
     }
 

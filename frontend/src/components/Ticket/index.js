@@ -20,15 +20,15 @@ import { AuthContext } from "../../context/Auth/AuthContext";
 import { TagsContainer } from "../TagsContainer";
 import { SocketContext } from "../../context/Socket/SocketContext";
 import useSettings from "../../hooks/useSettings";
-
-const drawerWidth = 320;
+import { i18n } from "../../translate/i18n";
 
 const useStyles = makeStyles(theme => ({
   root: {
     display: "flex",
     height: "100%",
     position: "relative",
-    overflow: "hidden"
+    overflow: "hidden",
+    backgroundColor: theme.palette.background.paper
   },
 
   mainWrapper: {
@@ -40,6 +40,8 @@ const useStyles = makeStyles(theme => ({
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
     borderLeft: "0",
+    boxShadow:
+      theme.mode === "light" ? "inset 1px 0 0 rgba(15, 23, 42, 0.06)" : "none",
     transition: theme.transitions.create("margin", {
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen
@@ -65,6 +67,7 @@ const useStyles = makeStyles(theme => ({
       bottom: 0,
       left: 0,
       backdropFilter: "blur(2px)",
+      backgroundColor: "rgba(15, 23, 42, 0.35)",
       zIndex: 100
     }
   }
@@ -112,7 +115,7 @@ const Ticket = () => {
 
           const queueAllowed = queues.find(q => q.id === queueId);
           if (queueAllowed === undefined && profile !== "admin") {
-            toast.error("Acesso não permitido");
+            toast.error(i18n.t("common.accessNotAllowed"));
             history.push("/tickets");
             return;
           }

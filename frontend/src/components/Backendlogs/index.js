@@ -256,16 +256,6 @@ export function Backendlogs() {
           consoleRef.current.scrollHeight - consoleRef.current.scrollTop
         ) <= consoleRef.current.clientHeight;
 
-      consoleRef.current &&
-        console.log({
-          scrollHeight: consoleRef.current.scrollHeight,
-          scrollTop: consoleRef.current.scrollTop,
-          position:
-            consoleRef.current.scrollHeight - consoleRef.current.scrollTop,
-          clientHeight: consoleRef.current.clientHeight,
-          isAtBottom
-        });
-
       if (logInfo.logs?.[0].currentLevel) {
         setLogLevel(logInfo.logs[0].currentLevel);
       }

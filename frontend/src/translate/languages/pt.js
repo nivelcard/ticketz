@@ -44,6 +44,9 @@ const messages = {
         yes: "Sim",
         no: "Não",
         noqueue: "Sem fila",
+        location: "Localização",
+        accountAccessedElsewhere: "Sua conta foi acessada em outro computador.",
+        accessNotAllowed: "Acesso não permitido",
         rating: "Avaliação",
         transferTo: "Transferir para",
         key: "Chave",
@@ -205,7 +208,9 @@ const messages = {
         }
       },
       internalChat: {
-        title: "Chat Interno"
+        title: "Chat Interno",
+        deleteTitle: "Excluir conversa",
+        deleteConfirm: "Esta ação não pode ser revertida. Deseja confirmar?"
       },
       whatsappModal: {
         title: {
@@ -408,7 +413,8 @@ const messages = {
         successKanban: "Lane salva com sucesso."
       },
       chat: {
-        noTicketMessage: "Selecione um ticket para começar a conversar."
+        noTicketMessage: "Selecione um ticket para começar a conversar.",
+        selectTicketButton: "Selecionar ticket"
       },
       uploads: {
         titles: {
@@ -472,6 +478,12 @@ const messages = {
         noTicketsTitle: "Nada aqui!",
         noTicketsMessage:
           "Nenhum atendimento encontrado com esse status ou termo pesquisado",
+        tooltips: {
+          closeConversation: "Fechar conversa",
+          spyConversation: "Espiar conversa",
+          acceptConversation: "Aceitar conversa",
+          chatbot: "Chatbot"
+        },
         buttons: {
           accept: "Aceitar"
         }

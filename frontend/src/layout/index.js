@@ -22,7 +22,6 @@ import MenuIcon from "@material-ui/icons/Menu";
 import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
 import AccountCircle from "@material-ui/icons/AccountCircle";
 import SettingsEthernetIcon from "@material-ui/icons/SettingsEthernet";
-import CachedIcon from "@material-ui/icons/Cached";
 
 import MainListItems from "./MainListItems";
 import NotificationsPopOver from "../components/NotificationsPopOver";
@@ -33,7 +32,6 @@ import UserModal from "../components/UserModal";
 import AboutModal from "../components/AboutModal";
 import { AuthContext } from "../context/Auth/AuthContext";
 import BackdropLoading from "../components/BackdropLoading";
-import DarkMode from "../components/DarkMode";
 import { i18n } from "../translate/i18n";
 import { messages } from "../translate/languages";
 import toastError from "../errors/toastError";
@@ -46,10 +44,6 @@ import { useDate } from "../hooks/useDate";
 import useAuth from "../hooks/useAuth.js";
 
 import ColorModeContext from "../layout/themeContext";
-import Brightness4Icon from "@material-ui/icons/Brightness4";
-import Brightness7Icon from "@material-ui/icons/Brightness7";
-import LanguageIcon from "@material-ui/icons/Language";
-import { getBackendURL } from "../services/config";
 import NestedMenuItem from "material-ui-nested-menu-item";
 import GoogleAnalytics from "../components/GoogleAnalytics";
 import OnlyForSuperUser from "../components/OnlyForSuperUser";
@@ -158,7 +152,8 @@ const useStyles = makeStyles(theme => ({
     maxWidth: "100%"
   },
   toolbar: {
-    paddingRight: 24, // keep right padding when drawer closed
+    paddingRight: 24,
+    minHeight: 52,
     color:
       localStorage.getItem("impersonated") === "true"
         ? theme.palette.secondary.contrastText
@@ -244,6 +239,9 @@ const useStyles = makeStyles(theme => ({
       duration: theme.transitions.duration.enteringScreen
     }),
     overflowY: "clip",
+    borderRight: `1px solid ${theme.palette.borderPrimary}`,
+    boxShadow:
+      theme.mode === "light" ? "2px 0 8px rgba(15, 23, 42, 0.06)" : "none",
     ...theme.scrollbarStylesSoft
   },
   drawerPaperClose: {
@@ -311,7 +309,6 @@ const LoggedInLayout = ({ children, themeToggle }) => {
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [languageOpen, setLanguageOpen] = useState(false);
   const { handleLogout, loading } = useContext(AuthContext);
   const [drawerOpen, setDrawerOpen] = useState(() => {
     const isDesktop = window.matchMedia("(min-width:600px)").matches;
@@ -346,53 +343,6 @@ const LoggedInLayout = ({ children, themeToggle }) => {
   const [wsConnectionIssue, setWsConnectionIssue] = useState(false);
 
   const [newTicketContact, setNewTicketContact] = useState(null);
-
-  //################### CODIGOS DE TESTE #########################################
-  // useEffect(() => {
-  //   navigator.getBattery().then((battery) => {
-  //     console.log(`Battery Charging: ${battery.charging}`);
-  //     console.log(`Battery Level: ${battery.level * 100}%`);
-  //     console.log(`Charging Time: ${battery.chargingTime}`);
-  //     console.log(`Discharging Time: ${battery.dischargingTime}`);
-  //   })
-  // }, []);
-
-  // useEffect(() => {
-  //   const geoLocation = navigator.geolocation
-
-  //   geoLocation.getCurrentPosition((position) => {
-  //     let lat = position.coords.latitude;
-  //     let long = position.coords.longitude;
-
-  //     console.log('latitude: ', lat)
-  //     console.log('longitude: ', long)
-  //   })
-  // }, []);
-
-  // useEffect(() => {
-  //   const nucleos = window.navigator.hardwareConcurrency;
-
-  //   console.log('Nucleos: ', nucleos)
-  // }, []);
-
-  // useEffect(() => {
-  //   console.log('userAgent', navigator.userAgent)
-  //   if (
-  //     navigator.userAgent.match(/Android/i)
-  //     || navigator.userAgent.match(/webOS/i)
-  //     || navigator.userAgent.match(/iPhone/i)
-  //     || navigator.userAgent.match(/iPad/i)
-  //     || navigator.userAgent.match(/iPod/i)
-  //     || navigator.userAgent.match(/BlackBerry/i)
-  //     || navigator.userAgent.match(/Windows Phone/i)
-  //   ) {
-  //     console.log('é mobile ', true) //celular
-  //   }
-  //   else {
-  //     console.log('não é mobile: ', false) //nao é celular
-  //   }
-  // }, []);
-  //##############################################################################
 
   useEffect(() => {
     getCurrentUserInfo().then(user => {
@@ -459,7 +409,7 @@ const LoggedInLayout = ({ children, themeToggle }) => {
         !data.user.impersonated &&
         data.user.id === +userId
       ) {
-        toastError("Sua conta foi acessada em outro computador.");
+        toastError(i18n.t("common.accountAccessedElsewhere"));
         setTimeout(() => {
           localStorage.clear();
           window.location.reload();
@@ -493,11 +443,6 @@ const LoggedInLayout = ({ children, themeToggle }) => {
     setMenuOpen(false);
   };
 
-  const handleCloseLanguageMenu = () => {
-    setAnchorEl(null);
-    setLanguageOpen(false);
-  };
-
   const handleOpenUserModal = () => {
     setUserModalOpen(true);
     handleCloseProfileMenu();
@@ -527,13 +472,6 @@ const LoggedInLayout = ({ children, themeToggle }) => {
       }
       return nextState;
     });
-  };
-
-  const handleMenuItemClick = () => {
-    const { innerWidth: width } = window;
-    if (width <= 600) {
-      setDrawerOpen(false);
-    }
   };
 
   const toggleColorMode = () => {

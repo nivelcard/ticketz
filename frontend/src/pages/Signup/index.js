@@ -106,7 +106,6 @@ const SignUp = () => {
       toast.success(i18n.t("signup.toasts.success"));
       history.push("/login");
     } catch (err) {
-      console.log(err);
       toastError(err);
     }
   };
@@ -133,7 +132,7 @@ const SignUp = () => {
       <CssBaseline />
       <div className={classes.paper}>
         <div>
-          <img className={classes.logoImg} />
+          <img className={classes.logoImg} alt="" />
         </div>
         <Formik
           initialValues={user}

@@ -123,7 +123,6 @@ const TransferTicketModalCustom = ({
       }
 
       await api.put(`/tickets/${ticketid}`, data);
-      console.log(data);
 
       history.push(`/tickets`);
     } catch (err) {

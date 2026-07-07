@@ -45,13 +45,12 @@ const TicketzRegistry = ({ onRegister }) => {
         name: formData.name,
         whatsapp: `${getPhoneCode(formData.country)}${formData.phoneNumber}`
       };
-      const response = await api.post("/ticketz/registry", registryData);
-      console.debug("Form submitted successfully:", response.data);
+      await api.post("/ticketz/registry", registryData);
       if (!!onRegister) {
         onRegister(true);
       }
     } catch (error) {
-      console.error("Error submitting form:", error);
+      // submission failed silently; caller may handle via onRegister
     }
   };
 

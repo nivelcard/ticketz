@@ -68,7 +68,7 @@ const TicketAdvanced = props => {
           variant="contained"
           color="primary"
         >
-          Selecionar Ticket
+          {i18n.t("chat.selectTicketButton")}
         </Button>
       </Box>
     );

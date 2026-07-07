@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
 import withWidth, { isWidthUp } from "@material-ui/core/withWidth";
-import "emoji-mart/css/emoji-mart.css";
-import { Picker } from "emoji-mart";
 import MicRecorder from "mic-recorder-to-mp3";
 import clsx from "clsx";
 
@@ -213,6 +211,21 @@ const useStyles = makeStyles(theme => ({
 const EmojiOptions = props => {
   const { disabled, showEmoji, setShowEmoji, handleAddEmoji } = props;
   const classes = useStyles();
+  const [Picker, setPicker] = useState(null);
+
+  useEffect(() => {
+    if (!showEmoji || Picker) {
+      return;
+    }
+
+    Promise.all([
+      import("emoji-mart/css/emoji-mart.css"),
+      import("emoji-mart")
+    ]).then(([, emojiMart]) => {
+      setPicker(() => emojiMart.Picker);
+    });
+  }, [showEmoji, Picker]);
+
   return (
     <>
       <IconButton
@@ -223,7 +236,7 @@ const EmojiOptions = props => {
       >
         <MoodIcon className={classes.sendMessageIcons} />
       </IconButton>
-      {showEmoji ? (
+      {showEmoji && Picker ? (
         <div className={classes.emojiBox}>
           <Picker
             perLine={16}
@@ -931,7 +944,6 @@ const MessageInputCustom = props => {
           },
           error(err) {
             alert("erro");
-            console.log(err.message);
           }
         });
       } else {

@@ -356,7 +356,6 @@ export default function PlansManager() {
     setLoading(true);
     try {
       const planList = await list();
-      console.log(planList);
       setRecords(planList);
     } catch (e) {
       toast.error("Não foi possível carregar a lista de registros");
@@ -375,7 +374,6 @@ export default function PlansManager() {
       currency: data.currency,
       isPublic: data.isPublic
     };
-    console.log(datanew);
     setLoading(true);
     try {
       if (data.id !== undefined) {

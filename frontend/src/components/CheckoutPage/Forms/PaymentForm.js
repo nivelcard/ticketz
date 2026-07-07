@@ -89,7 +89,6 @@ export default function Pricing(props) {
       setCompaniesPlans(companiesList.planId);
       await loadPlans(companiesList.planId);
     } catch (e) {
-      console.log(e);
       // toast.error("Não foi possível carregar a lista de registros");
     }
     setLoading(false);
@@ -121,7 +120,6 @@ export default function Pricing(props) {
       //});
       setStoragePlans(plans);
     } catch (e) {
-      console.log(e);
       // toast.error("Não foi possível carregar a lista de registros");
     }
     setLoading(false);

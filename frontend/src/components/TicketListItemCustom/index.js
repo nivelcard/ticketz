@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 
 import { useHistory, useParams } from "react-router-dom";
-import { parseISO, format, isSameDay } from "date-fns";
+import { parseISO } from "date-fns";
 import clsx from "clsx";
 
 import { makeStyles } from "@material-ui/core/styles";
@@ -20,7 +20,6 @@ import { i18n } from "../../translate/i18n";
 import { formatWhatsappContactName } from "../../helpers/formatWhatsappDisplay";
 
 import api from "../../services/api";
-import ButtonWithSpinner from "../ButtonWithSpinner";
 import WhatsMarked from "react-whatsmarked";
 import { Tooltip } from "@material-ui/core";
 import { AuthContext } from "../../context/Auth/AuthContext";
@@ -28,7 +27,6 @@ import { TicketsContext } from "../../context/Tickets/TicketsContext";
 import toastError from "../../errors/toastError";
 import { v4 as uuidv4 } from "uuid";
 
-import RoomIcon from "@material-ui/icons/Room";
 import WhatsAppIcon from "@material-ui/icons/WhatsApp";
 import AndroidIcon from "@material-ui/icons/Android";
 import VisibilityIcon from "@material-ui/icons/Visibility";
@@ -268,12 +266,12 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
                 top: -6,
                 marginRight: 3
               }}
-              badgeContent={ticket.queue?.name || "Sem fila"}
+              badgeContent={ticket.queue?.name || i18n.t("common.noqueue")}
               //color="primary"
             />
           )}
           {ticket.status === "open" && (
-            <Tooltip title="Fechar Conversa">
+            <Tooltip title={i18n.t("ticketsList.tooltips.closeConversation")}>
               <ClearOutlinedIcon
                 onClick={() => handleCloseTicket(ticket.id)}
                 fontSize="small"
@@ -295,7 +293,7 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
             </Tooltip>
           )}
           {profile === "admin" && (
-            <Tooltip title="Espiar Conversa">
+            <Tooltip title={i18n.t("ticketsList.tooltips.spyConversation")}>
               <VisibilityIcon
                 onClick={e => {
                   e.stopPropagation();
@@ -319,7 +317,7 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
             </Tooltip>
           )}
           {ticket.chatbot && (
-            <Tooltip title="Chatbot">
+            <Tooltip title={i18n.t("ticketsList.tooltips.chatbot")}>
               <AndroidIcon
                 fontSize="small"
                 style={{ color: grey[700], marginRight: 5 }}
@@ -362,13 +360,13 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
                 top: -6,
                 marginRight: 2
               }}
-              badgeContent={ticket.queue?.name || "Sem fila"}
+              badgeContent={ticket.queue?.name || i18n.t("common.noqueue")}
               //color=
             />
           )}
           {ticket.status === "pending" &&
             (groupActionButtons || !ticket.isGroup) && (
-              <Tooltip title="Fechar Conversa">
+              <Tooltip title={i18n.t("ticketsList.tooltips.closeConversation")}>
                 <ClearOutlinedIcon
                   onClick={() => handleCloseTicket(ticket.id)}
                   fontSize="small"
@@ -390,7 +388,7 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
               </Tooltip>
             )}
           {ticket.chatbot && (
-            <Tooltip title="Chatbot">
+            <Tooltip title={i18n.t("ticketsList.tooltips.chatbot")}>
               <AndroidIcon
                 fontSize="small"
                 style={{ color: grey[700], marginRight: 5 }}
@@ -399,7 +397,7 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
           )}
           {ticket.status === "open" &&
             (groupActionButtons || !ticket.isGroup) && (
-              <Tooltip title="Fechar Conversa">
+              <Tooltip title={i18n.t("ticketsList.tooltips.closeConversation")}>
                 <ClearOutlinedIcon
                   onClick={() => handleCloseTicket(ticket.id)}
                   fontSize="small"
@@ -416,7 +414,9 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
             )}
           {ticket.status === "pending" &&
             (groupActionButtons || !ticket.isGroup) && (
-              <Tooltip title="Aceitar Conversa">
+              <Tooltip
+                title={i18n.t("ticketsList.tooltips.acceptConversation")}
+              >
                 <DoneIcon
                   onClick={() => handleAcceptTicket(ticket.id)}
                   fontSize="small"
@@ -439,7 +439,7 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
             )}
 
           {profile === "admin" && (groupActionButtons || !ticket.isGroup) && (
-            <Tooltip title="Espiar Conversa">
+            <Tooltip title={i18n.t("ticketsList.tooltips.spyConversation")}>
               <VisibilityIcon
                 onClick={e => {
                   e.stopPropagation();
@@ -493,7 +493,7 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
         <Tooltip
           arrow
           placement="right"
-          title={ticket.queue?.name || "Sem fila"}
+          title={ticket.queue?.name || i18n.t("common.noqueue")}
         >
           <span
             style={{ backgroundColor: ticket.queue?.color || "#7C7C7C" }}
@@ -551,7 +551,7 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
                 ) : (
                   <>
                     {ticket.lastMessage?.includes("data:image/png;base64") ? (
-                      <div>Localização</div>
+                      <div>{i18n.t("common.location")}</div>
                     ) : (
                       <WhatsMarked oneline>
                         {ticket.lastMessage.startsWith('{"ticketzvCard"')
@@ -618,4 +618,4 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
   );
 };
 
-export default TicketListItemCustom;
+export default React.memo(TicketListItemCustom);

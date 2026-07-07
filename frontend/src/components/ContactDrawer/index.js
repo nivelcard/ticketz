@@ -48,11 +48,13 @@ const useStyles = makeStyles(theme => ({
   drawerPaper: {
     width: drawerWidth,
     display: "flex",
-    borderTop: "1px solid rgba(0, 0, 0, 0.12)",
-    borderRight: "1px solid rgba(0, 0, 0, 0.12)",
-    borderBottom: "1px solid rgba(0, 0, 0, 0.12)",
-    borderTopRightRadius: 4,
-    borderBottomRightRadius: 4
+    borderTop: `1px solid ${theme.palette.divider}`,
+    borderRight: `1px solid ${theme.palette.divider}`,
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    borderTopRightRadius: theme.shape.borderRadius,
+    borderBottomRightRadius: theme.shape.borderRadius,
+    boxShadow:
+      theme.mode === "light" ? "0 4px 16px rgba(15, 23, 42, 0.08)" : "none"
   },
   header: {
     display: "flex",

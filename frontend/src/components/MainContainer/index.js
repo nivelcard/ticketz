@@ -2,7 +2,7 @@ import React from "react";
 
 import { makeStyles } from "@material-ui/core/styles";
 import Container from "@material-ui/core/Container";
-import whatsBackground from "../../assets/wa-background.png";
+import whatsBackground from "../../assets/wa-background.webp";
 import whatsBackgroundDark from "../../assets/wa-background-dark.png";
 
 const useStyles = makeStyles(theme => ({

@@ -219,7 +219,6 @@ export function QueueOptionStepper({ queueId, options, updateOptions }) {
   };
 
   const handleChangeForwardQueue = (value, index) => {
-    console.debug("Selected queue", value);
     options[index].forwardQueueId = `${value}`;
     if (options[index].forwardQueueId) {
       options[index].exitChatbot = false;

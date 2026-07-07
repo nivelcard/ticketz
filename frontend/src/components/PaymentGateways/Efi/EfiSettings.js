@@ -83,21 +83,13 @@ export default function EfiSettings(props) {
     formData.append("settingKey", key);
 
     api
-      .post("/settings/privateFile", formData, {
-        onUploadProgress: event => {
-          let progress = Math.round((event.loaded * 100) / event.total);
-          console.log(`Upload ${progress}%`);
-        }
-      })
+      .post("/settings/privateFile", formData)
       .then(response => {
         const newSettings = { ...efiSettings };
         newSettings[key] = response.data;
         setEfiSettings(newSettings);
       })
-      .catch(err => {
-        console.error(`Houve um problema ao realizar o upload da imagem.`);
-        console.log(err);
-      });
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -109,7 +101,6 @@ export default function EfiSettings(props) {
         }
       });
       setEfiSettings(newSettings);
-      console.debug(newSettings);
     }
   }, [settings]);
 

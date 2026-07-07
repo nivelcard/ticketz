@@ -1,6 +1,6 @@
 import api from "../../services/api";
 
-const usePlans = () => {
+const useHelps = () => {
   const findAll = async params => {
     const { data } = await api.request({
       url: `/helps`,
@@ -54,4 +54,4 @@ const usePlans = () => {
   };
 };
 
-export default usePlans;
+export default useHelps;

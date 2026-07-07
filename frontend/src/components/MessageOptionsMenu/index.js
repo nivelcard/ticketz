@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import PropTypes from "prop-types";
 
 import MenuItem from "@material-ui/core/MenuItem";
@@ -13,9 +13,6 @@ import toastError from "../../errors/toastError";
 import MessageHistoryModal from "../MessageHistoryModal";
 import MessageForwardModal from "../MessageForwardModal";
 import { useStyles } from "./style";
-
-import "emoji-mart/css/emoji-mart.css";
-import { Picker } from "emoji-mart";
 
 const mostUsedEmojis = ["👍", "❤️", "😂", "🎉", "😮", "😢", "🙏"];
 
@@ -37,6 +34,20 @@ const MessageOptionsMenu = ({
   const [forwardModalOpen, setForwardModalOpen] = useState(false);
   const [messageHistoryOpen, setMessageHistoryOpen] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [EmojiPicker, setEmojiPicker] = useState(null);
+
+  useEffect(() => {
+    if (!showEmoji || EmojiPicker) {
+      return;
+    }
+
+    Promise.all([
+      import("emoji-mart/css/emoji-mart.css"),
+      import("emoji-mart")
+    ]).then(([, emojiMart]) => {
+      setEmojiPicker(() => emojiMart.Picker);
+    });
+  }, [showEmoji, EmojiPicker]);
 
   const closeMenu = () => {
     handleClose();
@@ -118,12 +129,14 @@ const MessageOptionsMenu = ({
         messageId={message.id}
       />
       <Dialog open={showEmoji} onClose={() => setShowEmoji(false)}>
-        <Picker
-          perLine={16}
-          showPreview={false}
-          showSkinTones={false}
-          onSelect={e => handleReact(e.native)}
-        />
+        {EmojiPicker ? (
+          <EmojiPicker
+            perLine={16}
+            showPreview={false}
+            showSkinTones={false}
+            onSelect={e => handleReact(e.native)}
+          />
+        ) : null}
       </Dialog>
       <Menu
         anchorEl={anchorEl}

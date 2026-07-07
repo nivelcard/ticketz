@@ -10,10 +10,7 @@ import {
   Typography
 } from "@material-ui/core";
 import { Close, GetApp } from "@material-ui/icons";
-import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
-
-GlobalWorkerOptions.workerSrc = pdfjsWorker;
+import loadPdfJs from "../../helpers/loadPdfJs";
 
 const MAX_UNRANGED_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -235,6 +232,7 @@ function Thumbnail({ url, onOpen }) {
 
     (async () => {
       try {
+        const { getDocument } = await loadPdfJs();
         const pdf = await getDocument({
           url,
           // Only fetch what's needed for page 1 – don't pre-load the whole file.
@@ -332,6 +330,7 @@ function PdfViewerDialog({ url, fileName, open, onClose }) {
 
     (async () => {
       try {
+        const { getDocument } = await loadPdfJs();
         const pdf = await getDocument({
           url,
           disableAutoFetch: true, // don't bulk-download; fetch chunks on demand
