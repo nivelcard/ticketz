@@ -68,6 +68,8 @@ const useStyles = makeStyles(theme => ({
   root: {
     display: "flex",
     height: "var(--vh)",
+    minHeight: 0,
+    overflow: "hidden",
     backgroundColor: theme.palette.fancyBackground,
     "& .MuiButton-outlinedPrimary": {
       color: theme.palette.primary,
@@ -277,7 +279,11 @@ const useStyles = makeStyles(theme => ({
   },
   content: {
     flex: 1,
-    overflow: "auto"
+    minHeight: 0,
+    minWidth: 0,
+    overflow: "auto",
+    WebkitOverflowScrolling: "touch",
+    ...theme.scrollbarStyles
   },
   container: {
     paddingTop: theme.spacing(4),

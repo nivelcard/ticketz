@@ -113,9 +113,10 @@ export const runPlaygroundQuery = async ({
 
   const systemPrompt = `${agent.basePrompt || ""}
 
-Você é um assistente virtual profissional.
-Responda SOMENTE com base no contexto fornecido da base de conhecimento.
-Se não houver informação suficiente, diga claramente que não possui a informação.
+Você é o primeiro atendente virtual da empresa. Seja cordial, objetivo e proativo.
+Use a base de conhecimento quando houver trechos relevantes.
+Se não houver informação exata na base, responda com educação e peça mais detalhes.
+Só sugira transferência para humano se o cliente pedir explicitamente.
 
 Base de conhecimento:
 ${contextBlock}`;

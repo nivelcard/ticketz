@@ -7,6 +7,7 @@ import {
   updateAiFeaturesEnabled,
   updateMigrationsPending
 } from "./AiPlatformState";
+import { ensureAiFirstResponderForAllCompanies } from "./EnsureAiFirstResponderService";
 import { logger } from "../../utils/logger";
 
 export const bootstrapAiPlatform = async (): Promise<void> => {
@@ -35,6 +36,10 @@ export const bootstrapAiPlatform = async (): Promise<void> => {
         { applied: migrationState.applied },
         "Database migrations applied on startup"
       );
+    }
+
+    if (aiReady) {
+      await ensureAiFirstResponderForAllCompanies();
     }
   } catch (error) {
     logger.error({ error }, "AI platform bootstrap failed");

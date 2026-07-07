@@ -3,6 +3,7 @@ import AiAgent from "../models/AiAgent";
 import AiAgentQueue from "../models/AiAgentQueue";
 import AppError from "../errors/AppError";
 import { safeAiQuery } from "../helpers/safeAiQuery";
+import { ensureAiFirstResponderForCompany } from "../services/AiServices/EnsureAiFirstResponderService";
 
 export const index = async (req: Request, res: Response): Promise<Response> => {
   const { companyId } = req.user;
@@ -68,6 +69,7 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
   }
 
   await agent.reload({ include: ["fallbackQueue", "agentQueues"] });
+  await ensureAiFirstResponderForCompany(companyId);
   return res.status(201).json(agent);
 };
 
@@ -106,6 +108,7 @@ export const update = async (
   }
 
   await agent.reload({ include: ["fallbackQueue", "agentQueues"] });
+  await ensureAiFirstResponderForCompany(companyId);
   return res.json(agent);
 };
 
