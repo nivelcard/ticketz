@@ -116,6 +116,20 @@ jobs:
           fi
           printf '%s' "$TURNSTILE_SECRET_KEY" | npx wrangler secret put TURNSTILE_SECRET_KEY
 
+      - name: Configurar secret OPENAI_API_KEY no Worker
+        working-directory: api-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo "::warning::OPENAI_API_KEY ausente — transcrição/IA dependem da chave em Settings."
+            exit 0
+          fi
+          printf '%s' "$OPENAI_API_KEY" | npx wrangler secret put OPENAI_API_KEY
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:

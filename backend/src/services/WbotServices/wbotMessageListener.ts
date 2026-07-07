@@ -725,13 +725,19 @@ export const verifyMediaMessage = async (
 
   const storedMediaUrl = mediaUrl;
 
+  const audioTranscriptionsSetting = await GetCompanySetting(
+    ticket.companyId,
+    "audioTranscriptions",
+    "disabled"
+  );
+  const aiAgentForAudio =
+    isAiFeaturesEnabled() &&
+    (await getActiveAgent(ticket.companyId, ticket.queueId));
+
   if (
     mediaType === "audio" &&
-    (await GetCompanySetting(
-      ticket.companyId,
-      "audioTranscriptions",
-      "disabled"
-    )) === "enabled"
+    storedMediaUrl &&
+    (audioTranscriptionsSetting === "enabled" || aiAgentForAudio)
   ) {
     const apiKey = await GetCompanySetting(ticket.companyId, "openAiKey", null);
     const provider = await GetCompanySetting(

@@ -1221,7 +1221,9 @@ const messages = {
         ERR_BACKEND_UNREACHABLE:
           "Backend inacessível. Por favor, tente novamente mais tarde.",
         ERR_BACKEND_NOT_READY:
-          "O backend está iniciando e ainda não está pronto. Tentando novamente automaticamente."
+          "O backend está iniciando e ainda não está pronto. Tentando novamente automaticamente.",
+        ERR_API_SLOW:
+          "A API está demorando para responder. Aguarde alguns segundos e tente novamente."
       },
       backendErrors: {
         ERR_UNAUTHORIZED: "Você não está autorizado a acessar este recurso.",

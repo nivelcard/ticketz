@@ -14,6 +14,7 @@ import { decodeToken } from "react-jwt";
 
 let apiInterceptorsRegistered = false;
 const TOKEN_REFRESH_INTERVAL_MS = 20 * 60 * 1000;
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const parseStoredToken = () => {
   const raw = localStorage.getItem("token");
@@ -73,21 +74,36 @@ const useAuth = () => {
 
   const socketManager = useContext(SocketContext);
 
-  const refreshSession = useCallback(async () => {
-    const { data } = await api.post("/auth/refresh_token");
-    if (!data?.token) {
-      throw new Error("ERR_SESSION_EXPIRED");
-    }
+  const refreshSession = useCallback(
+    async (retryCount = 0) => {
+      try {
+        const { data } = await api.post("/auth/refresh_token");
+        if (!data?.token) {
+          throw new Error("ERR_SESSION_EXPIRED");
+        }
 
-    localStorage.setItem("token", JSON.stringify(data.token));
-    api.defaults.headers.Authorization = `Bearer ${data.token}`;
-    socketManager.syncCurrentSocketToken?.(data.token);
-    setIsAuth(true);
-    if (data.user) {
-      setUser(data.user);
-    }
-    return data;
-  }, [socketManager]);
+        localStorage.setItem("token", JSON.stringify(data.token));
+        api.defaults.headers.Authorization = `Bearer ${data.token}`;
+        socketManager.syncCurrentSocketToken?.(data.token);
+        setIsAuth(true);
+        if (data.user) {
+          setUser(data.user);
+        }
+        return data;
+      } catch (error) {
+        const status = error?.response?.status;
+        const warmingUp = error?.response?.data?.error === "ERR_API_WARMING_UP";
+
+        if ((status === 503 || status === 502 || warmingUp) && retryCount < 8) {
+          await sleep(2500);
+          return refreshSession(retryCount + 1);
+        }
+
+        throw error;
+      }
+    },
+    [socketManager]
+  );
 
   useEffect(() => {
     if (apiInterceptorsRegistered) {

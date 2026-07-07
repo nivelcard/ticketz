@@ -2,7 +2,6 @@ import { Container } from "@cloudflare/containers";
 
 const FRONTEND_ORIGIN = "https://suporte.fortmax.com.br";
 const MAX_PROXY_ATTEMPTS = 6;
-const CONTAINER_PORT_READY_TIMEOUT_MS = 120000;
 const RETRYABLE_ERROR_MARKERS = [
   "blockConcurrencyWhile",
   "waited for too long",
@@ -35,6 +34,7 @@ function buildContainerEnv(env) {
     "DB_MAX_CONNECTIONS",
     "DB_MIN_CONNECTIONS",
     "DB_CONNECT_TIMEOUT",
+    "DB_ACQUIRE",
     "REDIS_URI",
     "VERIFY_TOKEN",
     "SOCKET_ADMIN",
@@ -46,6 +46,10 @@ function buildContainerEnv(env) {
     "AUTO_MIGRATE",
     "TURNSTILE_SITE_KEY",
     "TURNSTILE_SECRET_KEY",
+    "OPENAI_API_KEY",
+    "OPENAI_KEY",
+    "AI_PROVIDER",
+    "AI_BASE_URL",
     "JWT_SECRET",
     "JWT_REFRESH_SECRET",
     "JWT_ACCESS_EXPIRES_IN",
@@ -126,7 +130,7 @@ function sleep(ms) {
 
 export class TicketzBackend extends Container {
   defaultPort = 3000;
-  sleepAfter = "2h";
+  sleepAfter = "720h";
   enableInternet = true;
   requiredPorts = [3000];
 
@@ -141,16 +145,6 @@ export class TicketzBackend extends Container {
 
   onError(error) {
     console.error("Ticketz container error:", error);
-  }
-
-  async fetch(request) {
-    await this.startAndWaitForPorts(3000, {
-      portReadyTimeoutMS: CONTAINER_PORT_READY_TIMEOUT_MS,
-      instanceGetTimeoutMS: CONTAINER_PORT_READY_TIMEOUT_MS,
-      waitInterval: 500
-    });
-
-    return this.containerFetch(request);
   }
 }
 
@@ -230,5 +224,15 @@ export default {
       503,
       { "Retry-After": "3" }
     );
+  },
+
+  async scheduled(_event, env) {
+    try {
+      const id = env.TICKETZ_BACKEND.idFromName("prod");
+      const stub = env.TICKETZ_BACKEND.get(id);
+      await stub.fetch("https://api.fortmax.com.br/health");
+    } catch (error) {
+      console.error("Container keep-warm ping failed:", error);
+    }
   }
 };

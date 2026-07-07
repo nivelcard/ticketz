@@ -36,6 +36,14 @@ export const resolveErrorMessage = err => {
     return i18n.t("backendErrors.ERR_AI_PLATFORM_NOT_READY");
   }
 
+  if (/timeout.*exceeded/i.test(errorMsg)) {
+    return i18n.t("frontendErrors.ERR_API_SLOW");
+  }
+
+  if (errorMsg === "ERR_API_WARMING_UP") {
+    return i18n.t("frontendErrors.ERR_BACKEND_NOT_READY");
+  }
+
   return errorMsg;
 };
 

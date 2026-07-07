@@ -22,7 +22,7 @@ module.exports = {
   pool: {
     max: parseInt(process.env.DB_MAX_CONNECTIONS, 10) || 60,
     min: parseInt(process.env.DB_MIN_CONNECTIONS, 10) || 5,
-    acquire: parseInt(process.env.DB_ACQUIRE, 10) || 30000,
+    acquire: parseInt(process.env.DB_ACQUIRE, 10) || 60000,
     idle: parseInt(process.env.DB_IDLE, 10) || 10000
   },
   dialect: process.env.DB_DIALECT || "postgres",

@@ -342,8 +342,8 @@ export const initWASocket = async (
           },
           version,
           defaultQueryTimeoutMs: 60000,
-          // retryRequestDelayMs: 250,
-          // keepAliveIntervalMs: 1000 * 60 * 10 * 3,
+          retryRequestDelayMs: 500,
+          keepAliveIntervalMs: 5 * 60 * 1000,
           msgRetryCounterCache,
           // syncFullHistory: true,
           generateHighQualityLinkPreview: true,
@@ -418,7 +418,7 @@ export const initWASocket = async (
                   }
                 );
                 removeWbot(id, false).then(() => {
-                  logger.info(`Reconnecting ${name} in 2 seconds`);
+                  logger.info(`Reconnecting ${name} in 1 second`);
                   setTimeout(async () => {
                     await whatsapp.reload();
                     await StartWhatsAppSession(
@@ -426,7 +426,7 @@ export const initWASocket = async (
                       whatsapp.companyId,
                       true
                     );
-                  }, 2000);
+                  }, 1000);
                 });
               } else {
                 // logged out

@@ -1219,7 +1219,9 @@ const messages = {
           "Clock out of sync. Please check the date and time settings of your device.",
         ERR_BACKEND_UNREACHABLE: "Backend unreachable. Please try again later.",
         ERR_BACKEND_NOT_READY:
-          "Backend is starting up and not ready yet. Retrying automatically."
+          "Backend is starting up and not ready yet. Retrying automatically.",
+        ERR_API_SLOW:
+          "The API is taking longer than expected. Please wait a few seconds and try again."
       },
       backendErrors: {
         ERR_UNAUTHORIZED: "You are not authorized to perform this action.",

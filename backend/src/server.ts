@@ -57,10 +57,15 @@ async function runPostListenBootstrap(_server: http.Server) {
     await import("./services/AiServices/bootstrapAiPlatform");
   const { seedTurnstileSettingsFromEnv } =
     await import("./services/AuthServices/SeedTurnstileSettingsService");
+  const { seedAiSettingsFromEnv } =
+    await import("./services/AuthServices/SeedAiSettingsFromEnv");
 
   const bootstrapServices = async () => {
     await seedTurnstileSettingsFromEnv().catch(error => {
       logger.warn({ error }, "Turnstile settings sync skipped");
+    });
+    await seedAiSettingsFromEnv().catch(error => {
+      logger.warn({ error }, "OpenAI settings sync skipped");
     });
     await bootstrapAiPlatform();
     await startBackgroundServices();

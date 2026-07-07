@@ -27,6 +27,7 @@ import Setting from "./models/Setting";
 import { parseToMilliseconds } from "./helpers/parseToMilliseconds";
 import { startCampaignQueues } from "./queues/campaign";
 import { startAiInboundQueue } from "./services/AiServices/AiInboundQueueService";
+import { runWhatsAppSessionWatchdog } from "./services/WbotServices/WhatsAppSessionWatchdogService";
 import OutOfTicketMessage from "./models/OutOfTicketMessages";
 import { getJidOf } from "./services/WbotServices/getJidOf";
 import { _t } from "./services/TranslationServices/i18nService";
@@ -50,6 +51,8 @@ export const sendScheduledMessages = new Queue(
   "SendSacheduledMessages",
   connection
 );
+
+export const whatsappWatchdog = new Queue("WhatsappWatchdog", connection);
 
 async function handleSendMessage(job) {
   try {
@@ -612,6 +615,10 @@ export async function startQueueProcess() {
 
   startAiInboundQueue();
 
+  whatsappWatchdog.process("Watchdog", async () => {
+    await runWhatsAppSessionWatchdog();
+  });
+
   messageQueue.process("SendMessage", handleSendMessage);
 
   scheduleMonitor.process("Verify", handleVerifySchedules);
@@ -634,6 +641,15 @@ export async function startQueueProcess() {
     {},
     {
       repeat: { cron: "* * * * *" },
+      removeOnComplete: true
+    }
+  );
+
+  whatsappWatchdog.add(
+    "Watchdog",
+    {},
+    {
+      repeat: { cron: "*/5 * * * *" },
       removeOnComplete: true
     }
   );

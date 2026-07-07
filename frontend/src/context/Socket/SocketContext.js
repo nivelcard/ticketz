@@ -393,8 +393,12 @@ const socketManager = {
 
       this.currentSocket = openSocket(getBackendSocketURL(), {
         transports: ["websocket"],
-        pingTimeout: 18000,
-        pingInterval: 18000,
+        pingTimeout: 60000,
+        pingInterval: 25000,
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 10000,
         query: { token }
       });
 

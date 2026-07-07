@@ -9,8 +9,7 @@ import { ingestKnowledgeDocument } from "./IngestKnowledgeDocumentService";
 import { logger } from "../../utils/logger";
 
 const DEFAULT_AGENT_NAME = "Atendente Inicial";
-const DEFAULT_ACK_MESSAGE =
-  "Olá! Sou o assistente virtual da Fortmax. Já estou analisando sua mensagem.";
+const DEFAULT_ACK_MESSAGE = "Olá! Já estou analisando sua mensagem.";
 const DEFAULT_BASE_PROMPT = `Você é o primeiro atendente virtual da Fortmax Sistemas.
 Seja cordial, objetivo e resolva o máximo possível antes de envolver um humano.
 Use a base de conhecimento quando houver trechos relevantes.
