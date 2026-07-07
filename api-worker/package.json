@@ -1,0 +1,14 @@
+{
+  "name": "fortmax-ticketz-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "^0.0.19"
+  },
+  "devDependencies": {
+    "wrangler": "^4.107.0"
+  }
+}

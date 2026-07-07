@@ -21,8 +21,9 @@ Cadastre em **Settings → Secrets and variables → Actions → Repository secr
 | `CLOUDFLARE_ACCOUNT_ID` | ID da conta Cloudflare Fortmax | Painel Cloudflare → Overview → Account ID |
 | `BACKEND_ORIGIN` | URL base do backend Node (ex.: `https://api-interna.fortmax.com.br`) | Servidor onde o Ticketz backend está rodando |
 | `CLOUDFLARE_ZONE_ID` | Zone ID de `fortmax.com.br` | Cloudflare → fortmax.com.br → Overview → Zone ID |
+| `DB_PASS` | Senha do Postgres Supabase Fortmax | Supabase → Project Settings → Database |
 
-> `BACKEND_ORIGIN` é usado pelo middleware para proxy de `/backend` e `/socket.io`.
+> `BACKEND_ORIGIN` deve ser `https://api.fortmax.com.br` (Worker + Container).
 > O frontend usa `suporte.fortmax.com.br/backend` via `config-prod.json`.
 
 ---
@@ -42,7 +43,23 @@ Cadastre em **Settings → Secrets and variables → Actions → Repository secr
 
 ---
 
-## Fluxo automático
+## Backend API (`api.fortmax.com.br`)
+
+Arquitetura: **Cloudflare Worker** (`api-worker/`) + **Container** (`backend/Dockerfile.cloudflare`).
+
+- Redis roda **dentro do mesmo container** (sem Upstash externo)
+- Postgres: Supabase Fortmax (`ticketz` schema)
+- Deploy automático: `.github/workflows/deploy-backend-prod.yml`
+
+```
+push main (backend/** ou api-worker/**) → build Docker → wrangler deploy → api.fortmax.com.br
+```
+
+Secrets adicionais: `DB_PASS` (senha Supabase).
+
+---
+
+## Fluxo automático (frontend)
 
 ```
 push main → GitHub Actions → npm build → wrangler pages deploy → purge cache

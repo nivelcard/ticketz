@@ -1,0 +1,33 @@
+# Ticketz API — Cloudflare Containers (Node + Redis local no mesmo container)
+
+FROM node:24 AS build
+WORKDIR /usr/src/app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run generate:i18nkeys && npm run build
+
+FROM node:24-bookworm-slim
+WORKDIR /usr/src/app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends redis-server supervisor ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /usr/src/app/dist ./dist
+COPY --from=build /usr/src/app/node_modules ./node_modules
+COPY --from=build /usr/src/app/package.json ./package.json
+COPY docker/cloudflare/supervisord.conf /etc/supervisor/conf.d/ticketz.conf
+COPY docker/cloudflare/start.sh /usr/local/bin/start-ticketz.sh
+
+RUN chmod +x /usr/local/bin/start-ticketz.sh \
+  && mkdir -p /data/redis /usr/src/app/public /usr/src/app/private
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV REDIS_URI=redis://127.0.0.1:6379
+ENV TZ=America/Sao_Paulo
+
+EXPOSE 3000
+
+CMD ["/usr/local/bin/start-ticketz.sh"]

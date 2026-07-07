@@ -1,0 +1,88 @@
+name: Deploy Ticketz API — Produção
+
+# Padrão Fortmax: Cloudflare Worker + Container → api.fortmax.com.br
+# NÃO usa Cloudflare Tunnel.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "api-worker/**"
+      - "scripts/setup-cloudflare-api.mjs"
+      - ".github/workflows/deploy-backend-prod.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ticketz-api-prod
+  cancel-in-progress: true
+
+env:
+  WORKER_NAME: fortmax-ticketz-api
+  API_HOST: api.fortmax.com.br
+
+jobs:
+  deploy:
+    name: Build & Deploy → api.fortmax.com.br
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validar secrets obrigatórios
+        env:
+          DB_PASS: ${{ secrets.DB_PASS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DB_PASS:-}" ]; then
+            echo "::error::Secret DB_PASS ausente. Cadastre em Settings → Secrets → Actions."
+            exit 1
+          fi
+
+      - name: Provisionar DNS e custom domain (api.fortmax.com.br)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          API_HOST: ${{ env.API_HOST }}
+          WORKER_NAME: ${{ env.WORKER_NAME }}
+        run: |
+          set -euo pipefail
+          node scripts/setup-cloudflare-api.mjs
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install api-worker dependencies
+        working-directory: api-worker
+        run: npm install --no-audit --no-fund
+
+      - name: Configurar secret DB_PASS no Worker
+        working-directory: api-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$DB_PASS" | npx wrangler secret put DB_PASS
+
+      - name: Deploy Worker + Container
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: api-worker
+          command: deploy
+
+      - name: Summary
+        run: |
+          echo "## Ticketz API publicada" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Worker: \`${{ env.WORKER_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: https://${{ env.API_HOST }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend proxy: https://suporte.fortmax.com.br/backend/" >> $GITHUB_STEP_SUMMARY
