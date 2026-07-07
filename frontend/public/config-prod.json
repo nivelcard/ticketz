@@ -1,0 +1,6 @@
+{
+  "BACKEND_PROTOCOL": "https",
+  "BACKEND_HOST": "suporte.fortmax.com.br",
+  "BACKEND_PATH": "/backend",
+  "LOG_LEVEL": "info"
+}

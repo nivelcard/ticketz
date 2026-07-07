@@ -1,0 +1,101 @@
+name: Deploy Ticketz SPA — Produção
+
+# Padrão Fortmax (WebG3 / Nível Cashback / Cortex):
+#   push em main → GitHub Actions → Cloudflare Pages + functions/_middleware.ts
+#
+# NÃO usa Cloudflare Tunnel.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - "functions/**"
+      - "scripts/**"
+      - ".github/workflows/deploy-spa-prod.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ticketz-spa-prod
+  cancel-in-progress: true
+
+env:
+  CF_PROJECT_NAME: fortmax-ticketz-prod
+  CF_BRANCH: main
+  FRONTEND_HOST: suporte.fortmax.com.br
+
+jobs:
+  deploy:
+    name: Build & Deploy → suporte.fortmax.com.br
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Provisionar Cloudflare Pages (projeto, domínio, env)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          BACKEND_ORIGIN: ${{ secrets.BACKEND_ORIGIN }}
+        run: |
+          set -euo pipefail
+          node scripts/setup-cloudflare-prod.mjs
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build SPA
+        working-directory: frontend
+        env:
+          NODE_OPTIONS: --openssl-legacy-provider
+        run: npm run build
+
+      - name: Gerar config.json de produção
+        run: cp frontend/public/config-prod.json frontend/build/config.json
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: >-
+            pages deploy frontend/build
+            --project-name=${{ env.CF_PROJECT_NAME }}
+            --branch=${{ env.CF_BRANCH }}
+            --commit-dirty=true
+            --var BACKEND_ORIGIN:${{ secrets.BACKEND_ORIGIN }}
+
+      - name: Purge Cloudflare cache
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        run: |
+          set -e
+          if [ -z "${CF_ZONE_ID:-}" ]; then
+            echo "::warning::CLOUDFLARE_ZONE_ID ausente — purge ignorado."
+            exit 0
+          fi
+          curl -fsS -X POST \
+            "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"purge_everything":true}'
+          echo
+
+      - name: Summary
+        run: |
+          echo "## Ticketz publicado" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Projeto Pages: \`${{ env.CF_PROJECT_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: https://${{ env.FRONTEND_HOST }}" >> $GITHUB_STEP_SUMMARY
