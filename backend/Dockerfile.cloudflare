@@ -25,6 +25,7 @@ RUN chmod +x /usr/local/bin/start-ticketz.sh \
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV HOST=0.0.0.0
 ENV REDIS_URI=redis://127.0.0.1:6379
 ENV TZ=America/Sao_Paulo
 

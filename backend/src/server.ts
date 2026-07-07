@@ -17,6 +17,8 @@ if (!process.env.PORT) {
   process.exit(1);
 }
 
+const HOST = process.env.HOST || "0.0.0.0";
+
 // Function to start server and initialize services
 async function startServer() {
   try {
@@ -35,7 +37,7 @@ async function startServer() {
     await Promise.all(sessionPromises);
 
     startQueueProcess();
-    logger.info(`Server started on port: ${process.env.PORT}`);
+    logger.info(`Background services started on port: ${process.env.PORT}`);
 
     try {
       await payGatewayInitialize();
@@ -46,33 +48,36 @@ async function startServer() {
     checkOpenInvoices();
   } catch (error) {
     logger.error(`Error during server startup: ${error.message}`);
-    process.exit(1);
   }
 }
 
-// wait for i18n initialization before starting the server
-i18nReady.then(() => {
-  // Create and start the server
-  const server = app.listen(process.env.PORT, async () => {
-    logger.info(`Server is listening on port: ${process.env.PORT}`);
+// Listen immediately so container health checks pass; init i18n/services in background.
+const server = app.listen(process.env.PORT, HOST, () => {
+  logger.info(`Server is listening on ${HOST}:${process.env.PORT}`);
+});
 
+initIO(server);
+
+gracefulShutdown(server, {
+  signals: "SIGINT SIGTERM",
+  timeout: 30000,
+  onShutdown: async () => {
+    logger.info("Shutdown initiated. Cleaning up...");
+  },
+  finally: () => {
+    logger.info("Server has shut down.");
+  }
+});
+
+i18nReady
+  .then(async () => {
+    logger.trace("i18n initialized");
+    await startServer();
+  })
+  .catch(async error => {
+    logger.error(`i18n initialization failed: ${error.message}`);
     await startServer();
   });
-
-  initIO(server);
-
-  // Graceful Shutdown Setup
-  gracefulShutdown(server, {
-    signals: "SIGINT SIGTERM",
-    timeout: 30000,
-    onShutdown: async () => {
-      logger.info("Shutdown initiated. Cleaning up...");
-    },
-    finally: () => {
-      logger.info("Server has shut down.");
-    }
-  });
-});
 
 // Global Exception Handlers
 process.on("uncaughtException", err => {

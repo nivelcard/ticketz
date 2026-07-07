@@ -44,6 +44,9 @@ app.use(
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(Sentry.Handlers.requestHandler());
+app.get("/health", (_req, res) => {
+  res.status(200).json({ ok: true });
+});
 app.get("/public/*", (req, res) => {
   const filePath = path.join(uploadConfig.directory, req.params[0]);
 
