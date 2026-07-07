@@ -38,7 +38,16 @@ export const getTurnstileSiteKey = async (): Promise<string | null> =>
 export const getTurnstileSecretKey = async (): Promise<string | null> =>
   (await readSetting(SECRET_KEY_ALIASES)) || readEnv(SECRET_KEY_ALIASES);
 
+export const isTurnstileExplicitlyEnabled = (): boolean =>
+  ["true", "1", "yes", "enabled"].includes(
+    String(process.env.TURNSTILE_ENABLED || "").trim().toLowerCase()
+  );
+
 export const isTurnstileEnabled = async (): Promise<boolean> => {
+  if (!isTurnstileExplicitlyEnabled()) {
+    return false;
+  }
+
   const siteKey = await getTurnstileSiteKey();
   const secretKey = await getTurnstileSecretKey();
   return Boolean(siteKey && secretKey);

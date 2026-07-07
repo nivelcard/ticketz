@@ -2,7 +2,6 @@ import { Router } from "express";
 import multer from "multer";
 import isAuth from "../middleware/isAuth";
 import isAdmin from "../middleware/isAdmin";
-import envTokenAuth from "../middleware/envTokenAuth";
 
 import * as SettingController from "../controllers/SettingController";
 import isSuper from "../middleware/isSuper";
@@ -15,11 +14,7 @@ settingRoutes.get("/settings", isAuth, isAdmin, SettingController.index);
 
 settingRoutes.get("/settings/:settingKey", isAuth, SettingController.show);
 
-settingRoutes.get(
-  "/public-settings/:settingKey",
-  envTokenAuth,
-  SettingController.publicShow
-);
+settingRoutes.get("/public-settings/:settingKey", SettingController.publicShow);
 
 // change setting key to key in future
 settingRoutes.put(

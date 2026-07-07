@@ -1,4 +1,5 @@
 import Setting from "../../models/Setting";
+import { isTurnstileExplicitlyEnabled } from "../AuthServices/TurnstileConfigService";
 
 interface Request {
   key: string;
@@ -40,6 +41,13 @@ const GetPublicSettingService = async ({
   key
 }: Request): Promise<string | undefined> => {
   if (!publicSettingsKeys.includes(key)) {
+    return null;
+  }
+
+  if (
+    TURNSTILE_SITE_KEY_ALIASES.includes(key) &&
+    !isTurnstileExplicitlyEnabled()
+  ) {
     return null;
   }
 
