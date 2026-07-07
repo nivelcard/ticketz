@@ -1,11 +1,11 @@
 {
-  "short_name": "Ticketz",
-  "name": "Ticketz - Chat Based Ticket System",
+  "short_name": "Fortmax",
+  "name": "Fortmax Sistemas",
   "icons": [
     {
-      "src": "vector/favicon.ico",
+      "src": "vector/fortmax-logo.png",
       "sizes": "512x512 192x192 64x64 32x32 24x24 16x16",
-      "type": "image/svg+xml"
+      "type": "image/png"
     },
     {
       "src": "favicon.ico",
@@ -20,6 +20,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#D32F2F",
+  "background_color": "#F8FAFC"
 }

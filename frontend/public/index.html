@@ -11,7 +11,8 @@
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#D32F2F" />
+    <title>Fortmax</title>
     <meta
       name="viewport"
       content="minimum-scale=1, initial-scale=1, width=device-width"
@@ -43,24 +44,30 @@
       }
 
       :root {
-        --background: #999;
-        --splash: #777;
-        --primary: #fff;
+        --background: #0b1120;
+        --splash: #151d2e;
+        --primary: #ef5350;
+        --border: #2a3548;
+        --text-secondary: #94a3b8;
       }
 
       @media (prefers-color-scheme: light) {
         :root {
-          --background: #fff;
-          --splash: #fff;
-          --primary: #000;
+          --background: #f8fafc;
+          --splash: #ffffff;
+          --primary: #d32f2f;
+          --border: #e2e8f0;
+          --text-secondary: #64748b;
         }
       }
 
       @media (prefers-color-scheme: dark) {
         :root {
-          --background: #333;
-          --splash: #424242;
-          --primary: #fff;
+          --background: #0b1120;
+          --splash: #151d2e;
+          --primary: #ef5350;
+          --border: #2a3548;
+          --text-secondary: #94a3b8;
         }
       }
 
@@ -72,67 +79,58 @@
 
       #app-logo-div {
         width: 100%;
-        margin-bottom: 20px;
-        display: none;
+        margin-bottom: 24px;
+        display: block;
         text-align: center;
       }
       #app-logo {
-        width: 100%;
+        width: auto;
+        max-width: 220px;
+        max-height: 56px;
         height: auto;
+        object-fit: contain;
       }
 
-      /* Basic styles for the splash screen background */
+      #splash-tagline {
+        font-family: "Inter", "Roboto", "Helvetica", "Arial", sans-serif;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        margin: -12px 0 20px;
+        letter-spacing: 0.02em;
+      }
+
+      /* Splash background */
       #splash-background {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        background: linear-gradient(
-          to right,
-          var(--background),
-          var(--background),
-          var(--primary),
-          var(--background),
-          var(--background)
-        );
+        background:
+          radial-gradient(
+            ellipse at 20% 0%,
+            rgba(211, 47, 47, 0.07) 0%,
+            transparent 55%
+          ),
+          radial-gradient(
+            ellipse at 80% 100%,
+            rgba(211, 47, 47, 0.05) 0%,
+            transparent 50%
+          ),
+          var(--background);
         background-color: var(--background);
-        background-size: 200% 200%;
-        animation: splash-gradient-drift 18s ease-in-out infinite;
         z-index: 9998;
         display: flex;
         justify-content: center;
         align-items: center;
       }
 
-      @keyframes splash-gradient-drift {
-        0% {
-          background-position: 0% 50%;
-        }
-
-        50% {
-          background-position: 100% 50%;
-        }
-
-        100% {
-          background-position: 0% 50%;
-        }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        #splash-background {
-          animation: none;
-        }
-      }
-
-      /* Basic styles for the splash screen */
+      /* Splash card */
       #splash-screen {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        padding: 24px;
-        transform: translate(-50%, -50%);
-        width: 444px;
+        position: relative;
+        padding: 36px 32px 28px;
+        width: 400px;
         max-width: 90%;
         height: auto;
         display: flex;
@@ -141,29 +139,25 @@
         align-items: center;
         background-color: var(--splash);
         z-index: 9999;
-        border-radius: 12.5px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
       }
 
       .progress-bar {
-        width: 80%;
-        height: 20px;
+        width: 70%;
+        height: 4px;
         margin-left: auto;
         margin-right: auto;
-        background-color: var(--background);
-        border-radius: 10px;
-        border-color: var(--primary);
-        border-style: solid;
-        border-width: 2px;
+        background-color: var(--border);
+        border-radius: 4px;
         overflow: hidden;
       }
 
       .progress {
         height: 100%;
         background-color: var(--primary);
-        border-color: var(--background);
-        border-style: solid;
-        border-width: 2px;
-        border-radius: 8px;
+        border-radius: 4px;
         width: 0;
         transition: width 0.2s;
       }
@@ -208,8 +202,13 @@
     <div id="splash-background">
       <div id="splash-screen">
         <div class="app-logo-div" id="app-logo-div">
-          <img id="app-logo" alt="logo" />
+          <img
+            id="app-logo"
+            alt="Fortmax Sistemas"
+            src="/vector/fortmax-logo.png"
+          />
         </div>
+        <div id="splash-tagline">Sistema de atendimento</div>
         <div class="progress-bar">
           <div class="progress" id="progress-bar"></div>
         </div>
@@ -253,14 +252,18 @@
       progress = 0;
       const themes = {
         light: {
-          background: "#fff",
-          splash: "#fff",
-          primary: "#000"
+          background: "#f8fafc",
+          splash: "#ffffff",
+          primary: "#d32f2f",
+          border: "#e2e8f0",
+          textSecondary: "#64748b"
         },
         dark: {
-          background: "#333",
-          splash: "#424242",
-          primary: "#fff"
+          background: "#0b1120",
+          splash: "#151d2e",
+          primary: "#ef5350",
+          border: "#2a3548",
+          textSecondary: "#94a3b8"
         }
       };
 
@@ -276,6 +279,11 @@
         root.style.setProperty("--background", themes[theme].background);
         root.style.setProperty("--splash", themes[theme].splash);
         root.style.setProperty("--primary", themes[theme].primary);
+        root.style.setProperty("--border", themes[theme].border);
+        root.style.setProperty(
+          "--text-secondary",
+          themes[theme].textSecondary
+        );
       }
 
       window.renderError = message => {
@@ -332,7 +340,7 @@
 
             root.style.setProperty(
               "--primary",
-              theme === "dark" ? "#39ACE7" : "#00f"
+              theme === "dark" ? "#ef5350" : "#d32f2f"
             );
           });
 
@@ -347,9 +355,9 @@
             (await (theme === "dark" ? responses[1] : responses[0]).json());
 
           if (!logoSrc) {
-            appLogo.src = `/vector/logo${theme === "dark" ? "-dark" : ""}.svg`;
+            appLogo.src = "/vector/fortmax-logo.png";
           } else {
-            appLogo.src = backendUrl + "/public/" + (logoSrc || logoAltSrc);
+            appLogo.src = backendUrl + "/public/" + logoSrc;
           }
           const appLogoDiv = document.getElementById("app-logo-div");
           appLogoDiv.style.display = "block";
@@ -358,7 +366,7 @@
         fetch(settingsBaseUrl + "/appName")
           .then(response => response.json())
           .then(data => {
-            document.title = data || "ticketz";
+            document.title = data || "Fortmax";
           });
       };
 
