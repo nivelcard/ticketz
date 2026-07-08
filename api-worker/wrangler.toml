@@ -53,6 +53,7 @@ JWT_ACCESS_EXPIRES_IN = "8h"
 JWT_REFRESH_EXPIRES_IN = "30d"
 JWT_SECRET = "fortmax-ticketz-access-jwt-v1-7f3a9c2e8b1d4f6a0c5e9b2d7f1a4c8e"
 JWT_REFRESH_SECRET = "fortmax-ticketz-refresh-jwt-v1-2b8d4f6a1c9e3b7d0f5a8c2e6b4d1f9a"
+TURNSTILE_ENABLED = "true"
 TURNSTILE_SITE_KEY = "0x4AAAAAADhSILt9PsBiVeID"
 
 [triggers]

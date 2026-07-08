@@ -77,6 +77,19 @@ const readTurnstileSiteKeyFromEnv = (): string | null =>
     .map(key => process.env[key]?.trim())
     .find(value => Boolean(value)) || null;
 
+const readTurnstileSecretKeyFromEnv = (): string | null =>
+  ["TURNSTILE_SECRET_KEY", "turnstileSecretKey", "CF_TURNSTILE_SECRET_KEY"]
+    .map(key => process.env[key]?.trim())
+    .find(value => Boolean(value)) || null;
+
+const getEnabledTurnstileSiteKey = (): string | null => {
+  if (!isTurnstileEnabled() || !readTurnstileSecretKeyFromEnv()) {
+    return null;
+  }
+
+  return readTurnstileSiteKeyFromEnv();
+};
+
 const getClientIp = (req: express.Request): string => {
   const cfIp = req.headers["cf-connecting-ip"];
   if (typeof cfIp === "string" && cfIp.trim()) {
@@ -165,9 +178,7 @@ app.get("/public-settings/:settingKey", (req, res) => {
   }
 
   if (turnstileSiteKeyAliases.has(settingKey)) {
-    return res
-      .status(200)
-      .json(isTurnstileEnabled() ? readTurnstileSiteKeyFromEnv() : null);
+    return res.status(200).json(getEnabledTurnstileSiteKey());
   }
 
   return res.status(200).json(null);

@@ -1,7 +1,7 @@
 import { Container } from "@cloudflare/containers";
 
 const FRONTEND_ORIGIN = "https://suporte.fortmax.com.br";
-const CONTAINER_INSTANCE_NAME = "prod-db-pooler-aws1";
+const CONTAINER_INSTANCE_NAME = "prod-turnstile-enabled";
 const MAX_PROXY_ATTEMPTS = 4;
 const PROXY_TIMEOUT_MS = 90000;
 const RETRYABLE_ERROR_MARKERS = [
@@ -48,6 +48,7 @@ function buildContainerEnv(env) {
     "CLOSED_SEND_BY_ME",
     "STORAGE_ROOT_PREFIX",
     "AUTO_MIGRATE",
+    "TURNSTILE_ENABLED",
     "TURNSTILE_SITE_KEY",
     "TURNSTILE_SECRET_KEY",
     "OPENAI_API_KEY",
