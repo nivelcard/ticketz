@@ -11,18 +11,14 @@ if (!process.env.PORT) {
 const HOST = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT);
 
-async function startBackgroundServices() {
+async function startWhatsAppAndBillingServices() {
   const { StartAllWhatsAppsSessions } =
     await import("./services/WbotServices/StartAllWhatsAppsSessions");
   const Company = (await import("./models/Company")).default;
-  const { startQueueProcess } = await import("./queues");
   const { checkOpenInvoices, payGatewayInitialize } =
     await import("./services/PaymentGatewayServices/PaymentGatewayServices");
 
   try {
-    startQueueProcess();
-    logger.info(`Background queues started on port: ${process.env.PORT}`);
-
     const companies = await Company.findAll();
     const sessionPromises = companies.map(async company => {
       try {
@@ -37,7 +33,9 @@ async function startBackgroundServices() {
 
     await Promise.all(sessionPromises);
 
-    logger.info(`WhatsApp background services started on port: ${process.env.PORT}`);
+    logger.info(
+      `WhatsApp background services started on port: ${process.env.PORT}`
+    );
 
     try {
       await payGatewayInitialize();
@@ -46,6 +44,32 @@ async function startBackgroundServices() {
     }
 
     checkOpenInvoices();
+  } catch (error) {
+    logger.error(`Error during deferred startup: ${error.message}`);
+  }
+}
+
+async function startBackgroundServices() {
+  const { startQueueProcess } = await import("./queues");
+
+  try {
+    startQueueProcess();
+    logger.info(`Background queues started on port: ${process.env.PORT}`);
+
+    const deferMs = Number(process.env.WHATSAPP_DEFER_START_MS || 0);
+    const safeDeferMs = Number.isFinite(deferMs) && deferMs >= 0 ? deferMs : 0;
+
+    if (safeDeferMs > 0) {
+      logger.info(
+        `Deferring WhatsApp startup by ${safeDeferMs}ms for faster API warm-up`
+      );
+      setTimeout(() => {
+        void startWhatsAppAndBillingServices();
+      }, safeDeferMs);
+      return;
+    }
+
+    await startWhatsAppAndBillingServices();
   } catch (error) {
     logger.error(`Error during server startup: ${error.message}`);
   }

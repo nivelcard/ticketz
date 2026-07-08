@@ -3,6 +3,8 @@ import Ticket from "../../models/Ticket";
 import AiAgent from "../../models/AiAgent";
 import MessageMediaFile from "../../models/MessageMediaFile";
 import AiConversationLog from "../../models/AiConversationLog";
+import KnowledgeDocument from "../../models/KnowledgeDocument";
+import { Op } from "sequelize";
 import {
   chatCompletion,
   createEmbedding,
@@ -15,8 +17,12 @@ import {
   detectHumanHandoffRequest,
   detectSensitiveTopic,
   detectLowConfidenceResponse,
-  shouldAiHandleTicket
+  canAiEngageTicket
 } from "./AiHelpers";
+import {
+  buildAiSchedulePromptBlock,
+  getAiScheduleContext
+} from "./AiScheduleContextService";
 import { searchKnowledgeChunks } from "./RetrievalEngine";
 import HandoffToHumanService from "./HandoffToHumanService";
 import SendWhatsAppMessage from "../WbotServices/SendWhatsAppMessage";
@@ -59,6 +65,25 @@ Responda em português do Brasil.
 
 const EMPTY_INPUT_FALLBACK =
   "Recebi sua mensagem, mas não consegui entender o conteúdo. Pode enviar por texto ou tentar novamente?";
+
+const hasReadyKnowledgeDocuments = async (
+  companyId: number,
+  knowledgeBaseIds: number[]
+): Promise<boolean> => {
+  if (!knowledgeBaseIds.length) {
+    return false;
+  }
+
+  const readyDocuments = await KnowledgeDocument.count({
+    where: {
+      companyId,
+      knowledgeBaseId: { [Op.in]: knowledgeBaseIds },
+      status: "ready"
+    }
+  });
+
+  return readyDocuments > 0;
+};
 
 const buildConversationHistory = async (
   ticketId: number,
@@ -224,9 +249,9 @@ const ProcessInboundMessageService = async ({
     return;
   }
 
-  await ticket.reload();
+  await ticket.reload({ include: ["contact", "whatsapp", "queue"] });
 
-  if (!(await shouldAiHandleTicket(ticket))) {
+  if (!canAiEngageTicket(ticket)) {
     await persistAiDecisionLog({
       companyId,
       ticketId: ticket.id,
@@ -308,10 +333,16 @@ const ProcessInboundMessageService = async ({
       ticket.queueId
     );
 
+    const scheduleContext = await getAiScheduleContext(ticket);
+    const schedulePrompt = buildAiSchedulePromptBlock(scheduleContext);
+
     let usedChunks: { id: number; content: string; similarity: number }[] = [];
     let contextBlock = "";
 
-    if (knowledgeBaseIds.length) {
+    if (
+      knowledgeBaseIds.length &&
+      (await hasReadyKnowledgeDocuments(companyId, knowledgeBaseIds))
+    ) {
       const queryEmbedding = await createEmbedding(
         companyId,
         userText,
@@ -344,7 +375,14 @@ const ProcessInboundMessageService = async ({
     const contextHint = hasReliableContext
       ? contextBlock
       : contextBlock || "Nenhum trecho altamente relevante encontrado na base.";
-    const systemPrompt = `${agent.basePrompt || ""}\n${DEFAULT_SYSTEM_RULES}\n\nBase de conhecimento:\n${contextHint}`;
+    const systemPrompt = [
+      agent.basePrompt || "",
+      DEFAULT_SYSTEM_RULES,
+      schedulePrompt,
+      `Base de conhecimento:\n${contextHint}`
+    ]
+      .filter(Boolean)
+      .join("\n\n");
 
     const completion = await chatCompletion(companyId, {
       model: agent.textModel,

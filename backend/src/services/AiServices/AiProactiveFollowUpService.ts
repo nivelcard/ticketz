@@ -4,12 +4,9 @@ import Ticket from "../../models/Ticket";
 import Contact from "../../models/Contact";
 import Message from "../../models/Message";
 import { isAiFeaturesEnabled } from "./AiPlatformState";
-import { getActiveAgent } from "./AiHelpers";
+import { getActiveAgent, canAiEngageTicket } from "./AiHelpers";
 import { getAiInboundQueue } from "./AiInboundQueueService";
-import {
-  canAiEngageTicket,
-  tryEngageAiFromStoredMessage
-} from "./AiReengagementService";
+import { tryEngageAiFromStoredMessage } from "./AiReengagementService";
 import { persistAiDecisionLog } from "./AiDecisionLogger";
 import { logger } from "../../utils/logger";
 

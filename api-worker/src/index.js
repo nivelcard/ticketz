@@ -2,8 +2,10 @@ import { Container } from "@cloudflare/containers";
 
 const FRONTEND_ORIGIN = "https://suporte.fortmax.com.br";
 const CONTAINER_INSTANCE_NAME = "prod-session-ai-stability";
-const MAX_PROXY_ATTEMPTS = 4;
+const MAX_PROXY_ATTEMPTS = 5;
 const PROXY_TIMEOUT_MS = 90000;
+const PROXY_RETRY_DELAY_MS = 350;
+const PROXY_RETRY_DELAY_MAX_MS = 1500;
 const RETRYABLE_ERROR_MARKERS = [
   "blockConcurrencyWhile",
   "waited for too long",
@@ -67,6 +69,7 @@ function buildContainerEnv(env) {
     "AI_PROVIDER_TIMEOUT_MS",
     "AI_PROVIDER_MAX_RETRIES",
     "WHATSAPP_START_TIMEOUT_MS",
+    "WHATSAPP_DEFER_START_MS",
     "AI_REENGAGEMENT_ENABLED",
     "AI_PROACTIVE_FOLLOWUP_ENABLED",
     "AI_PROACTIVE_FOLLOWUP_MINUTES"
@@ -182,6 +185,10 @@ export class TicketzBackend extends Container {
   }
 }
 
+function proxyRetryDelayMs(attempt) {
+  return Math.min(attempt * PROXY_RETRY_DELAY_MS, PROXY_RETRY_DELAY_MAX_MS);
+}
+
 async function proxyToContainer(request, env) {
   const id = env.TICKETZ_BACKEND.idFromName(CONTAINER_INSTANCE_NAME);
   const stub = env.TICKETZ_BACKEND.get(id);
@@ -225,7 +232,7 @@ export default {
 
         if (isRetryableResponse(response) && attempt < MAX_PROXY_ATTEMPTS) {
           await response.body?.cancel?.();
-          await sleep(Math.min(attempt * 1500, 6000));
+          await sleep(proxyRetryDelayMs(attempt));
           continue;
         }
 
@@ -242,7 +249,7 @@ export default {
           break;
         }
 
-        await sleep(Math.min(attempt * 1500, 6000));
+        await sleep(proxyRetryDelayMs(attempt));
       }
     }
 
@@ -257,19 +264,28 @@ export default {
         message
       },
       503,
-      { "Retry-After": "3" }
+      { "Retry-After": "1" }
     );
   },
 
   async scheduled(_event, env) {
+    const id = env.TICKETZ_BACKEND.idFromName(CONTAINER_INSTANCE_NAME);
+    const stub = env.TICKETZ_BACKEND.get(id);
+
     try {
-      const id = env.TICKETZ_BACKEND.idFromName(CONTAINER_INSTANCE_NAME);
-      const stub = env.TICKETZ_BACKEND.get(id);
       await stub.fetch("https://api.fortmax.com.br/health", {
-        signal: AbortSignal.timeout(30000)
+        signal: AbortSignal.timeout(15000)
       });
     } catch (error) {
-      console.error("Container keep-warm ping failed:", error);
+      console.error("Container keep-warm health ping failed:", error);
+    }
+
+    try {
+      await stub.fetch("https://api.fortmax.com.br/public-settings/appName", {
+        signal: AbortSignal.timeout(15000)
+      });
+    } catch (error) {
+      console.error("Container keep-warm routes ping failed:", error);
     }
   }
 };

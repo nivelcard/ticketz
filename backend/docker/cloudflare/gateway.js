@@ -6,7 +6,7 @@ const http = require("http");
 const GATEWAY_PORT = Number(process.env.GATEWAY_PORT || 3000);
 const APP_PORT = Number(process.env.APP_PORT || 3001);
 const APP_HOST = process.env.APP_HOST || "127.0.0.1";
-const APP_PROBE_INTERVAL_MS = 250;
+const APP_PROBE_INTERVAL_MS = 100;
 
 let appReady = false;
 
@@ -58,7 +58,7 @@ const sendWarmingResponse = (req, res) => {
 
   res.writeHead(503, {
     "Content-Type": "application/json",
-    "Retry-After": "2"
+    "Retry-After": "1"
   });
   res.end(JSON.stringify({ ok: false, error: "ERR_API_WARMING_UP" }));
   return true;

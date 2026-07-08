@@ -2,7 +2,7 @@ import Queue, { Job } from "bull";
 import Ticket from "../../models/Ticket";
 import AiAgent from "../../models/AiAgent";
 import { logger } from "../../utils/logger";
-import { getActiveAgent, shouldAiHandleTicket } from "./AiHelpers";
+import { getActiveAgent, canAiEngageTicket } from "./AiHelpers";
 import ProcessInboundMessageService, {
   InboundMessageItem
 } from "./ProcessInboundMessageService";
@@ -105,7 +105,7 @@ const revalidateTicketForAi = async (
     return null;
   }
 
-  if (!(await shouldAiHandleTicket(ticket))) {
+  if (!canAiEngageTicket(ticket)) {
     return null;
   }
 
@@ -186,6 +186,173 @@ const scheduleDebouncedJob = async (
   );
 };
 
+const getLockTtlSeconds = (): number =>
+  parsePositiveInt(process.env.AI_QUEUE_LOCK_TTL_SEC, 300);
+
+const usesImmediateProcessing = (): boolean => getDebounceMs() === 0;
+
+const rescheduleIfBuffered = async (
+  companyId: number,
+  ticketId: number
+): Promise<void> => {
+  const redis = getAiInboundQueue().client;
+  const pending = await redis.llen(bufferKey(ticketId));
+  if (pending > 0) {
+    if (usesImmediateProcessing()) {
+      void processBufferedAiInbound(companyId, ticketId).catch(error => {
+        logger.error(
+          { error, ticketId, companyId },
+          "Immediate AI follow-up processing failed"
+        );
+      });
+      return;
+    }
+
+    await scheduleDebouncedJob(companyId, ticketId);
+  }
+};
+
+export const processBufferedAiInbound = async (
+  companyId: number,
+  ticketId: number,
+  job?: Job<AiInboundJobData>
+): Promise<void> => {
+  const redis = getAiInboundQueue().client;
+  const lockTtlSeconds = getLockTtlSeconds();
+  let ownsLock = false;
+
+  if (job) {
+    await recordAiJobStarted(job);
+  }
+
+  try {
+    const lockAcquired = await redis.set(
+      lockKey(ticketId),
+      job ? String(job.id) : "inline",
+      "EX",
+      lockTtlSeconds,
+      "NX"
+    );
+
+    if (lockAcquired !== "OK") {
+      if (job) {
+        await persistAiDecisionLog({
+          companyId,
+          ticketId,
+          action: "job_cancelled",
+          reason: "lock_not_acquired"
+        });
+        await recordAiJobCompleted(job, "cancelled");
+      }
+      return;
+    }
+
+    ownsLock = true;
+
+    const revalidated = await revalidateTicketForAi(ticketId, companyId);
+    if (!revalidated) {
+      await redis.del(bufferKey(ticketId));
+      if (job) {
+        await persistAiDecisionLog({
+          companyId,
+          ticketId,
+          action: "job_cancelled",
+          reason: "ticket_no_longer_eligible_for_ai"
+        });
+        await recordAiJobCompleted(job, "cancelled");
+      }
+      return;
+    }
+
+    const payloads = await drainBufferedMessages(ticketId);
+    if (!payloads.length) {
+      if (job) {
+        await persistAiDecisionLog({
+          companyId,
+          ticketId,
+          action: "job_cancelled",
+          reason: "empty_buffer"
+        });
+        await recordAiJobCompleted(job, "cancelled");
+      }
+      return;
+    }
+
+    await persistAiDecisionLog({
+      companyId,
+      ticketId,
+      action: "job_started",
+      reason: job ? "processing_buffered_messages" : "immediate_processing",
+      details: { messageCount: payloads.length, immediate: !job }
+    });
+
+    await ProcessInboundMessageService({
+      ticket: revalidated.ticket,
+      companyId,
+      agent: revalidated.agent,
+      messages: payloads.map(mapPayloadToInboundItem)
+    });
+
+    if (job) {
+      await recordAiJobCompleted(job, "completed");
+    }
+
+    await rescheduleIfBuffered(companyId, ticketId);
+  } catch (error) {
+    if (
+      job &&
+      isTransientAiError(error) &&
+      job.attemptsMade < getMaxAttempts()
+    ) {
+      throw error;
+    }
+
+    logger.error(
+      { error, ticketId, companyId, attemptsMade: job?.attemptsMade },
+      "AI inbound processing failed with definitive error"
+    );
+
+    await persistAiDecisionLog({
+      companyId,
+      ticketId,
+      action: "job_failed",
+      reason: error instanceof Error ? error.message : "ai_queue_error",
+      details: { attemptsMade: job?.attemptsMade || 0, immediate: !job }
+    });
+
+    try {
+      const revalidated = await revalidateTicketForAi(ticketId, companyId);
+      if (revalidated) {
+        const payloads = await drainBufferedMessages(ticketId);
+        if (payloads.length) {
+          await ProcessInboundMessageService({
+            ticket: revalidated.ticket,
+            companyId,
+            agent: revalidated.agent,
+            messages: payloads.map(mapPayloadToInboundItem),
+            forceHandoff: true,
+            handoffReason:
+              error instanceof Error ? error.message : "ai_queue_error"
+          });
+        }
+      }
+    } catch (handoffError) {
+      logger.error(
+        { handoffError, ticketId },
+        "Failed to hand off after definitive AI processing error"
+      );
+    }
+
+    if (job) {
+      await recordAiJobCompleted(job, "failed");
+    }
+  } finally {
+    if (ownsLock) {
+      await redis.del(lockKey(ticketId));
+    }
+  }
+};
+
 export const enqueueAiInboundMessage = async (
   payload: Omit<AiInboundPayload, "enqueuedAt">
 ): Promise<boolean> => {
@@ -215,7 +382,35 @@ export const enqueueAiInboundMessage = async (
 
   const isProcessing = await redis.exists(lockKey(payload.ticketId));
   if (isProcessing) {
-    await scheduleDebouncedJob(payload.companyId, payload.ticketId);
+    if (!usesImmediateProcessing()) {
+      await scheduleDebouncedJob(payload.companyId, payload.ticketId);
+    }
+    return true;
+  }
+
+  if (usesImmediateProcessing()) {
+    await persistAiDecisionLog({
+      companyId: payload.companyId,
+      ticketId: payload.ticketId,
+      messageId: payload.messageId,
+      action: "enqueue",
+      reason: "immediate_processing_started",
+      details: {
+        mediaType: payload.mediaType || "text",
+        hasMedia: Boolean(payload.mediaUrl)
+      },
+      userMessage: payload.messageBody
+    });
+
+    void processBufferedAiInbound(payload.companyId, payload.ticketId).catch(
+      error => {
+        logger.error(
+          { error, ticketId: payload.ticketId, companyId: payload.companyId },
+          "Immediate AI processing failed"
+        );
+      }
+    );
+
     return true;
   }
 
@@ -246,141 +441,11 @@ export const enqueueAiInboundMessage = async (
   return true;
 };
 
-const rescheduleIfBuffered = async (
-  companyId: number,
-  ticketId: number
+export const handleAiInboundJob = async (
+  job: Job<AiInboundJobData>
 ): Promise<void> => {
-  const redis = getAiInboundQueue().client;
-  const pending = await redis.llen(bufferKey(ticketId));
-  if (pending > 0) {
-    await scheduleDebouncedJob(companyId, ticketId);
-  }
-};
-
-export const handleAiInboundJob = async (job: Job<AiInboundJobData>) => {
   const { companyId, ticketId } = job.data;
-  const queue = getAiInboundQueue();
-  const redis = queue.client;
-  const lockTtlSeconds = parsePositiveInt(
-    process.env.AI_QUEUE_LOCK_TTL_SEC,
-    300
-  );
-
-  await recordAiJobStarted(job);
-
-  let ownsLock = false;
-
-  try {
-    const lockAcquired = await redis.set(
-      lockKey(ticketId),
-      String(job.id),
-      "EX",
-      lockTtlSeconds,
-      "NX"
-    );
-
-    if (lockAcquired !== "OK") {
-      await persistAiDecisionLog({
-        companyId,
-        ticketId,
-        action: "job_cancelled",
-        reason: "lock_not_acquired"
-      });
-      await recordAiJobCompleted(job, "cancelled");
-      return;
-    }
-
-    ownsLock = true;
-
-    const revalidated = await revalidateTicketForAi(ticketId, companyId);
-    if (!revalidated) {
-      await redis.del(bufferKey(ticketId));
-      await persistAiDecisionLog({
-        companyId,
-        ticketId,
-        action: "job_cancelled",
-        reason: "ticket_no_longer_eligible_for_ai"
-      });
-      await recordAiJobCompleted(job, "cancelled");
-      return;
-    }
-
-    const payloads = await drainBufferedMessages(ticketId);
-    if (!payloads.length) {
-      await persistAiDecisionLog({
-        companyId,
-        ticketId,
-        action: "job_cancelled",
-        reason: "empty_buffer"
-      });
-      await recordAiJobCompleted(job, "cancelled");
-      return;
-    }
-
-    await persistAiDecisionLog({
-      companyId,
-      ticketId,
-      action: "job_started",
-      reason: "processing_buffered_messages",
-      details: { messageCount: payloads.length }
-    });
-
-    await ProcessInboundMessageService({
-      ticket: revalidated.ticket,
-      companyId,
-      agent: revalidated.agent,
-      messages: payloads.map(mapPayloadToInboundItem)
-    });
-
-    await recordAiJobCompleted(job, "completed");
-    await rescheduleIfBuffered(companyId, ticketId);
-  } catch (error) {
-    if (isTransientAiError(error) && job.attemptsMade < getMaxAttempts()) {
-      throw error;
-    }
-
-    logger.error(
-      { error, ticketId, companyId, attemptsMade: job.attemptsMade },
-      "AI inbound job failed with definitive error"
-    );
-
-    await persistAiDecisionLog({
-      companyId,
-      ticketId,
-      action: "job_failed",
-      reason: error instanceof Error ? error.message : "ai_queue_error",
-      details: { attemptsMade: job.attemptsMade }
-    });
-
-    try {
-      const revalidated = await revalidateTicketForAi(ticketId, companyId);
-      if (revalidated) {
-        const payloads = await drainBufferedMessages(ticketId);
-        if (payloads.length) {
-          await ProcessInboundMessageService({
-            ticket: revalidated.ticket,
-            companyId,
-            agent: revalidated.agent,
-            messages: payloads.map(mapPayloadToInboundItem),
-            forceHandoff: true,
-            handoffReason:
-              error instanceof Error ? error.message : "ai_queue_error"
-          });
-        }
-      }
-    } catch (handoffError) {
-      logger.error(
-        { handoffError, ticketId },
-        "Failed to hand off after definitive AI queue error"
-      );
-    }
-
-    await recordAiJobCompleted(job, "failed");
-  } finally {
-    if (ownsLock) {
-      await redis.del(lockKey(ticketId));
-    }
-  }
+  await processBufferedAiInbound(companyId, ticketId, job);
 };
 
 export const startAiInboundQueue = (): void => {

@@ -27,6 +27,14 @@ const SENSITIVE_KEYWORDS = [
   "dados pessoais"
 ];
 
+export const canAiEngageTicket = (ticket: Ticket): boolean => {
+  if (ticket.userId) return false;
+  if (ticket.isGroup) return false;
+  if (ticket.status === "closed") return false;
+  if (ticket.contact?.disableBot) return false;
+  return true;
+};
+
 export const shouldAiHandleTicket = async (
   ticket: Ticket
 ): Promise<boolean> => {

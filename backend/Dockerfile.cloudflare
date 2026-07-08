@@ -18,6 +18,7 @@ COPY --from=build /usr/src/app/dist ./dist
 COPY --from=build /usr/src/app/node_modules ./node_modules
 COPY --from=build /usr/src/app/package.json ./package.json
 COPY docker/cloudflare/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY docker/cloudflare/gateway.js ./docker/cloudflare/gateway.js
 
 RUN chmod +x /usr/local/bin/entrypoint.sh \
   && mkdir -p /data/redis /usr/src/app/public /usr/src/app/private

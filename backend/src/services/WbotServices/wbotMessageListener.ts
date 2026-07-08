@@ -70,7 +70,10 @@ import { decryptMessageEdit } from "./decryptMessageEdit";
 import GetTicketWbot from "../../helpers/GetTicketWbot";
 import saveMediaToFile from "../../helpers/saveMediaFile";
 import { resolveMediaAccessPath } from "../../helpers/mediaStorage";
-import { tryEngageAiOnInboundMessage } from "../AiServices/AiReengagementService";
+import {
+  tryEngageAiOnInboundMessage,
+  shouldAiBypassLegacyBotMessages
+} from "../AiServices/AiReengagementService";
 import { getActiveAgent } from "../AiServices/AiHelpers";
 import { isAiFeaturesEnabled } from "../AiServices/AiPlatformState";
 import { _t } from "../TranslationServices/i18nService";
@@ -1247,6 +1250,10 @@ export const startQueue = async (
       !isNil(currentSchedule) &&
       (!currentSchedule || currentSchedule.inActivity === false)
     ) {
+      if (await shouldAiBypassLegacyBotMessages(ticket, companyId)) {
+        return;
+      }
+
       outOfHoursCache.set(`ticket-${ticket.id}`, true);
       const outOfHoursMessage =
         queue.outOfHoursMessage?.trim() ||
@@ -1971,6 +1978,35 @@ const handleMessage = async (
 
     try {
       if (scheduleType) {
+        const aiBypassLegacyBot = await shouldAiBypassLegacyBotMessages(
+          ticket,
+          companyId
+        );
+
+        if (aiBypassLegacyBot) {
+          if (!aiEngaged) {
+            await tryEngageAiOnInboundMessage({
+              companyId,
+              ticket,
+              messageBody: newMessage?.body || bodyMessage || "",
+              messageId: newMessage?.id,
+              mediaType: newMessage?.mediaType,
+              mediaUrl: newMessage?.getDataValue("mediaUrl") || undefined,
+              mediaFilename: newMessage
+                ?.getDataValue("mediaUrl")
+                ?.split("/")
+                .pop(),
+              trigger: "inbound_message_after_schedule_bypass"
+            });
+          }
+
+          if (justCreated && newMessage) {
+            await newMessage.reload();
+            websocketCreateMessage(newMessage);
+          }
+          return;
+        }
+
         const isOpenOnline =
           ticket.status === "open" && ticket.user.socketSessions.length > 0;
 

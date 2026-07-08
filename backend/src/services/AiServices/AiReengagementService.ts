@@ -1,5 +1,5 @@
 import Ticket from "../../models/Ticket";
-import { getActiveAgent } from "./AiHelpers";
+import { canAiEngageTicket, getActiveAgent } from "./AiHelpers";
 import { isAiFeaturesEnabled } from "./AiPlatformState";
 import { enqueueAiInboundMessage } from "./AiInboundQueueService";
 import { persistAiDecisionLog } from "./AiDecisionLogger";
@@ -8,13 +8,7 @@ import { logger } from "../../utils/logger";
 const isReengagementEnabled = (): boolean =>
   process.env.AI_REENGAGEMENT_ENABLED !== "false";
 
-export const canAiEngageTicket = (ticket: Ticket): boolean => {
-  if (ticket.userId) return false;
-  if (ticket.isGroup) return false;
-  if (ticket.status === "closed") return false;
-  if (ticket.contact?.disableBot) return false;
-  return true;
-};
+export { canAiEngageTicket };
 
 export const resetTicketForAiEngagement = async (
   ticket: Ticket,
@@ -42,6 +36,22 @@ export const resetTicketForAiEngagement = async (
       "AI re-engaged ticket after previous handoff"
     );
   }
+};
+
+export const shouldAiBypassLegacyBotMessages = async (
+  ticket: Ticket,
+  companyId: number
+): Promise<boolean> => {
+  if (!isAiFeaturesEnabled() || !isReengagementEnabled()) {
+    return false;
+  }
+
+  if (!canAiEngageTicket(ticket)) {
+    return false;
+  }
+
+  const agent = await getActiveAgent(companyId, ticket.queueId);
+  return !!agent;
 };
 
 export type EngageAiInboundParams = {
