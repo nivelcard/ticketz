@@ -12,6 +12,11 @@ const HOST = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT);
 
 async function startWhatsAppAndBillingServices() {
+  if (process.env.WHATSAPP_AUTO_START === "false") {
+    logger.info("WhatsApp auto-start disabled (WHATSAPP_AUTO_START=false)");
+    return;
+  }
+
   const { StartAllWhatsAppsSessions } =
     await import("./services/WbotServices/StartAllWhatsAppsSessions");
   const Company = (await import("./models/Company")).default;

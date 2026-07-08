@@ -1,0 +1,76 @@
+# Ticketz backend — VPS (Supabase externo + Redis local)
+# Homologação: porta 8080 no host (não conflita com IIS 80/443/8081)
+#
+# Uso:
+#   docker compose -f docker-compose-vps.yaml up -d --build
+#
+# Migrations/seeds NÃO rodam automaticamente (DB de produção Supabase).
+
+networks:
+  ticketz:
+
+volumes:
+  redis_data:
+  backend_public:
+  backend_private:
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: ticketz-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - ticketz
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ./Dockerfile
+    container_name: ticketz-backend
+    env_file:
+      - .env-backend-vps
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:3000"
+    volumes:
+      - backend_public:/usr/src/app/public
+      - backend_private:/usr/src/app/private
+    command: >
+      sh -c "dockerize -wait tcp://$$DB_HOST:$${DB_PORT:-5432} -timeout 120s
+      && node dist/server.js"
+    networks:
+      - ticketz
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/health',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"

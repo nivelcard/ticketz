@@ -63,8 +63,9 @@ JWT_REFRESH_SECRET = "fortmax-ticketz-refresh-jwt-v1-2b8d4f6a1c9e3b7d0f5a8c2e6b4
 TURNSTILE_ENABLED = "true"
 TURNSTILE_SITE_KEY = "0x4AAAAAADhSILt9PsBiVeID"
 
-[triggers]
-crons = ["* * * * *"]
+# Cron desativado — produção roda na VPS Contabo (não reativar sem remover WhatsApp da VPS)
+# [triggers]
+# crons = ["* * * * *"]
 
 [[routes]]
 pattern = "api.fortmax.com.br/*"
