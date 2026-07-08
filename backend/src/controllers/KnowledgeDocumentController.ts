@@ -6,6 +6,7 @@ import StorageService from "../services/StorageService/StorageService";
 import { ingestKnowledgeDocument } from "../services/AiServices/IngestKnowledgeDocumentService";
 import AppError from "../errors/AppError";
 import { safeAiQuery } from "../helpers/safeAiQuery";
+import { logger } from "../utils/logger";
 
 export const index = async (req: Request, res: Response): Promise<Response> => {
   const { companyId } = req.user;
@@ -65,7 +66,12 @@ export const storeText = async (
     status: "pending"
   });
 
-  ingestKnowledgeDocument(document.id, companyId, content).catch(() => null);
+  ingestKnowledgeDocument(document.id, companyId, content).catch(error => {
+    logger.error(
+      { error, documentId: document.id, companyId },
+      "Failed to ingest knowledge text document"
+    );
+  });
 
   return res.status(201).json(document);
 };
@@ -115,7 +121,12 @@ export const storeFile = async (
     status: "pending"
   });
 
-  ingestKnowledgeDocument(document.id, companyId).catch(() => null);
+  ingestKnowledgeDocument(document.id, companyId).catch(error => {
+    logger.error(
+      { error, documentId: document.id, companyId },
+      "Failed to ingest knowledge file document"
+    );
+  });
 
   return res.status(201).json(document);
 };

@@ -330,7 +330,7 @@ export const processBufferedAiInbound = async (
             companyId,
             agent: revalidated.agent,
             messages: payloads.map(mapPayloadToInboundItem),
-            forceHandoff: true,
+            forceHandoff: false,
             handoffReason:
               error instanceof Error ? error.message : "ai_queue_error"
           });

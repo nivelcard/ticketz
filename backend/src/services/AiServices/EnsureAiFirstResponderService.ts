@@ -3,6 +3,7 @@ import Queue from "../../models/Queue";
 import AiAgent from "../../models/AiAgent";
 import AiAgentQueue from "../../models/AiAgentQueue";
 import KnowledgeBase from "../../models/KnowledgeBase";
+import { Op } from "sequelize";
 import KnowledgeDocument from "../../models/KnowledgeDocument";
 import { isAiSchemaReady } from "../MigrationServices/MigrationService";
 import { ingestKnowledgeDocument } from "./IngestKnowledgeDocumentService";
@@ -11,10 +12,10 @@ import { logger } from "../../utils/logger";
 const DEFAULT_AGENT_NAME = "Atendente Inicial";
 const DEFAULT_ACK_MESSAGE = "Olá! Já estou analisando sua mensagem.";
 const DEFAULT_BASE_PROMPT = `Você é o primeiro atendente virtual da Fortmax Sistemas.
-Seja cordial, objetivo e resolva o máximo possível antes de envolver um humano.
-Use a base de conhecimento quando houver trechos relevantes.
-Se não houver informação exata na base, responda com educação, peça detalhes e ofereça ajuda.
-Se não conseguir resolver ou o cliente pedir atendente humano, informe que vai transferir para o Suporte.`;
+Mantenha conversa contínua e responda toda mensagem do cliente.
+Use a base de conhecimento sobre produtos, histórico da empresa e contatos.
+Responda com objetividade quando a informação estiver na base (ex.: anos no mercado, sistemas WebG3/FortControl).
+Só transfira para humano quando o cliente pedir atendente/pessoa ou em assuntos sensíveis.`;
 
 const findPreferredHandoffQueue = async (
   companyId: number
@@ -66,7 +67,7 @@ const ensureAgent = async (companyId: number): Promise<AiAgent> => {
       fallbackQueueId: handoffQueue?.id || null,
       handoffMessage:
         "Vou transferir você para o Suporte humano. Por favor, aguarde um momento.",
-      ackEnabled: true,
+      ackEnabled: false,
       ackMessage: DEFAULT_ACK_MESSAGE
     });
 
@@ -75,7 +76,7 @@ const ensureAgent = async (companyId: number): Promise<AiAgent> => {
 
   await agent.update({
     active: true,
-    ackEnabled: true,
+    ackEnabled: false,
     ackMessage: agent.ackMessage?.trim() || DEFAULT_ACK_MESSAGE,
     basePrompt: agent.basePrompt?.trim() || DEFAULT_BASE_PROMPT,
     handoffMessage:
@@ -86,14 +87,12 @@ const ensureAgent = async (companyId: number): Promise<AiAgent> => {
 
   await AiAgent.update(
     {
-      ackEnabled: true,
-      ackMessage: DEFAULT_ACK_MESSAGE
+      ackEnabled: false
     },
     {
       where: {
         companyId,
-        active: true,
-        ackMessage: null
+        active: true
       }
     }
   );
@@ -149,9 +148,12 @@ const ensurePendingDocumentsIngested = async (
   companyId: number
 ): Promise<void> => {
   const pendingDocs = await KnowledgeDocument.findAll({
-    where: { companyId, status: "pending" },
+    where: {
+      companyId,
+      status: { [Op.in]: ["pending", "error"] }
+    },
     limit: 10,
-    order: [["id", "ASC"]]
+    order: [["updatedAt", "ASC"]]
   });
 
   await Promise.all(
