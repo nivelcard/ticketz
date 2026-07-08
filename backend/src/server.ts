@@ -20,6 +20,9 @@ async function startBackgroundServices() {
     await import("./services/PaymentGatewayServices/PaymentGatewayServices");
 
   try {
+    startQueueProcess();
+    logger.info(`Background queues started on port: ${process.env.PORT}`);
+
     const companies = await Company.findAll();
     const sessionPromises = companies.map(async company => {
       try {
@@ -34,8 +37,7 @@ async function startBackgroundServices() {
 
     await Promise.all(sessionPromises);
 
-    startQueueProcess();
-    logger.info(`Background services started on port: ${process.env.PORT}`);
+    logger.info(`WhatsApp background services started on port: ${process.env.PORT}`);
 
     try {
       await payGatewayInitialize();
