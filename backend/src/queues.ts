@@ -27,6 +27,7 @@ import Setting from "./models/Setting";
 import { parseToMilliseconds } from "./helpers/parseToMilliseconds";
 import { startCampaignQueues } from "./queues/campaign";
 import { startAiInboundQueue } from "./services/AiServices/AiInboundQueueService";
+import { runAiProactiveFollowUp } from "./services/AiServices/AiProactiveFollowUpService";
 import { runWhatsAppSessionWatchdog } from "./services/WbotServices/WhatsAppSessionWatchdogService";
 import OutOfTicketMessage from "./models/OutOfTicketMessages";
 import { getJidOf } from "./services/WbotServices/getJidOf";
@@ -555,6 +556,7 @@ async function handleEveryMinute(job: Job) {
   try {
     await handleRatingsTimeout();
     await handleTicketTimeouts();
+    await runAiProactiveFollowUp();
     logger.trace(`handleEveryMinute: exiting - executionId: ${executionId}`);
   } catch (e) {
     logger.error(

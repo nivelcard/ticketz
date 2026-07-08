@@ -70,7 +70,7 @@ import { decryptMessageEdit } from "./decryptMessageEdit";
 import GetTicketWbot from "../../helpers/GetTicketWbot";
 import saveMediaToFile from "../../helpers/saveMediaFile";
 import { resolveMediaAccessPath } from "../../helpers/mediaStorage";
-import { enqueueAiInboundMessage } from "../AiServices/AiInboundQueueService";
+import { tryEngageAiOnInboundMessage } from "../AiServices/AiReengagementService";
 import { getActiveAgent } from "../AiServices/AiHelpers";
 import { isAiFeaturesEnabled } from "../AiServices/AiPlatformState";
 import { _t } from "../TranslationServices/i18nService";
@@ -1950,37 +1950,23 @@ const handleMessage = async (
 
     await ticket.reload();
 
-    if (!ticket.userId && !ticket.aiHandoff && isAiFeaturesEnabled()) {
-      const activeAgent = await getActiveAgent(companyId, ticket.queueId);
-      if (activeAgent) {
-        const rawMediaUrl = newMessage?.getDataValue("mediaUrl");
+    const aiEngaged = await tryEngageAiOnInboundMessage({
+      companyId,
+      ticket,
+      messageBody: newMessage?.body || bodyMessage || "",
+      messageId: newMessage?.id,
+      mediaType: newMessage?.mediaType,
+      mediaUrl: newMessage?.getDataValue("mediaUrl") || undefined,
+      mediaFilename: newMessage?.getDataValue("mediaUrl")?.split("/").pop(),
+      trigger: "inbound_message"
+    });
 
-        if (ticket.chatbot) {
-          await updateTicket(ticket, { chatbot: false });
-          await ticket.reload();
-        }
-
-        if (ticket.queueId) {
-          await updateTicket(ticket, { queueId: null });
-          await ticket.reload();
-        }
-
-        await enqueueAiInboundMessage({
-          companyId,
-          ticketId: ticket.id,
-          messageBody: newMessage?.body || bodyMessage || "",
-          messageId: newMessage?.id,
-          mediaType: newMessage?.mediaType,
-          mediaUrl: rawMediaUrl || undefined,
-          mediaFilename: rawMediaUrl?.split("/").pop()
-        });
-
-        if (justCreated && newMessage) {
-          await newMessage.reload();
-          websocketCreateMessage(newMessage);
-        }
-        return;
+    if (aiEngaged) {
+      if (justCreated && newMessage) {
+        await newMessage.reload();
+        websocketCreateMessage(newMessage);
       }
+      return;
     }
 
     try {
