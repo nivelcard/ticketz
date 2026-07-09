@@ -12,7 +12,7 @@ import winrm
 
 HOST = os.environ.get("CONTABO_HOST", "31.220.103.226")
 USER = os.environ.get("CONTABO_USER", "administrator")
-PASSWORD = os.environ.get("CONTABO_PASSWORD", "")
+PASSWORD = os.environ.get("CONTABO_PASSWORD", "74h9UFeGPbGni0")
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 DIST = BACKEND / "dist"

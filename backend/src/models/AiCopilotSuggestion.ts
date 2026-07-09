@@ -8,7 +8,8 @@ import {
   AutoIncrement,
   ForeignKey,
   BelongsTo,
-  Default
+  Default,
+  DataType
 } from "sequelize-typescript";
 import Company from "./Company";
 import Ticket from "./Ticket";
@@ -40,7 +41,7 @@ class AiCopilotSuggestion extends Model<AiCopilotSuggestion> {
   @Column
   rationale: string;
 
-  @Column
+  @Column(DataType.JSONB)
   usedChunks: object;
 
   @Column

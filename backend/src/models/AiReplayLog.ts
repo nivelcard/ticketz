@@ -7,7 +7,8 @@ import {
   PrimaryKey,
   AutoIncrement,
   ForeignKey,
-  BelongsTo
+  BelongsTo,
+  DataType
 } from "sequelize-typescript";
 import Company from "./Company";
 import Ticket from "./Ticket";
@@ -39,13 +40,13 @@ class AiReplayLog extends Model<AiReplayLog> {
   @Column
   userQuestion: string;
 
-  @Column
+  @Column(DataType.JSONB)
   conversationHistory: object;
 
   @Column
   systemPrompt: string;
 
-  @Column
+  @Column(DataType.JSONB)
   usedChunks: object;
 
   @Column
@@ -54,7 +55,7 @@ class AiReplayLog extends Model<AiReplayLog> {
   @Column
   confidence: number;
 
-  @Column
+  @Column(DataType.JSONB)
   explainability: object;
 
   @Column

@@ -12,7 +12,8 @@ import {
   Default,
   BeforeCreate,
   BelongsToMany,
-  HasOne
+  HasOne,
+  DataType
 } from "sequelize-typescript";
 import { v4 as uuidv4 } from "uuid";
 
@@ -179,7 +180,7 @@ class Ticket extends Model<Ticket> {
   @Column
   aiSlaEscalationLevel: number;
 
-  @Column
+  @Column(DataType.JSONB)
   aiLastExplainability: object;
 
   @Column

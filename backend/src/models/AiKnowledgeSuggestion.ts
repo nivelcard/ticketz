@@ -8,7 +8,8 @@ import {
   AutoIncrement,
   ForeignKey,
   BelongsTo,
-  Default
+  Default,
+  DataType
 } from "sequelize-typescript";
 import Company from "./Company";
 import Ticket from "./Ticket";
@@ -60,7 +61,7 @@ class AiKnowledgeSuggestion extends Model<AiKnowledgeSuggestion> {
   @Column
   organizedAnswer: string;
 
-  @Column
+  @Column(DataType.JSONB)
   keywords: object;
 
   @Column
@@ -69,7 +70,7 @@ class AiKnowledgeSuggestion extends Model<AiKnowledgeSuggestion> {
   @Column
   summary: string;
 
-  @Column
+  @Column(DataType.JSONB)
   similarDocuments: object;
 
   @Column
