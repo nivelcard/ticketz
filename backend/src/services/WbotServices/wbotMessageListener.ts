@@ -749,7 +749,10 @@ export const verifyMediaMessage = async (
           audioBuffer,
           filename,
           mimeType: mimetype,
-          ticketId: ticket.id
+          model: aiAgentForAudio?.transcriptionModel,
+          providerId: aiAgentForAudio?.provider,
+          ticketId: ticket.id,
+          messageId: msg.key?.id
         });
         if (audioTranscription.success && audioTranscription.text) {
           body = audioTranscription.text;
@@ -805,7 +808,10 @@ export const verifyMediaMessage = async (
             audioBuffer,
             filename,
             mimeType: mimetype,
-            ticketId: ticket.id
+            model: aiAgentForAudio?.transcriptionModel,
+            providerId: aiAgentForAudio?.provider,
+            ticketId: ticket.id,
+            messageId: msg.key?.id
           });
           if (audioTranscription.success && audioTranscription.text) {
             body = audioTranscription.text;
@@ -2018,10 +2024,11 @@ const handleMessage = async (
       messageId: newMessage?.id,
       mediaType: newMessage?.mediaType,
       mediaUrl: newMessage?.getDataValue("mediaUrl") || undefined,
-      mediaFilename: newMessage?.getDataValue("mediaUrl")?.split("/").pop(),
+      mediaFilename:
+        newMessage?.getDataValue("mediaUrl")?.split("/").pop() || undefined,
       mediaMimeType:
         newMessage?.mediaType === "audio"
-          ? "audio/ogg"
+          ? "audio/ogg; codecs=opus"
           : newMessage?.mediaType === "image"
             ? "image/jpeg"
             : undefined,

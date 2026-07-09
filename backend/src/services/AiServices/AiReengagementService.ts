@@ -50,14 +50,12 @@ export const tryEngageAiOnInboundMessage = async ({
     await ticket.update({
       aiStartedAt: new Date(),
       aiAgentId: activeAgent.id,
-      chatbot: false,
-      queueId: null
+      chatbot: false
     });
     await ticket.reload();
-  } else if (ticket.chatbot || ticket.queueId) {
+  } else if (ticket.chatbot) {
     await ticket.update({
-      chatbot: false,
-      queueId: null
+      chatbot: false
     });
     await ticket.reload();
   }

@@ -23,6 +23,7 @@ import AiCopilotPanel from "../AiCopilotPanel";
 import AiExplainabilityPanel from "../AiExplainabilityPanel";
 import { SocketContext } from "../../context/Socket/SocketContext";
 import useSettings from "../../hooks/useSettings";
+import { canSuperviseAi } from "../../helpers/aiTicketStatus";
 import { i18n } from "../../translate/i18n";
 
 const useStyles = makeStyles(theme => ({
@@ -116,8 +117,14 @@ const Ticket = () => {
           const { queueId } = data;
           const { queues, profile } = user;
 
-          const queueAllowed = queues.find(q => q.id === queueId);
-          if (queueAllowed === undefined && profile !== "admin") {
+          if (queueId) {
+            const queueAllowed = queues.find(q => q.id === queueId);
+            if (queueAllowed === undefined && profile !== "admin") {
+              toast.error(i18n.t("common.accessNotAllowed"));
+              history.push("/tickets");
+              return;
+            }
+          } else if (profile !== "admin" && !canSuperviseAi(user)) {
             toast.error(i18n.t("common.accessNotAllowed"));
             history.push("/tickets");
             return;

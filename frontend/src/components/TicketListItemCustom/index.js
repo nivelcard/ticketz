@@ -236,10 +236,11 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
     setTabOpen("open");
   };
 
-  const handleSelectTicket = ticket => {
+  const handleSelectTicket = selected => {
     const code = uuidv4();
-    const { id, uuid } = ticket;
+    const { id, uuid } = selected;
     setCurrentTicket({ id, uuid, code });
+    history.push(`/tickets/${uuid}`);
   };
 
   const renderTicketInfo = () => {
@@ -582,12 +583,7 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
       <ListItem
         dense
         button
-        onClick={e => {
-          if (
-            (groupActionButtons || !ticket.isGroup) &&
-            ticket.status === "pending"
-          )
-            return;
+        onClick={() => {
           handleSelectTicket(ticket);
         }}
         selected={ticketId && +ticketId === ticket.id}

@@ -167,6 +167,13 @@ const ListTicketsService = async ({
 
   if (showAll === "true" && user.profile === "admin") {
     andedOrs.length = 0;
+
+    if (!isSupervision && !aiFilter && status === "pending") {
+      andedOrs.push({
+        [Op.or]: [{ aiHandoff: true }, { aiAgentId: null }, { aiPaused: true }]
+      });
+    }
+
     whereCondition = {
       [Op.and]: andedOrs,
       queueId: { [Op.or]: [queueIds, null] },

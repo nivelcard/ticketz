@@ -19,6 +19,10 @@ import { AuthContext } from "../../context/Auth/AuthContext";
 import { SocketContext } from "../../context/Socket/SocketContext";
 import toastError from "../../errors/toastError";
 import { isAiHandlingTicket } from "../../helpers/aiTicketStatus";
+import {
+  shouldShowTicketInList,
+  ticketMatchesSelectedQueues
+} from "../../helpers/ticketListVisibility";
 
 const useStyles = makeStyles(theme => ({
   ticketsListWrapper: {
@@ -226,7 +230,8 @@ const TicketsListCustom = props => {
     users,
     selectedQueueIds,
     aiFilter,
-    supervision
+    supervision,
+    showAll
   ]);
 
   const {
@@ -254,33 +259,38 @@ const TicketsListCustom = props => {
   });
 
   useEffect(() => {
-    const queueIds = safeQueues.map(q => q.id);
-    const filteredTickets = tickets.filter(
-      t => queueIds.indexOf(t.queueId) > -1
+    const filteredTickets = tickets.filter(ticket =>
+      shouldShowTicketInList({
+        ticket,
+        status,
+        supervision,
+        selectedQueueIds,
+        profile,
+        showAll
+      })
     );
 
-    if (profile === "user") {
-      dispatch({ type: "LOAD_TICKETS", payload: filteredTickets });
-    } else {
-      dispatch({ type: "LOAD_TICKETS", payload: tickets });
-    }
-  }, [tickets, safeQueues, profile]);
+    dispatch({ type: "LOAD_TICKETS", payload: filteredTickets });
+  }, [tickets, status, supervision, selectedQueueIds, profile, showAll]);
 
   useEffect(() => {
     const companyId = localStorage.getItem("companyId");
     const socket = socketManager.GetSocket(companyId);
 
-    const shouldIncludeTicket = ticket => {
-      if (!supervision && status === "pending" && isAiHandlingTicket(ticket)) {
-        return false;
-      }
-      return true;
-    };
-
     const shouldUpdateTicket = ticket => {
-      if (!shouldIncludeTicket(ticket)) {
+      if (
+        !shouldShowTicketInList({
+          ticket,
+          status,
+          supervision,
+          selectedQueueIds,
+          profile,
+          showAll
+        })
+      ) {
         return false;
       }
+
       return (
         (!isSearch || !searchParam) &&
         (!contactId || ticket.contactId === contactId) &&
@@ -292,12 +302,14 @@ const TicketsListCustom = props => {
           )) &&
         (!users?.length || users.some(u => u === ticket.userId)) &&
         (!ticket.userId || ticket.userId === user?.id || showAll) &&
-        (!ticket.queueId || selectedQueueIds.indexOf(ticket.queueId) > -1)
+        ticketMatchesSelectedQueues(ticket, selectedQueueIds)
       );
     };
 
     const notBelongsToUserQueues = ticket =>
-      ticket.queueId && selectedQueueIds.indexOf(ticket.queueId) === -1;
+      ticket.queueId &&
+      selectedQueueIds.indexOf(ticket.queueId) === -1 &&
+      !isAiHandlingTicket(ticket);
 
     const onConnectTicketList = () => {
       if (status) {
@@ -363,8 +375,8 @@ const TicketsListCustom = props => {
       const queueIds = safeQueues.map(q => q.id);
       if (
         profile === "user" &&
-        (queueIds.indexOf(data.ticket?.queue?.id) === -1 ||
-          data.ticket.queue === null)
+        data.ticket?.queueId &&
+        queueIds.indexOf(data.ticket.queueId) === -1
       ) {
         return;
       }
@@ -455,7 +467,8 @@ const TicketsListCustom = props => {
     refetchTickets,
     fetchSince,
     aiFilter,
-    supervision
+    supervision,
+    showAll
   ]);
 
   useEffect(() => {

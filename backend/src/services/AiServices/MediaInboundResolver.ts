@@ -6,6 +6,7 @@ import { isAudioPlaceholder } from "../../helpers/mediaPlaceholders";
 import { analyzeInboundImage } from "./AiVisionOcrService";
 import { extractTextFromBuffer } from "./DocumentParser";
 import { logger } from "../../utils/logger";
+import { logAudioPipeline } from "./AudioPipelineLogger";
 import AiAgent from "../../models/AiAgent";
 import Ticket from "../../models/Ticket";
 import { InboundMessageItem } from "./ProcessInboundMessageService";
@@ -159,7 +160,41 @@ export const resolveInboundMessageText = async ({
   if (message.mediaType === "audio") {
     const shouldTranscribe = !messageText || isAudioPlaceholder(messageText);
 
+    logAudioPipeline("download_start", {
+      companyId,
+      ticketId: ticket.id,
+      messageId: message.messageId,
+      mediaUrl: message.mediaUrl,
+      shouldTranscribe,
+      existingBodyLength: messageText.length
+    });
+
+    if (!mediaBuffer) {
+      logAudioPipeline("download_failed", {
+        companyId,
+        ticketId: ticket.id,
+        messageId: message.messageId,
+        mediaUrl: message.mediaUrl
+      });
+      return "__AUDIO_TRANSCRIPTION_FAILED__";
+    }
+
+    logAudioPipeline("download_ok", {
+      companyId,
+      ticketId: ticket.id,
+      messageId: message.messageId,
+      bufferSize: mediaBuffer.length
+    });
+
     if (shouldTranscribe) {
+      logAudioPipeline("transcribe_start", {
+        companyId,
+        ticketId: ticket.id,
+        messageId: message.messageId,
+        model: agent.transcriptionModel,
+        provider: agent.provider
+      });
+
       const transcription = await transcribeAudioBuffer({
         companyId,
         audioBuffer: mediaBuffer,
@@ -173,10 +208,31 @@ export const resolveInboundMessageText = async ({
 
       if (transcription.success && transcription.text) {
         messageText = transcription.text;
+        logAudioPipeline("transcribe_ok", {
+          companyId,
+          ticketId: ticket.id,
+          messageId: message.messageId,
+          textLength: messageText.length,
+          attempts: transcription.attempts
+        });
       } else {
+        logAudioPipeline("transcribe_failed", {
+          companyId,
+          ticketId: ticket.id,
+          messageId: message.messageId,
+          errorReason: transcription.errorReason,
+          attempts: transcription.attempts
+        });
         return "__AUDIO_TRANSCRIPTION_FAILED__";
       }
     }
+
+    logAudioPipeline("deliver_to_llm", {
+      companyId,
+      ticketId: ticket.id,
+      messageId: message.messageId,
+      textLength: messageText.length
+    });
 
     if (!existingMedia) {
       try {

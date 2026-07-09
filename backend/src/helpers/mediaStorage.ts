@@ -63,6 +63,30 @@ export const inferMediaFolder = (
 export const normalizeStorageReference = (mediaPath: string): string =>
   mediaPath.replace(/^\/public\//, "").trim();
 
+export const extractStorageKeyFromUrl = (mediaUrl: string): string | null => {
+  if (!/^https?:\/\//i.test(mediaUrl)) {
+    return null;
+  }
+
+  try {
+    const url = new URL(mediaUrl);
+    const pathParts = url.pathname.split("/").filter(Boolean);
+
+    const suporteIndex = pathParts.findIndex(part => part === "suporte");
+    if (suporteIndex >= 0) {
+      return pathParts.slice(suporteIndex).join("/");
+    }
+
+    if (pathParts.length >= 2) {
+      return pathParts.slice(-4).join("/");
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+};
+
 export const readMediaBuffer = async (
   mediaPath: string,
   companyId: number
@@ -79,7 +103,25 @@ export const readMediaBuffer = async (
       });
       return Buffer.from(response.data);
     } catch (error) {
-      logger.error({ error, mediaPath }, "Failed to download media from URL");
+      logger.warn(
+        { error, mediaPath },
+        "HTTP media download failed, trying object storage key"
+      );
+
+      const storageKey = extractStorageKeyFromUrl(mediaPath);
+      if (storageKey) {
+        try {
+          await StorageService.ensureReady(companyId);
+          return await StorageService.download(storageKey, companyId);
+        } catch (storageError) {
+          logger.error(
+            { storageError, storageKey, mediaPath, companyId },
+            "Object storage fallback download failed"
+          );
+        }
+      } else {
+        logger.error({ error, mediaPath }, "Failed to download media from URL");
+      }
       return null;
     }
   }
@@ -94,7 +136,10 @@ export const readMediaBuffer = async (
     const key = normalizeStorageReference(mediaPath);
     return await StorageService.download(key, companyId);
   } catch (error) {
-    logger.debug({ error, mediaPath }, "Media not found in object storage");
+    logger.error(
+      { error, mediaPath, companyId },
+      "Media not found in object storage"
+    );
     return null;
   }
 };
