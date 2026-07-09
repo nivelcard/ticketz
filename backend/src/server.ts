@@ -1,6 +1,10 @@
 import http from "http";
 import gracefulShutdown from "http-graceful-shutdown";
 import appFast, { ensureCoreRoutes } from "./appFast";
+import {
+  markHeavyRoutesFailed,
+  markHeavyRoutesReady
+} from "./helpers/routeReadiness";
 import { logger } from "./utils/logger";
 
 if (!process.env.PORT) {
@@ -175,9 +179,11 @@ setImmediate(() => {
         import("./routes/heavyRoutes")
           .then(({ default: heavyRoutes }) => {
             appFast.use(heavyRoutes);
+            markHeavyRoutesReady();
             logger.info("Heavy routes attached");
           })
           .catch(error => {
+            markHeavyRoutesFailed(error);
             logger.error({ error }, "Heavy routes failed to attach");
           });
 

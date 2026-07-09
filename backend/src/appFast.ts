@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 
 import { corsOrigin } from "./helpers/corsOrigin";
 import { getBuildInfo } from "./helpers/buildInfo";
+import { getHeavyRoutesState } from "./helpers/routeReadiness";
 import { servePublicMedia } from "./helpers/servePublicMedia";
 import AppError from "./errors/AppError";
 import { logger } from "./utils/logger";
@@ -162,11 +163,14 @@ const clearLoginAttempts = (req: express.Request): void => {
 };
 
 app.get("/health", (_req, res) => {
+  const heavy = getHeavyRoutesState();
   res.status(200).json({
     ok: true,
     fast: true,
     routes: coreRoutesReady,
     routesError: coreRoutesError?.message || null,
+    heavyRoutes: heavy.heavyRoutesReady,
+    heavyRoutesError: heavy.heavyRoutesError,
     ...getBuildInfo()
   });
 });
@@ -325,7 +329,6 @@ app.use(async (req, res, next) => {
 
   try {
     await ensureCoreRoutes();
-    return next();
   } catch (error) {
     return res.status(503).json({
       ok: false,
@@ -333,6 +336,17 @@ app.use(async (req, res, next) => {
       message: error instanceof Error ? error.message : String(error)
     });
   }
+
+  const heavy = getHeavyRoutesState();
+  if (!heavy.heavyRoutesReady) {
+    return res.status(503).json({
+      ok: false,
+      error: "ERR_HEAVY_ROUTES_LOADING",
+      message: heavy.heavyRoutesError || "Heavy routes still loading"
+    });
+  }
+
+  return next();
 });
 
 export default app;

@@ -28,8 +28,10 @@ PATCH_PATHS = [
     "helpers/servePublicMedia.js",
     "helpers/mediaStorage.js",
     "helpers/buildInfo.js",
+    "helpers/routeReadiness.js",
     "helpers/mediaConversion.js",
     "models/Message.js",
+    "models/Ticket.js",
     "models/AiAgent.js",
     "models/AiAgentQueue.js",
     "models/AiConversationLog.js",
@@ -74,8 +76,8 @@ def session():
         auth=(USER, PASSWORD),
         transport="basic",
         server_cert_validation="ignore",
-        operation_timeout_sec=600,
-        read_timeout_sec=720,
+        operation_timeout_sec=3600,
+        read_timeout_sec=3900,
     )
 
 
@@ -154,8 +156,8 @@ def main() -> int:
     run_ps(s, "Get-Process node -EA SilentlyContinue | Stop-Process -Force")
 
     files = collect_files()
-    print(f"Uploading {len(files)} file(s)...")
-    for local in files:
+    print(f"Uploading {len(files)} file(s) (mode={os.environ.get('DEPLOY_MODE', 'patch')})...")
+    for idx, local in enumerate(files, start=1):
         rel = local.relative_to(DIST).as_posix().replace("/", "\\")
         remote = f"C:\\ticketz\\backend\\dist\\{rel}"
         run_ps(
@@ -163,6 +165,8 @@ def main() -> int:
             f"New-Item -ItemType Directory -Force -Path (Split-Path '{remote}') | Out-Null",
         )
         upload_file(s, local, remote)
+        if idx % 50 == 0:
+            print(f"  ... {idx}/{len(files)} files uploaded")
 
     reset_script = BACKEND / "scripts" / "reset-whatsapp-session.js"
     if reset_script.is_file():
@@ -191,6 +195,7 @@ Start-Sleep 2
 Start-ScheduledTask -TaskName TicketzBackend
 Start-Sleep 60
 try { Write-Output "health=$((Invoke-WebRequest http://127.0.0.1:8080/health -UseBasicParsing -TimeoutSec 20).Content)" } catch { Write-Output 'health fail' }
+try { $r=Invoke-WebRequest http://127.0.0.1:8080/queue -UseBasicParsing -TimeoutSec 15; Write-Output "queue=$($r.StatusCode)" } catch { Write-Output "queue=$($_.Exception.Response.StatusCode.value__)" }
 try { $r=Invoke-WebRequest http://127.0.0.1:8080/whatsapp -UseBasicParsing -TimeoutSec 15; Write-Output "whatsapp=$($r.StatusCode)" } catch { Write-Output "whatsapp=$($_.Exception.Response.StatusCode.value__)" }
 Get-Content C:\\ticketz\\logs\\backend.log -Tail 12 -EA SilentlyContinue | Select-String 'Heavy|QRCode|listening|failed|transcri'
 """
