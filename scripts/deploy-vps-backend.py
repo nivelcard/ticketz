@@ -134,12 +134,26 @@ def collect_files() -> List[Path]:
     if mode == "full":
         return sorted(DIST.rglob("*.js"))
 
-    files = []
+    files: List[Path] = []
+    seen = set()
+
+    def add(path: Path) -> None:
+        key = path.as_posix()
+        if key not in seen and path.is_file():
+            files.append(path)
+            seen.add(key)
+
     for rel in PATCH_PATHS:
         path = DIST / rel.replace("/", os.sep)
         if not path.is_file():
             raise FileNotFoundError(f"Missing build output: {path}")
-        files.append(path)
+        add(path)
+
+    if mode in ("sync-routes", "routes"):
+        for pattern in ("routes/*.js", "models/*.js", "controllers/*.js"):
+            for path in sorted(DIST.glob(pattern)):
+                add(path)
+
     return files
 
 
