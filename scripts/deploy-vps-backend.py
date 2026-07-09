@@ -150,7 +150,14 @@ def collect_files() -> List[Path]:
         add(path)
 
     if mode in ("sync-routes", "routes"):
-        for pattern in ("routes/*.js", "models/*.js", "controllers/*.js"):
+        for pattern in (
+            "routes/*.js",
+            "models/*.js",
+            "controllers/*.js",
+            "services/**/*.js",
+            "helpers/*.js",
+            "libs/*.js",
+        ):
             for path in sorted(DIST.glob(pattern)):
                 add(path)
 
