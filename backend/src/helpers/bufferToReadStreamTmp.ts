@@ -21,9 +21,7 @@ export function bufferToReadStreamTmp(
     tmpdir(),
     `tmp-${makeRandomId(10)}.${extension}`
   );
-  const writeStream = fs.createWriteStream(tempFilePath);
-  writeStream.write(inputBuffer);
-  writeStream.end();
+  fs.writeFileSync(tempFilePath, inputBuffer);
   const stream = fs.createReadStream(tempFilePath);
   stream.on("close", () => {
     fs.unlink(tempFilePath, err => {
