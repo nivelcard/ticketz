@@ -192,10 +192,6 @@ const TicketActionButtonsCustom = ({
     await handleUpdateTicketStatus(null, "open", user?.id);
   };
 
-  const handleRefreshTicket = () => {
-    window.location.reload();
-  };
-
   return (
     <div className={classes.actionButtons}>
       {ticket.status === "closed" && (!showTabGroups || !ticket.isGroup) && (
@@ -328,15 +324,6 @@ const TicketActionButtonsCustom = ({
                 {i18n.t("aiSupervision.actions.acceptAttendance")}
               </ButtonWithSpinner>
             )}
-          <ButtonWithSpinner
-            loading={loading}
-            size="small"
-            variant="outlined"
-            color="default"
-            onClick={handleRefreshTicket}
-          >
-            {i18n.t("aiSupervision.actions.refresh")}
-          </ButtonWithSpinner>
         </>
       )}
       {!observationMode && showAssumeFromBot && (

@@ -95,51 +95,71 @@ export const readMediaBuffer = async (
     return null;
   }
 
-  if (/^https?:\/\//i.test(mediaPath)) {
+  const tryStorageDownload = async (key: string): Promise<Buffer | null> => {
     try {
-      const response = await axios.get(mediaPath, {
-        responseType: "arraybuffer",
-        timeout: 30000
-      });
-      return Buffer.from(response.data);
-    } catch (error) {
-      logger.warn(
-        { error, mediaPath },
-        "HTTP media download failed, trying object storage key"
-      );
-
-      const storageKey = extractStorageKeyFromUrl(mediaPath);
-      if (storageKey) {
-        try {
-          await StorageService.ensureReady(companyId);
-          return await StorageService.download(storageKey, companyId);
-        } catch (storageError) {
-          logger.error(
-            { storageError, storageKey, mediaPath, companyId },
-            "Object storage fallback download failed"
-          );
-        }
-      } else {
-        logger.error({ error, mediaPath }, "Failed to download media from URL");
+      await StorageService.ensureReady(companyId);
+      const buffer = await StorageService.download(key, companyId);
+      if (buffer?.length) {
+        logger.info(
+          { mediaPath, storageKey: key, companyId, bufferSize: buffer.length },
+          "AudioPipeline:storage_read"
+        );
+        return buffer;
       }
-      return null;
+    } catch (storageError) {
+      logger.warn(
+        { storageError, storageKey: key, mediaPath, companyId },
+        "Object storage download failed"
+      );
+    }
+    return null;
+  };
+
+  if (!/^https?:\/\//i.test(mediaPath)) {
+    const localPath = path.join(getPublicPath(), mediaPath);
+    if (fs.existsSync(localPath)) {
+      const buffer = fs.readFileSync(localPath);
+      logger.info(
+        { mediaPath, bufferSize: buffer.length },
+        "AudioPipeline:buffer_loaded"
+      );
+      return buffer;
+    }
+
+    const key = normalizeStorageReference(mediaPath);
+    const storageBuffer = await tryStorageDownload(key);
+    if (storageBuffer) {
+      return storageBuffer;
+    }
+
+    logger.error(
+      { mediaPath, companyId },
+      "Media not found in local or object storage"
+    );
+    return null;
+  }
+
+  const storageKey = extractStorageKeyFromUrl(mediaPath);
+  if (storageKey) {
+    const storageBuffer = await tryStorageDownload(storageKey);
+    if (storageBuffer) {
+      return storageBuffer;
     }
   }
 
-  const localPath = path.join(getPublicPath(), mediaPath);
-  if (fs.existsSync(localPath)) {
-    return fs.readFileSync(localPath);
-  }
-
   try {
-    await StorageService.ensureReady(companyId);
-    const key = normalizeStorageReference(mediaPath);
-    return await StorageService.download(key, companyId);
-  } catch (error) {
-    logger.error(
-      { error, mediaPath, companyId },
-      "Media not found in object storage"
+    const response = await axios.get(mediaPath, {
+      responseType: "arraybuffer",
+      timeout: 30000
+    });
+    const buffer = Buffer.from(response.data);
+    logger.info(
+      { mediaPath, bufferSize: buffer.length },
+      "AudioPipeline:download_ok"
     );
+    return buffer;
+  } catch (error) {
+    logger.error({ error, mediaPath }, "Failed to download media from URL");
     return null;
   }
 };

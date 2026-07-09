@@ -98,6 +98,18 @@ async function runPostListenBootstrap(_server: http.Server) {
       logger.warn({ error }, "OpenAI settings sync skipped");
     });
     await bootstrapAiPlatform();
+    const { repairAiTicketStates } =
+      await import("./services/AiServices/RepairAiTicketStatesService");
+    const repaired = await repairAiTicketStates().catch(error => {
+      logger.warn({ error }, "AI ticket state repair skipped");
+      return 0;
+    });
+    if (repaired > 0) {
+      logger.info(
+        { repaired },
+        "Repaired orphaned AI ticket states on startup"
+      );
+    }
     await startBackgroundServices();
   };
 

@@ -28,7 +28,9 @@ import { logger } from "../../utils/logger";
 import { persistAiDecisionLog } from "./AiDecisionLogger";
 import { AI_HANDOFF_REASONS } from "./AiOperationalTypes";
 import { logAiOperationalEvent } from "./AiOperationalLogService";
-import UpdateTicketService from "../TicketServices/UpdateTicketService";
+import UpdateTicketService, {
+  websocketUpdateTicket
+} from "../TicketServices/UpdateTicketService";
 import { classifyTicketPriority } from "./AiPriorityClassifierService";
 import { computeConfidenceScore, estimateAiCostUsd } from "./AiMetricsHelper";
 import { buildExplainability, persistAiReplayLog } from "./AiReplayService";
@@ -441,6 +443,9 @@ const ProcessInboundMessageService = async ({
         (ticket.aiTotalTokensOutput || 0) + (completion.tokensOutput || 0),
       aiEstimatedCostUsd: Number(ticket.aiEstimatedCostUsd || 0) + responseCost
     });
+
+    await ticket.reload({ include: ["contact", "queue", "whatsapp", "user"] });
+    websocketUpdateTicket(ticket);
 
     await logAiOperationalEvent({
       companyId,

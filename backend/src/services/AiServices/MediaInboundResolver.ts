@@ -1,15 +1,13 @@
 import MessageMediaFile from "../../models/MessageMediaFile";
 import StorageService from "../StorageService/StorageService";
-import { readMediaBuffer } from "../../helpers/mediaStorage";
-import { transcribeAudioBuffer } from "./AudioTranscriptionService";
-import { isAudioPlaceholder } from "../../helpers/mediaPlaceholders";
 import { analyzeInboundImage } from "./AiVisionOcrService";
 import { extractTextFromBuffer } from "./DocumentParser";
 import { logger } from "../../utils/logger";
-import { logAudioPipeline } from "./AudioPipelineLogger";
+import { resolveInboundAudioText } from "./AudioInboundResolver";
 import AiAgent from "../../models/AiAgent";
 import Ticket from "../../models/Ticket";
 import { InboundMessageItem } from "./ProcessInboundMessageService";
+import { readMediaBuffer } from "../../helpers/mediaStorage";
 
 const buildPublicMediaUrl = (mediaUrl: string): string => {
   if (mediaUrl.startsWith("http")) {
@@ -158,81 +156,23 @@ export const resolveInboundMessageText = async ({
   }
 
   if (message.mediaType === "audio") {
-    const shouldTranscribe = !messageText || isAudioPlaceholder(messageText);
-
-    logAudioPipeline("download_start", {
+    const audioResult = await resolveInboundAudioText({
       companyId,
       ticketId: ticket.id,
       messageId: message.messageId,
       mediaUrl: message.mediaUrl,
-      shouldTranscribe,
-      existingBodyLength: messageText.length
+      filename: message.mediaFilename || "audio.ogg",
+      mimeType: message.mediaMimeType,
+      existingText: messageText,
+      transcriptionModel: agent.transcriptionModel,
+      providerId: agent.provider
     });
 
-    if (!mediaBuffer) {
-      logAudioPipeline("download_failed", {
-        companyId,
-        ticketId: ticket.id,
-        messageId: message.messageId,
-        mediaUrl: message.mediaUrl
-      });
+    if (!audioResult.success) {
       return "__AUDIO_TRANSCRIPTION_FAILED__";
     }
 
-    logAudioPipeline("download_ok", {
-      companyId,
-      ticketId: ticket.id,
-      messageId: message.messageId,
-      bufferSize: mediaBuffer.length
-    });
-
-    if (shouldTranscribe) {
-      logAudioPipeline("transcribe_start", {
-        companyId,
-        ticketId: ticket.id,
-        messageId: message.messageId,
-        model: agent.transcriptionModel,
-        provider: agent.provider
-      });
-
-      const transcription = await transcribeAudioBuffer({
-        companyId,
-        audioBuffer: mediaBuffer,
-        filename: message.mediaFilename || "audio.ogg",
-        mimeType: message.mediaMimeType,
-        model: agent.transcriptionModel,
-        providerId: agent.provider,
-        ticketId: ticket.id,
-        messageId: message.messageId
-      });
-
-      if (transcription.success && transcription.text) {
-        messageText = transcription.text;
-        logAudioPipeline("transcribe_ok", {
-          companyId,
-          ticketId: ticket.id,
-          messageId: message.messageId,
-          textLength: messageText.length,
-          attempts: transcription.attempts
-        });
-      } else {
-        logAudioPipeline("transcribe_failed", {
-          companyId,
-          ticketId: ticket.id,
-          messageId: message.messageId,
-          errorReason: transcription.errorReason,
-          attempts: transcription.attempts
-        });
-        return "__AUDIO_TRANSCRIPTION_FAILED__";
-      }
-    }
-
-    logAudioPipeline("deliver_to_llm", {
-      companyId,
-      ticketId: ticket.id,
-      messageId: message.messageId,
-      textLength: messageText.length
-    });
+    messageText = audioResult.text;
 
     if (!existingMedia) {
       try {

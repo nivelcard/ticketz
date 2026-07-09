@@ -94,6 +94,14 @@ const HandoffToHumanService = async ({
       ? routing.queueId
       : agent.fallbackQueueId || ticket.queueId;
 
+  if (!targetQueueId) {
+    logger.error(
+      { ticketId: ticket.id, routing },
+      "Handoff blocked: no target queue resolved"
+    );
+    throw new Error(`Handoff blocked: ticket ${ticket.id} has no target queue`);
+  }
+
   const handoffMessage =
     agent.handoffMessage?.trim() ||
     "Entendi. Para resolver isso com segurança, vou transferir seu atendimento para o setor responsável. Um atendente dará continuidade em instantes.";

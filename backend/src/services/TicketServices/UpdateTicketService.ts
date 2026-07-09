@@ -9,6 +9,10 @@ import FindOrCreateATicketTrakingService from "./FindOrCreateATicketTrakingServi
 import GetTicketWbot from "../../helpers/GetTicketWbot";
 import { startQueue, verifyMessage } from "../WbotServices/wbotMessageListener";
 import AppError from "../../errors/AppError";
+import {
+  logInvalidAiTicketState,
+  normalizeAiTicketFields
+} from "../AiServices/AiTicketStateService";
 import { GetCompanySetting } from "../../helpers/CheckSettings";
 import User from "../../models/User";
 import formatBody from "../../helpers/Mustache";
@@ -317,9 +321,25 @@ const UpdateTicketService = async ({
       userId !== oldUserId &&
       (ticket.aiAgentId || ticket.aiHandoff);
 
-    await ticket.update({
+    const normalizedTicketData = normalizeAiTicketFields(ticket, {
       status,
       queueId,
+      userId,
+      aiHandoff,
+      aiAgentId,
+      aiPaused,
+      aiResolvedByAi,
+      ...ticketData
+    });
+
+    const effectiveQueueId =
+      normalizedTicketData.queueId !== undefined
+        ? (normalizedTicketData.queueId as number | null)
+        : queueId;
+
+    await ticket.update({
+      status,
+      queueId: effectiveQueueId,
       userId,
       whatsappId: ticket.whatsappId,
       chatbot,
@@ -354,6 +374,7 @@ const UpdateTicketService = async ({
     }
 
     await ticket.reload();
+    logInvalidAiTicketState(ticket, "UpdateTicketService");
 
     if (humanAccepted) {
       await logAiOperationalEvent({
@@ -385,7 +406,11 @@ const UpdateTicketService = async ({
 
     status = ticket.status;
 
-    if (status !== undefined && ["pending"].indexOf(status) > -1) {
+    if (
+      status !== undefined &&
+      status === "pending" &&
+      oldStatus !== "pending"
+    ) {
       if (!ticketTraking.startedAt) {
         ticketTraking.whatsappId = ticket.whatsappId;
         ticketTraking.queuedAt = moment().toDate();
@@ -401,7 +426,7 @@ const UpdateTicketService = async ({
       );
     }
 
-    if (status !== undefined && ["open"].indexOf(status) > -1) {
+    if (status !== undefined && status === "open" && oldStatus !== "open") {
       if (!ticketTraking.startedAt) {
         ticketTraking.startedAt = moment().toDate();
         ticketTraking.ratingAt = null;

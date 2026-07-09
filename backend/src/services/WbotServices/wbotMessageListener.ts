@@ -58,13 +58,11 @@ import { makeRandomId } from "../../helpers/MakeRandomId";
 import CheckSettings, { GetCompanySetting } from "../../helpers/CheckSettings";
 import Whatsapp from "../../models/Whatsapp";
 import { SimpleObjectCache } from "../../helpers/simpleObjectCache";
-import { getPublicPath } from "../../helpers/GetPublicPath";
 import { Session } from "../../libs/wbot";
 import { checkCompanyCompliant } from "../../helpers/CheckCompanyCompliant";
-import { transcribeAudioBuffer } from "../AiServices/AudioTranscriptionService";
+import { resolveInboundAudioText } from "../AiServices/AudioInboundResolver";
 import { isAudioPlaceholder } from "../../helpers/mediaPlaceholders";
 import {
-  readMediaBuffer,
   streamToBuffer,
   resolveMediaAccessPath
 } from "../../helpers/mediaStorage";
@@ -732,39 +730,26 @@ export const verifyMediaMessage = async (
     mediaType === "audio" &&
     (audioTranscriptionsSetting === "enabled" || aiAgentForAudio)
   ) {
-    const apiKey = await GetCompanySetting(ticket.companyId, "openAiKey", null);
-    const provider = await GetCompanySetting(
-      ticket.companyId,
-      "aiProvider",
-      "openai"
-    );
+    const audioBuffer = Buffer.isBuffer(media.data)
+      ? media.data
+      : await streamToBuffer(media.data);
 
-    if (apiKey) {
-      try {
-        const audioBuffer = Buffer.isBuffer(media.data)
-          ? media.data
-          : await streamToBuffer(media.data);
-        const audioTranscription = await transcribeAudioBuffer({
-          companyId: ticket.companyId,
-          audioBuffer,
-          filename,
-          mimeType: mimetype,
-          model: aiAgentForAudio?.transcriptionModel,
-          providerId: aiAgentForAudio?.provider,
-          ticketId: ticket.id,
-          messageId: msg.key?.id
-        });
-        if (audioTranscription.success && audioTranscription.text) {
-          body = audioTranscription.text;
-        } else if (isAudioPlaceholder(body)) {
-          body = "";
-        }
-      } catch (error) {
-        logger.error(
-          { message: error?.message, ticketId: ticket.id },
-          "Error transcribing audio message from buffer"
-        );
-      }
+    const audioResult = await resolveInboundAudioText({
+      companyId: ticket.companyId,
+      ticketId: ticket.id,
+      messageId: msg.key?.id,
+      audioBuffer,
+      filename,
+      mimeType: mimetype,
+      existingText: body,
+      transcriptionModel: aiAgentForAudio?.transcriptionModel,
+      providerId: aiAgentForAudio?.provider
+    });
+
+    if (audioResult.success && audioResult.text) {
+      body = audioResult.text;
+    } else if (isAudioPlaceholder(body)) {
+      body = "";
     }
   }
 
@@ -789,40 +774,25 @@ export const verifyMediaMessage = async (
     storedMediaUrl &&
     (audioTranscriptionsSetting === "enabled" || aiAgentForAudio)
   ) {
-    const apiKey = await GetCompanySetting(ticket.companyId, "openAiKey", null);
-    const provider = await GetCompanySetting(
-      ticket.companyId,
-      "aiProvider",
-      "openai"
-    );
-
-    if (apiKey && storedMediaUrl) {
-      try {
-        const audioBuffer = await readMediaBuffer(
-          storedMediaUrl,
-          ticket.companyId
-        );
-        if (audioBuffer) {
-          const audioTranscription = await transcribeAudioBuffer({
-            companyId: ticket.companyId,
-            audioBuffer,
-            filename,
-            mimeType: mimetype,
-            model: aiAgentForAudio?.transcriptionModel,
-            providerId: aiAgentForAudio?.provider,
-            ticketId: ticket.id,
-            messageId: msg.key?.id
-          });
-          if (audioTranscription.success && audioTranscription.text) {
-            body = audioTranscription.text;
-          }
-        }
-      } catch (error) {
-        logger.error(
-          { message: error?.message },
-          "Error transcribing audio message"
-        );
+    try {
+      const audioResult = await resolveInboundAudioText({
+        companyId: ticket.companyId,
+        ticketId: ticket.id,
+        messageId: msg.key?.id,
+        mediaUrl: storedMediaUrl,
+        filename,
+        mimeType: mimetype,
+        transcriptionModel: aiAgentForAudio?.transcriptionModel,
+        providerId: aiAgentForAudio?.provider
+      });
+      if (audioResult.success && audioResult.text) {
+        body = audioResult.text;
       }
+    } catch (error) {
+      logger.error(
+        { message: error?.message, ticketId: ticket.id },
+        "Error transcribing audio message"
+      );
     }
   }
 
@@ -1463,7 +1433,9 @@ const handleRating = async (
 
   await ticket.update({
     aiSatisfactionRating: finalRate,
-    aiSatisfactionSource: ticket.aiResolvedByAi ? "ai_resolved" : "human_resolved"
+    aiSatisfactionSource: ticket.aiResolvedByAi
+      ? "ai_resolved"
+      : "human_resolved"
   });
 
   const complationMessage =

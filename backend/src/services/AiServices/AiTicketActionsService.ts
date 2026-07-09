@@ -153,8 +153,7 @@ export const resumeTicketAi = async ({
       aiSlaEscalationLevel: 0,
       aiLastSlaAlertAt: null,
       status: "pending",
-      userId: null,
-      queueId: null
+      userId: null
     } as any
   });
 

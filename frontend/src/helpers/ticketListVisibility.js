@@ -4,9 +4,13 @@ import {
   isHandoffPendingTicket
 } from "./aiTicketStatus";
 
-export const ticketMatchesSelectedQueues = (ticket, selectedQueueIds = []) => {
+export const ticketMatchesSelectedQueues = (
+  ticket,
+  selectedQueueIds = [],
+  { supervision = false } = {}
+) => {
   if (!ticket?.queueId) {
-    return false;
+    return supervision && isAiHandlingTicket(ticket);
   }
 
   if (!selectedQueueIds?.length) {
@@ -29,7 +33,7 @@ export const shouldShowTicketInList = ({
     return false;
   }
 
-  if (!ticketMatchesSelectedQueues(ticket, selectedQueueIds)) {
+  if (!ticketMatchesSelectedQueues(ticket, selectedQueueIds, { supervision })) {
     return false;
   }
 

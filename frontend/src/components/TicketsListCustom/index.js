@@ -350,7 +350,7 @@ const TicketsListCustom = props => {
       }
 
       if (data.action === "removeFromList") {
-        dispatch({ type: "DELETE_TICKET", payload: data.ticketId });
+        return;
       }
     };
 

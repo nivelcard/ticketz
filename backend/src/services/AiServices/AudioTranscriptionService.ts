@@ -28,10 +28,12 @@ const PROVIDER_BASE_URLS: Record<string, string> = {
 };
 
 const DEFAULT_TRANSCRIPTION_MODELS: Record<string, string> = {
-  openai: "gpt-4o-mini-transcribe",
+  openai: "whisper-1",
   groq: "whisper-large-v3-turbo",
-  openrouter: "gpt-4o-mini-transcribe"
+  openrouter: "whisper-1"
 };
+
+const TRANSCRIPTION_FALLBACK_MODEL = "whisper-1";
 
 export type AudioTranscriptionResult = {
   text: string;
@@ -132,7 +134,9 @@ export const transcribeAudioBuffer = async ({
     (await GetCompanySetting(companyId, "aiProvider", "openai")) ||
     "openai";
   const resolvedModel =
-    model || DEFAULT_TRANSCRIPTION_MODELS[provider] || "gpt-4o-mini-transcribe";
+    model ||
+    DEFAULT_TRANSCRIPTION_MODELS[provider] ||
+    TRANSCRIPTION_FALLBACK_MODEL;
   const extension = resolveExtension(filename, mimeType);
 
   logger.info(
@@ -165,104 +169,114 @@ export const transcribeAudioBuffer = async ({
   }
 
   let lastError = "unknown_error";
+  const modelsToTry = [
+    resolvedModel,
+    ...(resolvedModel !== TRANSCRIPTION_FALLBACK_MODEL
+      ? [TRANSCRIPTION_FALLBACK_MODEL]
+      : [])
+  ];
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    let tempFilePath: string | null = null;
+  for (let modelIndex = 0; modelIndex < modelsToTry.length; modelIndex += 1) {
+    const modelName = modelsToTry[modelIndex];
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      let tempFilePath: string | null = null;
 
-    try {
-      let workingBuffer = audioBuffer;
-      let uploadExtension = extension;
+      try {
+        let workingBuffer = audioBuffer;
+        let uploadExtension = extension;
 
-      if (!SUPPORTED_EXTENSIONS.has(extension)) {
-        logger.info(
-          { extension, attempt, ticketId, messageId },
-          "AudioTranscription: converting unsupported format"
+        if (!SUPPORTED_EXTENSIONS.has(extension)) {
+          logger.info(
+            { extension, attempt, ticketId, messageId, model: modelName },
+            "AudioTranscription: converting unsupported format"
+          );
+          const converted = await convertAudioToOggOpus(audioBuffer);
+          workingBuffer = Buffer.isBuffer(converted.data)
+            ? converted.data
+            : await streamToBuffer(converted.data);
+          uploadExtension = "ogg";
+        }
+
+        tempFilePath = writeTempAudioFile(
+          workingBuffer,
+          uploadExtension,
+          attempt
         );
-        const converted = await convertAudioToOggOpus(audioBuffer);
-        workingBuffer = Buffer.isBuffer(converted.data)
-          ? converted.data
-          : await streamToBuffer(converted.data);
-        uploadExtension = "ogg";
+
+        const baseURL =
+          (await GetCompanySetting(companyId, "aiBaseUrl", null)) ||
+          PROVIDER_BASE_URLS[provider] ||
+          PROVIDER_BASE_URLS.openai;
+
+        const client = new OpenAI({
+          apiKey,
+          baseURL,
+          maxRetries: 0,
+          timeout: 90000
+        });
+
+        const response = await client.audio.transcriptions.create({
+          file: fs.createReadStream(tempFilePath),
+          model: modelName
+        });
+
+        const text = response.text?.trim() || "";
+
+        logger.info(
+          {
+            attempt,
+            ticketId,
+            messageId,
+            textLength: text.length,
+            bufferSize: audioBuffer.length,
+            mimeType,
+            filename,
+            model: modelName
+          },
+          "AudioTranscription: attempt finished"
+        );
+
+        if (text) {
+          return {
+            text,
+            success: true,
+            attempts: attempt,
+            bufferSize: audioBuffer.length,
+            mimeType,
+            filename,
+            model: modelName,
+            provider
+          };
+        }
+
+        lastError = "empty_transcription_response";
+      } catch (error) {
+        lastError =
+          error instanceof Error
+            ? error.message
+            : String(error || "unknown_error");
+
+        logger.error(
+          {
+            attempt,
+            ticketId,
+            messageId,
+            error: lastError,
+            bufferSize: audioBuffer.length,
+            mimeType,
+            filename,
+            model: modelName,
+            provider
+          },
+          "AudioTranscription: attempt failed"
+        );
+
+        if (attempt < maxAttempts) {
+          await sleep(400 * attempt);
+        }
+      } finally {
+        cleanupTempFile(tempFilePath);
       }
-
-      tempFilePath = writeTempAudioFile(
-        workingBuffer,
-        uploadExtension,
-        attempt
-      );
-
-      const baseURL =
-        (await GetCompanySetting(companyId, "aiBaseUrl", null)) ||
-        PROVIDER_BASE_URLS[provider] ||
-        PROVIDER_BASE_URLS.openai;
-
-      const client = new OpenAI({
-        apiKey,
-        baseURL,
-        maxRetries: 0,
-        timeout: 60000
-      });
-
-      const response = await client.audio.transcriptions.create({
-        file: fs.createReadStream(tempFilePath),
-        model: resolvedModel
-      });
-
-      const text = response.text?.trim() || "";
-
-      logger.info(
-        {
-          attempt,
-          ticketId,
-          messageId,
-          textLength: text.length,
-          bufferSize: audioBuffer.length,
-          mimeType,
-          filename
-        },
-        "AudioTranscription: attempt finished"
-      );
-
-      if (text) {
-        return {
-          text,
-          success: true,
-          attempts: attempt,
-          bufferSize: audioBuffer.length,
-          mimeType,
-          filename,
-          model: resolvedModel,
-          provider
-        };
-      }
-
-      lastError = "empty_transcription_response";
-    } catch (error) {
-      lastError =
-        error instanceof Error
-          ? error.message
-          : String(error || "unknown_error");
-
-      logger.error(
-        {
-          attempt,
-          ticketId,
-          messageId,
-          error: lastError,
-          bufferSize: audioBuffer.length,
-          mimeType,
-          filename,
-          model: resolvedModel,
-          provider
-        },
-        "AudioTranscription: attempt failed"
-      );
-
-      if (attempt < maxAttempts) {
-        await sleep(400 * attempt);
-      }
-    } finally {
-      cleanupTempFile(tempFilePath);
     }
   }
 
