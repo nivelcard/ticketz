@@ -1101,7 +1101,10 @@ const MessageInputCustom = props => {
 
   const isGroup = showTabGroups && ticket.isGroup;
   const disableOption =
-    (!isGroup && loading) || recording || ticketStatus === "closed";
+    (!isGroup && loading) ||
+    recording ||
+    ticketStatus === "closed" ||
+    props.observationMode;
 
   const renderReplyingMessage = message => {
     return (

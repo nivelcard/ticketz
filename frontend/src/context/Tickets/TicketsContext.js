@@ -1,21 +1,24 @@
-import React, { useState, useEffect, createContext } from "react";
-import { useHistory } from "react-router-dom";
+import React, { useState, createContext } from "react";
 
 const TicketsContext = createContext();
 
 const TicketsContextProvider = ({ children }) => {
-  const [currentTicket, setCurrentTicket] = useState({ id: null, code: null });
-  const history = useHistory();
-
-  useEffect(() => {
-    if (currentTicket?.uuid) {
-      history.push(`/tickets/${currentTicket.uuid}`);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTicket]);
+  const [currentTicket, setCurrentTicket] = useState({
+    id: null,
+    code: null,
+    uuid: null
+  });
+  const [observationMode, setObservationMode] = useState(false);
 
   return (
-    <TicketsContext.Provider value={{ currentTicket, setCurrentTicket }}>
+    <TicketsContext.Provider
+      value={{
+        currentTicket,
+        setCurrentTicket,
+        observationMode,
+        setObservationMode
+      }}
+    >
       {children}
     </TicketsContext.Provider>
   );

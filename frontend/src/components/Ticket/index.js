@@ -24,6 +24,8 @@ import AiExplainabilityPanel from "../AiExplainabilityPanel";
 import { SocketContext } from "../../context/Socket/SocketContext";
 import useSettings from "../../hooks/useSettings";
 import { canSuperviseAi } from "../../helpers/aiTicketStatus";
+import { isTicketObservationMode } from "../../helpers/ticketListVisibility";
+import { TicketsContext } from "../../context/Tickets/TicketsContext";
 import { i18n } from "../../translate/i18n";
 
 const useStyles = makeStyles(theme => ({
@@ -83,6 +85,7 @@ const Ticket = () => {
   const classes = useStyles();
 
   const { user } = useContext(AuthContext);
+  const { observationMode, setObservationMode } = useContext(TicketsContext);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -113,13 +116,24 @@ const Ticket = () => {
     const delayDebounceFn = setTimeout(() => {
       const fetchTicket = async () => {
         try {
-          const { data } = await api.get("/tickets/u/" + ticketId);
+          const isUuid =
+            ticketId &&
+            String(ticketId).includes("-") &&
+            !/^\d+$/.test(ticketId);
+          const endpoint = isUuid
+            ? `/tickets/u/${ticketId}`
+            : `/tickets/${ticketId}`;
+          const { data } = await api.get(endpoint);
           const { queueId } = data;
           const { queues, profile } = user;
 
           if (queueId) {
             const queueAllowed = queues.find(q => q.id === queueId);
-            if (queueAllowed === undefined && profile !== "admin") {
+            if (
+              queueAllowed === undefined &&
+              profile !== "admin" &&
+              !user?.super
+            ) {
               toast.error(i18n.t("common.accessNotAllowed"));
               history.push("/tickets");
               return;
@@ -132,6 +146,7 @@ const Ticket = () => {
 
           setContact(data.contact);
           setTicket(data);
+          setObservationMode(isTicketObservationMode(data, user));
           setLoading(false);
         } catch (err) {
           setLoading(false);
@@ -141,7 +156,7 @@ const Ticket = () => {
       fetchTicket();
     }, 500);
     return () => clearTimeout(delayDebounceFn);
-  }, [ticketId, user, history]);
+  }, [ticketId, user, history, setObservationMode]);
 
   useEffect(() => {
     const companyId = localStorage.getItem("companyId");
@@ -157,9 +172,11 @@ const Ticket = () => {
     const onCompanyTicket = data => {
       if (data.action === "update" && data.ticket.id === ticket.id) {
         setTicket(data.ticket);
+        setObservationMode(isTicketObservationMode(data.ticket, user));
       }
 
       if (data.action === "delete" && data.ticketId === ticket.id) {
+        setObservationMode(false);
         history.push("/tickets");
       }
     };
@@ -181,7 +198,9 @@ const Ticket = () => {
     return () => {
       socket.disconnect();
     };
-  }, [ticketId, ticket, history, socketManager]);
+  }, [ticketId, ticket, history, socketManager, user, setObservationMode]);
+
+  const isObserving = observationMode || isTicketObservationMode(ticket, user);
 
   const handleDrawerOpen = () => {
     setDrawerOpen(true);
@@ -210,9 +229,13 @@ const Ticket = () => {
           ticket={ticket}
           ticketId={ticket.id}
           isGroup={ticket.isGroup}
-          markAsRead={true}
+          markAsRead={!isObserving}
         ></MessagesList>
-        <MessageInput ticket={ticket} showTabGroups />
+        <MessageInput
+          ticket={ticket}
+          showTabGroups
+          observationMode={isObserving}
+        />
       </>
     );
   };
@@ -234,9 +257,13 @@ const Ticket = () => {
         ></div>
         <TicketHeader loading={loading}>
           {renderTicketInfo()}
-          <TicketActionButtons ticket={ticket} showTabGroups={showTabGroups} />
+          <TicketActionButtons
+            ticket={ticket}
+            showTabGroups={showTabGroups}
+            observationMode={isObserving}
+          />
         </TicketHeader>
-        <AiTicketContextBanner ticket={ticket} />
+        <AiTicketContextBanner ticket={ticket} observationMode={isObserving} />
         <AiExplainabilityPanel ticket={ticket} />
         <AiCopilotPanel ticket={ticket} />
         <Paper>

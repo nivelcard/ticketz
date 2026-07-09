@@ -44,7 +44,11 @@ const useStyles = makeStyles(theme => ({
   }
 }));
 
-const TicketActionButtonsCustom = ({ ticket, showTabGroups }) => {
+const TicketActionButtonsCustom = ({
+  ticket,
+  showTabGroups,
+  observationMode = false
+}) => {
   const classes = useStyles();
   const history = useHistory();
   const [anchorEl, setAnchorEl] = useState(null);
@@ -52,7 +56,7 @@ const TicketActionButtonsCustom = ({ ticket, showTabGroups }) => {
   const [learningModalOpen, setLearningModalOpen] = useState(false);
   const ticketOptionsMenuOpen = Boolean(anchorEl);
   const { user } = useContext(AuthContext);
-  const { setCurrentTicket } = useContext(TicketsContext);
+  const { setCurrentTicket, setObservationMode } = useContext(TicketsContext);
   const phoneContext = useContext(PhoneCallContext);
 
   const customTheme = createTheme({
@@ -79,8 +83,10 @@ const TicketActionButtonsCustom = ({ ticket, showTabGroups }) => {
 
       setLoading(false);
       if (status === "open") {
+        setObservationMode(false);
         setCurrentTicket({ ...ticket, code: "#open" });
       } else {
+        setObservationMode(false);
         setCurrentTicket({ id: null, code: null });
         history.push("/tickets");
       }
@@ -115,6 +121,7 @@ const TicketActionButtonsCustom = ({ ticket, showTabGroups }) => {
       const { data } = await api.post(`/tickets/${ticket.id}/ai/assume`, {
         notifyCustomer: true
       });
+      setObservationMode(false);
       setCurrentTicket({ ...data, code: "#open" });
     } catch (err) {
       toastError(err);
@@ -180,6 +187,14 @@ const TicketActionButtonsCustom = ({ ticket, showTabGroups }) => {
     ticket.aiPaused &&
     ticket.aiHandoff &&
     !ticket.userId;
+
+  const handleAcceptObservation = async () => {
+    await handleUpdateTicketStatus(null, "open", user?.id);
+  };
+
+  const handleRefreshTicket = () => {
+    window.location.reload();
+  };
 
   return (
     <div className={classes.actionButtons}>
@@ -266,7 +281,65 @@ const TicketActionButtonsCustom = ({ ticket, showTabGroups }) => {
           />
         </>
       )}
-      {showAssumeFromBot && (
+      {observationMode && (
+        <>
+          {showAssumeFromBot && (
+            <ButtonWithSpinner
+              loading={loading}
+              size="small"
+              variant="contained"
+              color="secondary"
+              onClick={handleAssumeFromBot}
+            >
+              {i18n.t("aiSupervision.actions.assumeFromBot")}
+            </ButtonWithSpinner>
+          )}
+          {showPauseAi && (
+            <ButtonWithSpinner
+              loading={loading}
+              size="small"
+              variant="outlined"
+              color="default"
+              onClick={handlePauseAi}
+            >
+              {i18n.t("aiSupervision.actions.pauseAi")}
+            </ButtonWithSpinner>
+          )}
+          {showResumeAi && (
+            <ButtonWithSpinner
+              loading={loading}
+              size="small"
+              variant="outlined"
+              color="primary"
+              onClick={handleResumeAi}
+            >
+              {i18n.t("aiSupervision.actions.resumeAi")}
+            </ButtonWithSpinner>
+          )}
+          {ticket.status === "pending" &&
+            (!showTabGroups || !ticket.isGroup) && (
+              <ButtonWithSpinner
+                loading={loading}
+                size="small"
+                variant="contained"
+                color="primary"
+                onClick={handleAcceptObservation}
+              >
+                {i18n.t("aiSupervision.actions.acceptAttendance")}
+              </ButtonWithSpinner>
+            )}
+          <ButtonWithSpinner
+            loading={loading}
+            size="small"
+            variant="outlined"
+            color="default"
+            onClick={handleRefreshTicket}
+          >
+            {i18n.t("aiSupervision.actions.refresh")}
+          </ButtonWithSpinner>
+        </>
+      )}
+      {!observationMode && showAssumeFromBot && (
         <ButtonWithSpinner
           loading={loading}
           size="small"
@@ -277,7 +350,7 @@ const TicketActionButtonsCustom = ({ ticket, showTabGroups }) => {
           {i18n.t("aiSupervision.actions.assumeFromBot")}
         </ButtonWithSpinner>
       )}
-      {showPauseAi && (
+      {!observationMode && showPauseAi && (
         <ButtonWithSpinner
           loading={loading}
           size="small"
@@ -288,7 +361,7 @@ const TicketActionButtonsCustom = ({ ticket, showTabGroups }) => {
           {i18n.t("aiSupervision.actions.pauseAi")}
         </ButtonWithSpinner>
       )}
-      {showResumeAi && (
+      {!observationMode && showResumeAi && (
         <ButtonWithSpinner
           loading={loading}
           size="small"
@@ -299,17 +372,19 @@ const TicketActionButtonsCustom = ({ ticket, showTabGroups }) => {
           {i18n.t("aiSupervision.actions.resumeAi")}
         </ButtonWithSpinner>
       )}
-      {ticket.status === "pending" && (!showTabGroups || !ticket.isGroup) && (
-        <ButtonWithSpinner
-          loading={loading}
-          size="small"
-          variant="contained"
-          color="primary"
-          onClick={e => handleUpdateTicketStatus(e, "open", user?.id)}
-        >
-          {i18n.t("messagesList.header.buttons.accept")}
-        </ButtonWithSpinner>
-      )}
+      {!observationMode &&
+        ticket.status === "pending" &&
+        (!showTabGroups || !ticket.isGroup) && (
+          <ButtonWithSpinner
+            loading={loading}
+            size="small"
+            variant="contained"
+            color="primary"
+            onClick={e => handleUpdateTicketStatus(e, "open", user?.id)}
+          >
+            {i18n.t("messagesList.header.buttons.accept")}
+          </ButtonWithSpinner>
+        )}
       <AiLearningCloseModal
         open={learningModalOpen}
         ticket={ticket}

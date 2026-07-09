@@ -8,7 +8,9 @@ import DeleteTicketService from "../services/TicketServices/DeleteTicketService"
 import ListTicketsService from "../services/TicketServices/ListTicketsService";
 import ShowTicketUUIDService from "../services/TicketServices/ShowTicketFromUUIDService";
 import ShowTicketService from "../services/TicketServices/ShowTicketService";
+import ShowUserService from "../services/UserServices/ShowUserService";
 import UpdateTicketService from "../services/TicketServices/UpdateTicketService";
+import AppError from "../errors/AppError";
 import ListTicketsServiceKanban from "../services/TicketServices/ListTicketsServiceKanban";
 
 type IndexQuery = {
@@ -204,8 +206,31 @@ export const showFromUUID = async (
   res: Response
 ): Promise<Response> => {
   const { uuid } = req.params;
+  const { companyId, id: userId } = req.user;
 
   const ticket: Ticket = await ShowTicketUUIDService(uuid);
+
+  if (ticket.companyId !== companyId) {
+    throw new AppError("Não é possível consultar registros de outra empresa");
+  }
+
+  const user = await ShowUserService(userId);
+  const userQueueIds = user.queues.map(queue => queue.id);
+  const canSupervise = user.profile === "admin" || user.super === true;
+  const isAiTicket =
+    !!ticket.aiAgentId || !!ticket.aiHandoff || !!ticket.aiStartedAt;
+
+  if (ticket.queueId) {
+    if (
+      !userQueueIds.includes(ticket.queueId) &&
+      user.profile !== "admin" &&
+      !user.super
+    ) {
+      throw new AppError("ERR_NO_PERMISSION", 403);
+    }
+  } else if (!canSupervise && !isAiTicket) {
+    throw new AppError("ERR_NO_PERMISSION", 403);
+  }
 
   return res.status(200).json(ticket);
 };

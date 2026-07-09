@@ -42,6 +42,7 @@ import {
   getAiTicketBadge,
   getHandoffReasonLabel,
   getPriorityBadge,
+  isAiHandlingTicket,
   isHandoffPendingTicket
 } from "../../helpers/aiTicketStatus";
 
@@ -56,7 +57,7 @@ const useStyles = makeStyles(theme => ({
   },
 
   pendingTicket: {
-    cursor: "unset"
+    cursor: "pointer"
   },
 
   noTicketsDiv: {
@@ -191,7 +192,7 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
   const [openTicketMessageDialog, setOpenTicketMessageDialog] = useState(false);
   const { ticketId } = useParams();
   const isMounted = useRef(true);
-  const { setCurrentTicket } = useContext(TicketsContext);
+  const { setCurrentTicket, setObservationMode } = useContext(TicketsContext);
   const { user } = useContext(AuthContext);
   const { profile } = user;
 
@@ -209,7 +210,10 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
     };
   }, [ticket]);
 
-  const handleCloseTicket = async id => {
+  const handleCloseTicket = async (id, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
     try {
       await api.put(`/tickets/${id}`, {
         status: "closed",
@@ -222,7 +226,10 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
     history.push(`/tickets/`);
   };
 
-  const handleAcceptTicket = async id => {
+  const handleAcceptTicket = async (id, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
     try {
       await api.put(`/tickets/${id}`, {
         status: "open",
@@ -232,15 +239,23 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
       toastError(err);
     }
 
-    history.push(`/tickets/${ticket.uuid}`);
+    setObservationMode(false);
+    history.push(`/tickets/${ticket.uuid || ticket.id}`);
     setTabOpen("open");
   };
 
   const handleSelectTicket = selected => {
     const code = uuidv4();
     const { id, uuid } = selected;
-    setCurrentTicket({ id, uuid, code });
-    history.push(`/tickets/${uuid}`);
+    const routeId = uuid || String(id);
+    const observing =
+      (selected.status === "pending" && !selected.userId) ||
+      isAiHandlingTicket(selected) ||
+      isHandoffPendingTicket(selected);
+
+    setObservationMode(observing);
+    setCurrentTicket({ id, uuid: routeId, code });
+    history.push(`/tickets/${routeId}`);
   };
 
   const renderTicketInfo = () => {
@@ -395,7 +410,7 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
             (groupActionButtons || !ticket.isGroup) && (
               <Tooltip title={i18n.t("ticketsList.tooltips.closeConversation")}>
                 <ClearOutlinedIcon
-                  onClick={() => handleCloseTicket(ticket.id)}
+                  onClick={e => handleCloseTicket(ticket.id, e)}
                   fontSize="small"
                   style={{
                     color: "#fff",
@@ -426,7 +441,7 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
             (groupActionButtons || !ticket.isGroup) && (
               <Tooltip title={i18n.t("ticketsList.tooltips.closeConversation")}>
                 <ClearOutlinedIcon
-                  onClick={() => handleCloseTicket(ticket.id)}
+                  onClick={e => handleCloseTicket(ticket.id, e)}
                   fontSize="small"
                   style={{
                     color: red[700],
@@ -445,7 +460,7 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
                 title={i18n.t("ticketsList.tooltips.acceptConversation")}
               >
                 <DoneIcon
-                  onClick={() => handleAcceptTicket(ticket.id)}
+                  onClick={e => handleAcceptTicket(ticket.id, e)}
                   fontSize="small"
                   style={{
                     color: "#fff",
@@ -586,7 +601,10 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
         onClick={() => {
           handleSelectTicket(ticket);
         }}
-        selected={ticketId && +ticketId === ticket.id}
+        selected={
+          ticketId &&
+          (ticket.uuid === ticketId || String(ticket.id) === ticketId)
+        }
         className={clsx(classes.ticket, {
           [classes.pendingTicket]: ticket.status === "pending"
         })}

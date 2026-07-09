@@ -34,6 +34,10 @@ const useStyles = makeStyles(theme => ({
     marginTop: theme.spacing(0.5),
     fontSize: "0.875rem"
   },
+  observationRoot: {
+    backgroundColor: theme.palette.type === "dark" ? "#1b2838" : "#e3f2fd",
+    borderLeft: "4px solid #1565c0"
+  },
   summary: {
     marginTop: theme.spacing(1),
     whiteSpace: "pre-line",
@@ -41,84 +45,108 @@ const useStyles = makeStyles(theme => ({
   }
 }));
 
-const AiTicketContextBanner = ({ ticket }) => {
+const AiTicketContextBanner = ({ ticket, observationMode = false }) => {
   const classes = useStyles();
 
-  if (!ticket?.aiAgentId && !ticket?.aiHandoff && !ticket?.aiStartedAt) {
+  const renderContextDetails = () => {
+    if (!ticket?.aiAgentId && !ticket?.aiHandoff && !ticket?.aiStartedAt) {
+      return null;
+    }
+
+    const handoffPending = isHandoffPendingTicket(ticket);
+    const aiHandling = isAiHandlingTicket(ticket);
+    const reasonLabel = getHandoffReasonLabel(ticket.aiHandoffReason);
+    const priorityBadge = getPriorityBadge(ticket.aiPriority);
+
+    if (handoffPending || ticket.aiHandoff) {
+      return (
+        <Box className={`${classes.root} ${classes.handoffRoot}`}>
+          <Typography className={classes.title} color="error">
+            <WarningIcon fontSize="small" />
+            {i18n.t("aiSupervision.banner.handoffTitle")}
+          </Typography>
+          {ticket.aiHandoffSummary && (
+            <Typography className={classes.summary}>
+              {ticket.aiHandoffSummary}
+            </Typography>
+          )}
+          <Typography className={classes.line}>
+            {i18n.t("aiSupervision.banner.startedByAi")}
+          </Typography>
+          {reasonLabel && (
+            <Typography className={classes.line}>
+              {i18n.t("aiSupervision.banner.handoffReason")}: {reasonLabel}
+            </Typography>
+          )}
+          {ticket.aiHandoffReason === "low_confidence" &&
+            ticket.aiLastConfidence !== null &&
+            ticket.aiLastConfidence !== undefined && (
+              <Typography className={classes.line}>
+                {i18n.t("aiSupervision.banner.lowConfidence")}:{" "}
+                {formatConfidencePercent(ticket.aiLastConfidence)}
+              </Typography>
+            )}
+          {priorityBadge && (
+            <Typography className={classes.line}>
+              {i18n.t("aiSupervision.banner.priority")}: {priorityBadge.label}
+            </Typography>
+          )}
+          {ticket.queue?.name && (
+            <Typography className={classes.line}>
+              {i18n.t("aiSupervision.banner.queue")}: {ticket.queue.name}
+            </Typography>
+          )}
+          <Typography className={classes.line}>
+            {i18n.t("aiSupervision.banner.reviewHistory")}
+          </Typography>
+        </Box>
+      );
+    }
+
+    if (aiHandling) {
+      return (
+        <Box className={`${classes.root} ${classes.aiRoot}`}>
+          <Typography className={classes.title}>
+            {i18n.t("aiSupervision.banner.aiHandlingTitle")}
+          </Typography>
+          <Typography className={classes.line}>
+            {i18n.t("aiSupervision.banner.aiHandlingHint")}
+          </Typography>
+          {ticket.aiLastConfidence !== null &&
+            ticket.aiLastConfidence !== undefined && (
+              <Typography className={classes.line}>
+                {i18n.t("aiSupervision.banner.confidence")}:{" "}
+                {formatConfidencePercent(ticket.aiLastConfidence)}
+              </Typography>
+            )}
+        </Box>
+      );
+    }
+
+    return null;
+  };
+
+  const contextDetails = renderContextDetails();
+
+  if (!observationMode && !contextDetails) {
     return null;
   }
 
-  const handoffPending = isHandoffPendingTicket(ticket);
-  const aiHandling = isAiHandlingTicket(ticket);
-  const reasonLabel = getHandoffReasonLabel(ticket.aiHandoffReason);
-  const priorityBadge = getPriorityBadge(ticket.aiPriority);
-
-  if (handoffPending || ticket.aiHandoff) {
-    return (
-      <Box className={`${classes.root} ${classes.handoffRoot}`}>
-        <Typography className={classes.title} color="error">
-          <WarningIcon fontSize="small" />
-          {i18n.t("aiSupervision.banner.handoffTitle")}
-        </Typography>
-        {ticket.aiHandoffSummary && (
-          <Typography className={classes.summary}>
-            {ticket.aiHandoffSummary}
+  return (
+    <>
+      {observationMode && (
+        <Box className={`${classes.root} ${classes.observationRoot}`}>
+          <Typography className={classes.title}>
+            {i18n.t("aiSupervision.banner.observationTitle")}
           </Typography>
-        )}
-        <Typography className={classes.line}>
-          {i18n.t("aiSupervision.banner.startedByAi")}
-        </Typography>
-        {reasonLabel && (
           <Typography className={classes.line}>
-            {i18n.t("aiSupervision.banner.handoffReason")}: {reasonLabel}
+            {i18n.t("aiSupervision.banner.observationHint")}
           </Typography>
-        )}
-        {ticket.aiHandoffReason === "low_confidence" &&
-          ticket.aiLastConfidence !== null &&
-          ticket.aiLastConfidence !== undefined && (
-            <Typography className={classes.line}>
-              {i18n.t("aiSupervision.banner.lowConfidence")}:{" "}
-              {formatConfidencePercent(ticket.aiLastConfidence)}
-            </Typography>
-          )}
-        {priorityBadge && (
-          <Typography className={classes.line}>
-            {i18n.t("aiSupervision.banner.priority")}: {priorityBadge.label}
-          </Typography>
-        )}
-        {ticket.queue?.name && (
-          <Typography className={classes.line}>
-            {i18n.t("aiSupervision.banner.queue")}: {ticket.queue.name}
-          </Typography>
-        )}
-        <Typography className={classes.line}>
-          {i18n.t("aiSupervision.banner.reviewHistory")}
-        </Typography>
-      </Box>
-    );
-  }
-
-  if (aiHandling) {
-    return (
-      <Box className={`${classes.root} ${classes.aiRoot}`}>
-        <Typography className={classes.title}>
-          {i18n.t("aiSupervision.banner.aiHandlingTitle")}
-        </Typography>
-        <Typography className={classes.line}>
-          {i18n.t("aiSupervision.banner.aiHandlingHint")}
-        </Typography>
-        {ticket.aiLastConfidence !== null &&
-          ticket.aiLastConfidence !== undefined && (
-            <Typography className={classes.line}>
-              {i18n.t("aiSupervision.banner.confidence")}:{" "}
-              {formatConfidencePercent(ticket.aiLastConfidence)}
-            </Typography>
-          )}
-      </Box>
-    );
-  }
-
-  return null;
+        </Box>
+      )}
+      {contextDetails}
+    </>
+  );
 };
 
 export default AiTicketContextBanner;

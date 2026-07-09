@@ -18,11 +18,7 @@ import { i18n } from "../../translate/i18n";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { SocketContext } from "../../context/Socket/SocketContext";
 import toastError from "../../errors/toastError";
-import { isAiHandlingTicket } from "../../helpers/aiTicketStatus";
-import {
-  shouldShowTicketInList,
-  ticketMatchesSelectedQueues
-} from "../../helpers/ticketListVisibility";
+import { shouldShowTicketInList } from "../../helpers/ticketListVisibility";
 
 const useStyles = makeStyles(theme => ({
   ticketsListWrapper: {
@@ -87,21 +83,7 @@ const useStyles = makeStyles(theme => ({
 
 const reducer = (state, action) => {
   if (action.type === "LOAD_TICKETS") {
-    const newTickets = action.payload;
-
-    newTickets.forEach(ticket => {
-      const ticketIndex = state.findIndex(t => t.id === ticket.id);
-      if (ticketIndex !== -1) {
-        state[ticketIndex] = ticket;
-        if (ticket.unreadMessages > 0) {
-          state.unshift(state.splice(ticketIndex, 1)[0]);
-        }
-      } else {
-        state.push(ticket);
-      }
-    });
-
-    return [...state];
+    return [...action.payload];
   }
 
   if (action.type === "RESET_UNREAD") {
@@ -266,12 +248,21 @@ const TicketsListCustom = props => {
         supervision,
         selectedQueueIds,
         profile,
-        showAll
+        showAll,
+        userId: user?.id
       })
     );
 
     dispatch({ type: "LOAD_TICKETS", payload: filteredTickets });
-  }, [tickets, status, supervision, selectedQueueIds, profile, showAll]);
+  }, [
+    tickets,
+    status,
+    supervision,
+    selectedQueueIds,
+    profile,
+    showAll,
+    user?.id
+  ]);
 
   useEffect(() => {
     const companyId = localStorage.getItem("companyId");
@@ -285,7 +276,8 @@ const TicketsListCustom = props => {
           supervision,
           selectedQueueIds,
           profile,
-          showAll
+          showAll,
+          userId: user?.id
         })
       ) {
         return false;
@@ -300,16 +292,21 @@ const TicketsListCustom = props => {
               ticket.tags.some(t => t.id === tag) ||
               ticket.contact.tags.some(t => t.id === tag)
           )) &&
-        (!users?.length || users.some(u => u === ticket.userId)) &&
-        (!ticket.userId || ticket.userId === user?.id || showAll) &&
-        ticketMatchesSelectedQueues(ticket, selectedQueueIds)
+        (!users?.length || users.some(u => u === ticket.userId))
       );
     };
 
-    const notBelongsToUserQueues = ticket =>
-      ticket.queueId &&
-      selectedQueueIds.indexOf(ticket.queueId) === -1 &&
-      !isAiHandlingTicket(ticket);
+    const syncTicketUpdate = ticket => {
+      if (shouldUpdateTicket(ticket)) {
+        dispatch({
+          type: "UPDATE_TICKET",
+          payload: ticket
+        });
+        return;
+      }
+
+      dispatch({ type: "DELETE_TICKET", payload: ticket?.id });
+    };
 
     const onConnectTicketList = () => {
       if (status) {
@@ -332,10 +329,7 @@ const TicketsListCustom = props => {
         data.ticket.status === status &&
         shouldUpdateTicket(data.ticket)
       ) {
-        dispatch({
-          type: "UPDATE_TICKET",
-          payload: data.ticket
-        });
+        syncTicketUpdate(data.ticket);
       }
 
       if (
@@ -344,13 +338,10 @@ const TicketsListCustom = props => {
         data.ticket.isGroup &&
         shouldUpdateTicket(data.ticket)
       ) {
-        dispatch({
-          type: "UPDATE_TICKET",
-          payload: data.ticket
-        });
+        syncTicketUpdate(data.ticket);
       }
 
-      if (data.action === "update" && notBelongsToUserQueues(data.ticket)) {
+      if (data.action === "update" && data.ticket.status !== status) {
         dispatch({ type: "DELETE_TICKET", payload: data.ticket?.id });
       }
 
@@ -374,8 +365,9 @@ const TicketsListCustom = props => {
 
       const queueIds = safeQueues.map(q => q.id);
       if (
-        profile === "user" &&
         data.ticket?.queueId &&
+        selectedQueueIds?.length &&
+        selectedQueueIds.indexOf(data.ticket.queueId) === -1 &&
         queueIds.indexOf(data.ticket.queueId) === -1
       ) {
         return;
@@ -387,10 +379,22 @@ const TicketsListCustom = props => {
         shouldUpdateTicket(data.ticket) &&
         (status === undefined || data.ticket.status === status)
       ) {
-        dispatch({
-          type: "UPDATE_TICKET_UNREAD_MESSAGES",
-          payload: data.ticket
-        });
+        if (
+          shouldShowTicketInList({
+            ticket: data.ticket,
+            status,
+            supervision,
+            selectedQueueIds,
+            profile,
+            showAll,
+            userId: user?.id
+          })
+        ) {
+          dispatch({
+            type: "UPDATE_TICKET_UNREAD_MESSAGES",
+            payload: data.ticket
+          });
+        }
       }
     };
 
@@ -419,9 +423,21 @@ const TicketsListCustom = props => {
 
           fetchSince(maxUpdatedAt)
             .then(newTickets => {
-              newTickets.forEach(ticket => {
-                dispatch({ type: "UPDATE_TICKET", payload: ticket });
-              });
+              newTickets
+                .filter(ticket =>
+                  shouldShowTicketInList({
+                    ticket,
+                    status,
+                    supervision,
+                    selectedQueueIds,
+                    profile,
+                    showAll,
+                    userId: user?.id
+                  })
+                )
+                .forEach(ticket => {
+                  dispatch({ type: "UPDATE_TICKET", payload: ticket });
+                });
             })
             .catch(err => {
               toastError(err);

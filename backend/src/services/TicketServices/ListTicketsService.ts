@@ -125,9 +125,9 @@ const ListTicketsService = async ({
   const queueFilter =
     isSupervision && canSupervise && queueIds.length
       ? { [Op.or]: [queueIds, null] }
-      : {
-          [Op.or]: user.profile === "admin" ? [queueIds, null] : [queueIds]
-        };
+      : queueIds.length
+        ? { [Op.in]: queueIds }
+        : { [Op.ne]: null };
 
   let whereCondition: WhereOptions<Ticket> = {
     [Op.and]: andedOrs,
@@ -165,20 +165,9 @@ const ListTicketsService = async ({
     }
   ];
 
-  if (showAll === "true" && user.profile === "admin") {
+  if (showAll === "true" && user.profile === "admin" && status === "open") {
     andedOrs.length = 0;
-
-    if (!isSupervision && !aiFilter && status === "pending") {
-      andedOrs.push({
-        [Op.or]: [{ aiHandoff: true }, { aiAgentId: null }, { aiPaused: true }]
-      });
-    }
-
-    whereCondition = {
-      [Op.and]: andedOrs,
-      queueId: { [Op.or]: [queueIds, null] },
-      ...(groupsTab ? { isGroup: groups === "true" } : {})
-    };
+    andedOrs.push({ status: "open" });
   }
 
   if (status) {

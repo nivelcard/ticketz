@@ -505,6 +505,9 @@ const messages = {
         },
         banner: {
           handoffTitle: "IA transferiu para humano",
+          observationTitle: "Você está apenas observando este atendimento.",
+          observationHint:
+            "Nenhuma ação foi tomada. Use os botões acima para assumir, pausar a IA ou aceitar o atendimento.",
           aiHandlingTitle: "Atendimento conduzido pela IA",
           aiHandlingHint:
             "A IA está respondendo automaticamente. Alertas humanos estão suprimidos.",
@@ -520,6 +523,8 @@ const messages = {
           assumeFromBot: "Assumir do robô",
           pauseAi: "Pausar IA",
           resumeAi: "Retomar IA",
+          acceptAttendance: "Aceitar atendimento",
+          refresh: "Atualizar",
           pauseSuccess: "IA pausada com sucesso.",
           resumeSuccess: "IA retomada com sucesso."
         },
