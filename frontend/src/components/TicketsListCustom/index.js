@@ -179,7 +179,8 @@ const TicketsListCustom = props => {
     setTabOpen,
     showTabGroups,
     aiFilter,
-    supervision
+    supervision,
+    listMode
   } = props;
   const classes = useStyles();
   const [paginationCursor, setPaginationCursor] = useState({
@@ -213,6 +214,7 @@ const TicketsListCustom = props => {
     selectedQueueIds,
     aiFilter,
     supervision,
+    listMode,
     showAll
   ]);
 
@@ -246,6 +248,7 @@ const TicketsListCustom = props => {
         ticket,
         status,
         supervision,
+        listMode,
         selectedQueueIds,
         profile,
         showAll,
@@ -258,6 +261,7 @@ const TicketsListCustom = props => {
     tickets,
     status,
     supervision,
+    listMode,
     selectedQueueIds,
     profile,
     showAll,
@@ -274,6 +278,7 @@ const TicketsListCustom = props => {
           ticket,
           status,
           supervision,
+          listMode,
           selectedQueueIds,
           profile,
           showAll,
@@ -326,7 +331,7 @@ const TicketsListCustom = props => {
 
       if (
         data.action === "update" &&
-        data.ticket.status === status &&
+        (listMode === "ai" || data.ticket.status === status) &&
         shouldUpdateTicket(data.ticket)
       ) {
         syncTicketUpdate(data.ticket);
@@ -341,7 +346,12 @@ const TicketsListCustom = props => {
         syncTicketUpdate(data.ticket);
       }
 
-      if (data.action === "update" && data.ticket.status !== status) {
+      if (
+        data.action === "update" &&
+        listMode !== "ai" &&
+        status &&
+        data.ticket.status !== status
+      ) {
         dispatch({ type: "DELETE_TICKET", payload: data.ticket?.id });
       }
 
@@ -377,13 +387,16 @@ const TicketsListCustom = props => {
         data.action === "create" &&
         (!showTabGroups || !!data.ticket?.isGroup === !!groups) &&
         shouldUpdateTicket(data.ticket) &&
-        (status === undefined || data.ticket.status === status)
+        (status === undefined ||
+          listMode === "ai" ||
+          data.ticket.status === status)
       ) {
         if (
           shouldShowTicketInList({
             ticket: data.ticket,
             status,
             supervision,
+            listMode,
             selectedQueueIds,
             profile,
             showAll,
@@ -429,6 +442,7 @@ const TicketsListCustom = props => {
                     ticket,
                     status,
                     supervision,
+                    listMode,
                     selectedQueueIds,
                     profile,
                     showAll,

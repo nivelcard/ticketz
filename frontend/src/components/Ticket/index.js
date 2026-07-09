@@ -23,7 +23,10 @@ import AiCopilotPanel from "../AiCopilotPanel";
 import AiExplainabilityPanel from "../AiExplainabilityPanel";
 import { SocketContext } from "../../context/Socket/SocketContext";
 import useSettings from "../../hooks/useSettings";
-import { canSuperviseAi } from "../../helpers/aiTicketStatus";
+import {
+  canSuperviseAi,
+  isAiHandlingTicket
+} from "../../helpers/aiTicketStatus";
 import { isTicketObservationMode } from "../../helpers/ticketListVisibility";
 import { TicketsContext } from "../../context/Tickets/TicketsContext";
 import { i18n } from "../../translate/i18n";
@@ -138,7 +141,12 @@ const Ticket = () => {
               history.push("/tickets");
               return;
             }
-          } else if (profile !== "admin" && !canSuperviseAi(user)) {
+          } else if (
+            profile !== "admin" &&
+            !user?.super &&
+            !isAiHandlingTicket(data) &&
+            !canSuperviseAi(user)
+          ) {
             toast.error(i18n.t("common.accessNotAllowed"));
             history.push("/tickets");
             return;

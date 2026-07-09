@@ -1,12 +1,4 @@
-import {
-  Op,
-  fn,
-  where,
-  col,
-  Filterable,
-  Includeable,
-  WhereOptions
-} from "sequelize";
+import { Op, fn, where, col, Includeable, WhereOptions } from "sequelize";
 import { startOfDay, endOfDay, parseISO } from "date-fns";
 
 import { intersection } from "lodash";
@@ -110,11 +102,15 @@ const ListTicketsService = async ({
     supervision === "true" ||
     (aiFilter && aiFilter !== AI_TICKET_FILTERS.all);
 
+  const isAiHandlingList = aiFilter === AI_TICKET_FILTERS.ai_handling;
+
   const canSupervise = user.profile === "admin" || user.super === true;
 
   const andedOrs: WhereOptions<Ticket>[] = [];
 
-  if (isSupervision && canSupervise) {
+  if (isAiHandlingList) {
+    andedOrs.push({});
+  } else if (isSupervision && canSupervise) {
     andedOrs.push({});
   } else {
     andedOrs.push({
@@ -123,7 +119,7 @@ const ListTicketsService = async ({
   }
 
   const queueFilter =
-    isSupervision && canSupervise && queueIds.length
+    (isAiHandlingList || (isSupervision && canSupervise)) && queueIds.length
       ? { [Op.or]: [queueIds, null] }
       : queueIds.length
         ? { [Op.in]: queueIds }

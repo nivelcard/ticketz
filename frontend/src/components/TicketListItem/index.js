@@ -5,7 +5,7 @@ import { parseISO, format, isSameDay } from "date-fns";
 import clsx from "clsx";
 
 import { makeStyles } from "@material-ui/core/styles";
-import { green } from "@material-ui/core/colors";
+import { green, purple } from "@material-ui/core/colors";
 import ListItem from "@material-ui/core/ListItem";
 import ListItemText from "@material-ui/core/ListItemText";
 import ListItemAvatar from "@material-ui/core/ListItemAvatar";
@@ -13,6 +13,7 @@ import Typography from "@material-ui/core/Typography";
 import Avatar from "@material-ui/core/Avatar";
 import Divider from "@material-ui/core/Divider";
 import Badge from "@material-ui/core/Badge";
+import Button from "@material-ui/core/Button";
 
 import { i18n } from "../../translate/i18n";
 import { formatWhatsappContactName } from "../../helpers/formatWhatsappDisplay";
@@ -22,7 +23,13 @@ import ButtonWithSpinner from "../ButtonWithSpinner";
 import WhatsMarked from "react-whatsmarked";
 import { Tooltip } from "@material-ui/core";
 import { AuthContext } from "../../context/Auth/AuthContext";
+import { TicketsContext } from "../../context/Tickets/TicketsContext";
 import toastError from "../../errors/toastError";
+import {
+  canSuperviseAi,
+  isAiHandlingTicket,
+  isHandoffPendingTicket
+} from "../../helpers/aiTicketStatus";
 
 const useStyles = makeStyles(theme => ({
   ticket: {
@@ -30,7 +37,7 @@ const useStyles = makeStyles(theme => ({
   },
 
   pendingTicket: {
-    cursor: "unset"
+    cursor: "pointer"
   },
 
   noTicketsDiv: {
@@ -87,9 +94,19 @@ const useStyles = makeStyles(theme => ({
     backgroundColor: green[500]
   },
 
-  acceptButton: {
+  actionButton: {
     position: "absolute",
-    left: "50%"
+    left: "50%",
+    transform: "translateX(-50%)",
+    whiteSpace: "nowrap"
+  },
+
+  observeButton: {
+    backgroundColor: purple[700],
+    color: "#fff",
+    "&:hover": {
+      backgroundColor: purple[900]
+    }
   },
 
   ticketQueueColor: {
@@ -109,6 +126,11 @@ const TicketListItem = ({ ticket, groupActionButtons }) => {
   const { ticketId } = useParams();
   const isMounted = useRef(true);
   const { user } = useContext(AuthContext);
+  const { setObservationMode } = useContext(TicketsContext);
+
+  const aiHandling = isAiHandlingTicket(ticket);
+  const handoffPending = isHandoffPendingTicket(ticket);
+  const routeId = ticket.uuid || String(ticket.id);
 
   useEffect(() => {
     return () => {
@@ -116,25 +138,111 @@ const TicketListItem = ({ ticket, groupActionButtons }) => {
     };
   }, []);
 
-  const handleAcepptTicket = async ticket => {
+  const openTicket = (observing = false) => {
+    setObservationMode(observing);
+    history.push(`/tickets/${routeId}`);
+  };
+
+  const handleAcceptTicket = async selectedTicket => {
     setLoading(true);
     try {
-      await api.put(`/tickets/${ticket.id}`, {
+      await api.put(`/tickets/${selectedTicket.id}`, {
         status: "open",
         userId: user?.id
       });
+      setObservationMode(false);
+      history.push(`/tickets/${routeId}`);
     } catch (err) {
-      setLoading(false);
       toastError(err);
     }
     if (isMounted.current) {
       setLoading(false);
     }
-    history.push(`/tickets/${ticket.uuid}`);
   };
 
-  const handleSelectTicket = ticket => {
-    history.push(`/tickets/${ticket.uuid}`);
+  const handleAssumeFromBot = async selectedTicket => {
+    setLoading(true);
+    try {
+      await api.post(`/tickets/${selectedTicket.id}/ai/assume`);
+      setObservationMode(false);
+      history.push(`/tickets/${routeId}`);
+    } catch (err) {
+      toastError(err);
+    }
+    if (isMounted.current) {
+      setLoading(false);
+    }
+  };
+
+  const handleSelectTicket = () => {
+    if (aiHandling || handoffPending) {
+      openTicket(true);
+      return;
+    }
+
+    openTicket(false);
+  };
+
+  const renderActionButton = () => {
+    if (aiHandling) {
+      if (canSuperviseAi(user)) {
+        return (
+          <ButtonWithSpinner
+            color="primary"
+            variant="contained"
+            className={clsx(classes.actionButton, classes.observeButton)}
+            size="small"
+            loading={loading}
+            onClick={e => {
+              e.stopPropagation();
+              handleAssumeFromBot(ticket);
+            }}
+          >
+            {i18n.t("aiSupervision.actions.assumeFromBot")}
+          </ButtonWithSpinner>
+        );
+      }
+
+      return (
+        <Button
+          variant="contained"
+          className={clsx(classes.actionButton, classes.observeButton)}
+          size="small"
+          onClick={e => {
+            e.stopPropagation();
+            openTicket(true);
+          }}
+        >
+          {i18n.t("aiSupervision.actions.observe", {
+            defaultValue: "Observar"
+          })}
+        </Button>
+      );
+    }
+
+    if (
+      ticket.status === "pending" &&
+      handoffPending &&
+      (groupActionButtons || !ticket.isGroup)
+    ) {
+      return (
+        <ButtonWithSpinner
+          color="primary"
+          variant="contained"
+          className={classes.actionButton}
+          size="small"
+          loading={loading}
+          onClick={e => {
+            e.stopPropagation();
+            handleAcceptTicket(ticket);
+          }}
+        >
+          {i18n.t("ticketsList.buttons.accept")}
+        </ButtonWithSpinner>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -142,17 +250,13 @@ const TicketListItem = ({ ticket, groupActionButtons }) => {
       <ListItem
         dense
         button
-        onClick={e => {
-          if (
-            ticket.status === "pending" &&
-            (groupActionButtons || !ticket.isGroup)
-          )
-            return;
-          handleSelectTicket(ticket);
-        }}
-        selected={ticketId && +ticketId === ticket.id}
+        onClick={handleSelectTicket}
+        selected={
+          ticketId &&
+          (ticket.uuid === ticketId || String(ticket.id) === ticketId)
+        }
         className={clsx(classes.ticket, {
-          [classes.pendingTicket]: ticket.status === "pending"
+          [classes.pendingTicket]: ticket.status === "pending" || aiHandling
         })}
       >
         <Tooltip
@@ -233,19 +337,7 @@ const TicketListItem = ({ ticket, groupActionButtons }) => {
             </span>
           }
         />
-        {ticket.status === "pending" &&
-          (groupActionButtons || !ticket.isGroup) && (
-            <ButtonWithSpinner
-              color="primary"
-              variant="contained"
-              className={classes.acceptButton}
-              size="small"
-              loading={loading}
-              onClick={e => handleAcepptTicket(ticket)}
-            >
-              {i18n.t("ticketsList.buttons.accept")}
-            </ButtonWithSpinner>
-          )}
+        {renderActionButton()}
       </ListItem>
       <Divider variant="inset" component="li" />
     </React.Fragment>

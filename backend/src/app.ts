@@ -11,9 +11,11 @@ import path from "path";
 import uploadConfig from "./config/upload";
 import AppError from "./errors/AppError";
 import routes from "./routes";
+import * as VersionController from "./controllers/VersionController";
 import { logger } from "./utils/logger";
 import { messageQueue, sendScheduledMessages } from "./queues";
 import { corsOrigin } from "./helpers/corsOrigin";
+import { getBuildInfo } from "./helpers/buildInfo";
 
 class SystemError extends Error {
   code?: string;
@@ -45,8 +47,9 @@ app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(Sentry.Handlers.requestHandler());
 app.get("/health", (_req, res) => {
-  res.status(200).json({ ok: true });
+  res.status(200).json({ ok: true, ...getBuildInfo() });
 });
+app.get("/version", VersionController.versionPublic);
 app.get("/public/*", (req, res) => {
   const filePath = path.join(uploadConfig.directory, req.params[0]);
 

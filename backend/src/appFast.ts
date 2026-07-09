@@ -4,6 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 
 import { corsOrigin } from "./helpers/corsOrigin";
+import { getBuildInfo } from "./helpers/buildInfo";
 import AppError from "./errors/AppError";
 import { logger } from "./utils/logger";
 
@@ -113,9 +114,7 @@ const getLoginRateLimitKey = (req: express.Request): string => {
   return `${getClientIp(req)}:${email}`;
 };
 
-const getActiveLoginAttempt = (
-  req: express.Request
-): LoginAttempt | null => {
+const getActiveLoginAttempt = (req: express.Request): LoginAttempt | null => {
   const attempt = loginAttempts.get(getLoginRateLimitKey(req));
   if (!attempt) {
     return null;
@@ -166,7 +165,15 @@ app.get("/health", (_req, res) => {
     ok: true,
     fast: true,
     routes: coreRoutesReady,
-    routesError: coreRoutesError?.message || null
+    routesError: coreRoutesError?.message || null,
+    ...getBuildInfo()
+  });
+});
+
+app.get("/version", (_req, res) => {
+  res.status(200).json({
+    name: "Ticketz - Chat Based Ticket System",
+    ...getBuildInfo()
   });
 });
 
@@ -296,6 +303,7 @@ export async function ensureCoreRoutes(): Promise<void> {
 
 const isFastShellPath = (req: express.Request): boolean =>
   req.path === "/health" ||
+  req.path === "/version" ||
   req.path.startsWith("/public-settings/") ||
   (req.method === "POST" && req.path === "/auth/login");
 

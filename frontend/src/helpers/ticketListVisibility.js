@@ -1,5 +1,4 @@
 import {
-  canSuperviseAi,
   isAiHandlingTicket,
   isHandoffPendingTicket
 } from "./aiTicketStatus";
@@ -7,10 +6,10 @@ import {
 export const ticketMatchesSelectedQueues = (
   ticket,
   selectedQueueIds = [],
-  { supervision = false } = {}
+  { supervision = false, listMode } = {}
 ) => {
   if (!ticket?.queueId) {
-    return supervision && isAiHandlingTicket(ticket);
+    return (supervision || listMode === "ai") && isAiHandlingTicket(ticket);
   }
 
   if (!selectedQueueIds?.length) {
@@ -24,6 +23,7 @@ export const shouldShowTicketInList = ({
   ticket,
   status,
   supervision,
+  listMode,
   selectedQueueIds,
   profile,
   showAll,
@@ -33,7 +33,23 @@ export const shouldShowTicketInList = ({
     return false;
   }
 
-  if (!ticketMatchesSelectedQueues(ticket, selectedQueueIds, { supervision })) {
+  if (listMode === "ai") {
+    if (!isAiHandlingTicket(ticket)) {
+      return false;
+    }
+
+    return ticketMatchesSelectedQueues(ticket, selectedQueueIds, {
+      supervision: true,
+      listMode: "ai"
+    });
+  }
+
+  if (
+    !ticketMatchesSelectedQueues(ticket, selectedQueueIds, {
+      supervision,
+      listMode
+    })
+  ) {
     return false;
   }
 
@@ -74,7 +90,7 @@ export const isTicketObservationMode = (ticket, user) => {
   }
 
   if (isAiHandlingTicket(ticket)) {
-    return canSuperviseAi(user);
+    return true;
   }
 
   if (ticket.status === "pending" && !ticket.userId) {

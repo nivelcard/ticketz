@@ -44,8 +44,8 @@ const NotificationsPopOver = props => {
 
   const history = useHistory();
   const { user } = useContext(AuthContext);
-  const ticketIdUrl = +history.location.pathname.split("/")[2];
-  const ticketIdRef = useRef(ticketIdUrl);
+  const routeTicketId = history.location.pathname.split("/")[2] || "";
+  const ticketIdRef = useRef(routeTicketId);
   const anchorEl = useRef();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -68,6 +68,18 @@ const NotificationsPopOver = props => {
   const historyRef = useRef(history);
 
   const socketManager = useContext(SocketContext);
+
+  const isViewingTicket = ticket => {
+    const current = ticketIdRef.current;
+    if (!current || !ticket) {
+      return false;
+    }
+
+    return (
+      String(ticket.id) === String(current) ||
+      (ticket.uuid && ticket.uuid === current)
+    );
+  };
 
   function clearTicket(ticketId) {
     setNotifications(prevState => {
@@ -119,8 +131,8 @@ const NotificationsPopOver = props => {
   }, [tickets]);
 
   useEffect(() => {
-    ticketIdRef.current = ticketIdUrl;
-  }, [ticketIdUrl]);
+    ticketIdRef.current = routeTicketId;
+  }, [routeTicketId]);
 
   useEffect(() => {
     setQueueIds(safeQueues.map(q => q.id));
@@ -168,7 +180,7 @@ const NotificationsPopOver = props => {
         });
 
         const shouldNotNotificate =
-          (data.message.ticketId === ticketIdRef.current &&
+          (isViewingTicket(data.ticket) &&
             document.visibilityState === "visible") ||
           (data.ticket.userId && data.ticket.userId !== user?.id) ||
           (data.ticket.isGroup && !soundGroupNotifications);
@@ -208,8 +220,7 @@ const NotificationsPopOver = props => {
         getHandoffReasonLabel(data.reason || ticket.aiHandoffReason);
 
       const shouldNotNotificate =
-        ticket.id === ticketIdRef.current &&
-        document.visibilityState === "visible";
+        isViewingTicket(ticket) && document.visibilityState === "visible";
 
       if (shouldNotNotificate) return;
 

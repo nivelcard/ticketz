@@ -521,6 +521,7 @@ const messages = {
         },
         actions: {
           assumeFromBot: "Assumir do robô",
+          observe: "Observar",
           pauseAi: "Pausar IA",
           resumeAi: "Retomar IA",
           acceptAttendance: "Aceitar atendimento",

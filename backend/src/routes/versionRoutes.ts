@@ -4,6 +4,7 @@ import { sessionMiddleware } from "../middleware/sessionMiddleware";
 
 const versionRoutes = express.Router();
 
+versionRoutes.get("/version", VersionController.versionPublic);
 versionRoutes.get("/", sessionMiddleware, VersionController.version);
 
 export default versionRoutes;
