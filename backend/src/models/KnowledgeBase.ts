@@ -13,6 +13,7 @@ import {
 } from "sequelize-typescript";
 import Company from "./Company";
 import KnowledgeDocument from "./KnowledgeDocument";
+import KnowledgeDomain from "./KnowledgeDomain";
 
 @Table
 class KnowledgeBase extends Model<KnowledgeBase> {
@@ -37,6 +38,23 @@ class KnowledgeBase extends Model<KnowledgeBase> {
   @Default(true)
   @Column
   active: boolean;
+
+  @ForeignKey(() => KnowledgeDomain)
+  @Column
+  knowledgeDomainId: number;
+
+  @BelongsTo(() => KnowledgeDomain)
+  knowledgeDomain: KnowledgeDomain;
+
+  @Column
+  slug: string;
+
+  @Column
+  linkedSpecialty: string;
+
+  @Default(false)
+  @Column
+  requiresPublishWorkflow: boolean;
 
   @CreatedAt
   createdAt: Date;

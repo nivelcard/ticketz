@@ -11,6 +11,11 @@ import {
 } from "sequelize-typescript";
 import Company from "./Company";
 import KnowledgeDocument from "./KnowledgeDocument";
+import KnowledgeAsset from "./KnowledgeAsset";
+import KnowledgeAssetVersion from "./KnowledgeAssetVersion";
+import KnowledgeBase from "./KnowledgeBase";
+import KnowledgeDomain from "./KnowledgeDomain";
+import KnowledgeCategory from "./KnowledgeCategory";
 
 @Table({ updatedAt: false })
 class KnowledgeChunk extends Model<KnowledgeChunk> {
@@ -29,6 +34,35 @@ class KnowledgeChunk extends Model<KnowledgeChunk> {
 
   @BelongsTo(() => KnowledgeDocument)
   knowledgeDocument: KnowledgeDocument;
+
+  @ForeignKey(() => KnowledgeAssetVersion)
+  @Column
+  knowledgeAssetVersionId: number;
+
+  @BelongsTo(() => KnowledgeAssetVersion)
+  knowledgeAssetVersion: KnowledgeAssetVersion;
+
+  @ForeignKey(() => KnowledgeAsset)
+  @Column
+  knowledgeAssetId: number;
+
+  @BelongsTo(() => KnowledgeAsset)
+  knowledgeAsset: KnowledgeAsset;
+
+  @ForeignKey(() => KnowledgeBase)
+  @Column
+  knowledgeBaseId: number;
+
+  @ForeignKey(() => KnowledgeDomain)
+  @Column
+  knowledgeDomainId: number;
+
+  @ForeignKey(() => KnowledgeCategory)
+  @Column
+  categoryId: number;
+
+  @Column
+  lifecycleStatus: string;
 
   @Column(DataType.TEXT)
   content: string;

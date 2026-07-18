@@ -27,6 +27,7 @@ import Setting from "./models/Setting";
 import { parseToMilliseconds } from "./helpers/parseToMilliseconds";
 import { startCampaignQueues } from "./queues/campaign";
 import { startAiInboundQueue } from "./services/AiServices/AiInboundQueueService";
+import { startAiKnowledgeIngestionQueue } from "./services/AiServices/KnowledgeCms/AiKnowledgeIngestionQueueService";
 import { runAiProactiveFollowUp } from "./services/AiServices/AiProactiveFollowUpService";
 import { monitorHandoffSla } from "./services/AiServices/AiSlaMonitorService";
 import { runWhatsAppSessionWatchdog } from "./services/WbotServices/WhatsAppSessionWatchdogService";
@@ -628,6 +629,7 @@ export async function startQueueProcess() {
   });
 
   startAiInboundQueue();
+  startAiKnowledgeIngestionQueue();
 
   whatsappWatchdog.process("Watchdog", async () => {
     await runWhatsAppSessionWatchdog();

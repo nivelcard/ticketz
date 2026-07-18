@@ -6,6 +6,9 @@ import { requireAiPlatformReady } from "../middleware/requireAiPlatformReady";
 import * as AiAgentController from "../controllers/AiAgentController";
 import * as KnowledgeBaseController from "../controllers/KnowledgeBaseController";
 import * as KnowledgeDocumentController from "../controllers/KnowledgeDocumentController";
+import * as KnowledgeDomainController from "../controllers/KnowledgeDomainController";
+import * as KnowledgeCategoryController from "../controllers/KnowledgeCategoryController";
+import * as KnowledgeAssetController from "../controllers/KnowledgeAssetController";
 import * as AiLogController from "../controllers/AiLogController";
 import * as AiHealthController from "../controllers/AiHealthController";
 import * as AiDiagnosticsController from "../controllers/AiDiagnosticsController";
@@ -33,6 +36,7 @@ aiRoutes.get("/ai/setup/status", AiSetupController.status);
 
 aiRoutes.get("/ai/agents", AiAgentController.index);
 aiRoutes.get("/ai/orchestrator/status", AiAgentController.orchestratorStatus);
+aiRoutes.get("/ai/knowledge-domains", KnowledgeDomainController.index);
 aiRoutes.get("/ai/knowledge-bases", KnowledgeBaseController.index);
 aiRoutes.get("/ai/documents", KnowledgeDocumentController.index);
 aiRoutes.get("/ai/logs", AiLogController.index);
@@ -66,9 +70,55 @@ aiRoutes.post("/ai/agents", AiAgentController.store);
 aiRoutes.put("/ai/agents/:agentId", AiAgentController.update);
 aiRoutes.delete("/ai/agents/:agentId", AiAgentController.remove);
 
+aiRoutes.post("/ai/knowledge-domains", KnowledgeDomainController.store);
+aiRoutes.put("/ai/knowledge-domains/:id", KnowledgeDomainController.update);
+
 aiRoutes.post("/ai/knowledge-bases", KnowledgeBaseController.store);
 aiRoutes.put("/ai/knowledge-bases/:baseId", KnowledgeBaseController.update);
 aiRoutes.delete("/ai/knowledge-bases/:baseId", KnowledgeBaseController.remove);
+
+aiRoutes.get(
+  "/ai/knowledge-bases/:baseId/categories",
+  KnowledgeCategoryController.indexByBase
+);
+aiRoutes.post("/ai/categories", KnowledgeCategoryController.store);
+aiRoutes.put("/ai/categories/:id", KnowledgeCategoryController.update);
+aiRoutes.delete("/ai/categories/:id", KnowledgeCategoryController.remove);
+
+aiRoutes.get("/ai/assets", KnowledgeAssetController.index);
+aiRoutes.post("/ai/assets", KnowledgeAssetController.store);
+aiRoutes.get("/ai/assets/:assetId", KnowledgeAssetController.show);
+aiRoutes.put("/ai/assets/:assetId", KnowledgeAssetController.update);
+aiRoutes.post(
+  "/ai/assets/:assetId/versions",
+  KnowledgeAssetController.storeVersion
+);
+aiRoutes.get(
+  "/ai/assets/:assetId/versions",
+  KnowledgeAssetController.listVersions
+);
+aiRoutes.post(
+  "/ai/assets/:assetId/submit-review",
+  KnowledgeAssetController.submitReview
+);
+aiRoutes.post("/ai/assets/:assetId/approve", KnowledgeAssetController.approve);
+aiRoutes.post("/ai/assets/:assetId/publish", KnowledgeAssetController.publish);
+aiRoutes.post("/ai/assets/:assetId/archive", KnowledgeAssetController.archive);
+aiRoutes.post(
+  "/ai/assets/:assetId/rollback",
+  KnowledgeAssetController.rollback
+);
+aiRoutes.post("/ai/assets/:assetId/reindex", KnowledgeAssetController.reindex);
+aiRoutes.post("/ai/assets/text", KnowledgeAssetController.storeText);
+aiRoutes.post(
+  "/ai/assets/upload",
+  upload.single("file"),
+  KnowledgeAssetController.storeUpload
+);
+aiRoutes.get(
+  "/ai/assets/:assetId/ingestion-jobs",
+  KnowledgeAssetController.ingestionJobs
+);
 
 aiRoutes.post("/ai/documents/text", KnowledgeDocumentController.storeText);
 aiRoutes.post(

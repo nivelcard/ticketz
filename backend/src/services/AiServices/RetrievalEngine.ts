@@ -1,4 +1,9 @@
 import sequelize from "../../database";
+import { isKbCmsEnabledForCompany } from "./KnowledgeCms/AiKbCmsFeatureFlag";
+import {
+  buildRetrievalSqlParts,
+  resolveRetrievalMode
+} from "./KnowledgeCms/KnowledgeRetrievalPolicy";
 
 export type RetrievedChunk = {
   id: number;
@@ -18,6 +23,9 @@ export const searchKnowledgeChunks = async (
     return [];
   }
 
+  const cmsEnabled = await isKbCmsEnabledForCompany(companyId);
+  const mode = resolveRetrievalMode(cmsEnabled);
+  const policy = buildRetrievalSqlParts(mode);
   const embeddingLiteral = `[${queryEmbedding.join(",")}]`;
 
   const [results] = await sequelize.query(
@@ -25,14 +33,13 @@ export const searchKnowledgeChunks = async (
     SELECT
       kc.id,
       kc.content,
-      kc."knowledgeDocumentId",
+      ${policy.selectDocumentId} AS "knowledgeDocumentId",
       kc.metadata,
       1 - (kc.embedding <=> :embedding::vector) AS similarity
     FROM "KnowledgeChunks" kc
-    INNER JOIN "KnowledgeDocuments" kd ON kd.id = kc."knowledgeDocumentId"
+    ${policy.joins}
     WHERE kc."companyId" = :companyId
-      AND kd."knowledgeBaseId" IN (:knowledgeBaseIds)
-      AND kd.status = 'ready'
+      ${policy.where}
       AND kc.embedding IS NOT NULL
     ORDER BY kc.embedding <=> :embedding::vector
     LIMIT :limit
@@ -72,6 +79,10 @@ export const searchKnowledgeChunksByText = async (
     return [];
   }
 
+  const cmsEnabled = await isKbCmsEnabledForCompany(companyId);
+  const mode = resolveRetrievalMode(cmsEnabled);
+  const policy = buildRetrievalSqlParts(mode);
+
   const conditions = terms
     .map((_, index) => `lower(kc.content) LIKE :term${index}`)
     .join(" OR ");
@@ -91,14 +102,13 @@ export const searchKnowledgeChunksByText = async (
     SELECT
       kc.id,
       kc.content,
-      kc."knowledgeDocumentId",
+      ${policy.selectDocumentId} AS "knowledgeDocumentId",
       kc.metadata,
       0.45 AS similarity
     FROM "KnowledgeChunks" kc
-    INNER JOIN "KnowledgeDocuments" kd ON kd.id = kc."knowledgeDocumentId"
+    ${policy.joins}
     WHERE kc."companyId" = :companyId
-      AND kd."knowledgeBaseId" IN (:knowledgeBaseIds)
-      AND kd.status = 'ready'
+      ${policy.where}
       AND (${conditions})
     LIMIT :limit
     `,

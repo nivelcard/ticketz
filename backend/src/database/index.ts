@@ -47,6 +47,12 @@ import AiAgentKnowledgeBase from "../models/AiAgentKnowledgeBase";
 import KnowledgeBase from "../models/KnowledgeBase";
 import KnowledgeDocument from "../models/KnowledgeDocument";
 import KnowledgeChunk from "../models/KnowledgeChunk";
+import KnowledgeDomain from "../models/KnowledgeDomain";
+import KnowledgeCategory from "../models/KnowledgeCategory";
+import KnowledgeAsset from "../models/KnowledgeAsset";
+import KnowledgeAssetVersion from "../models/KnowledgeAssetVersion";
+import KnowledgePermission from "../models/KnowledgePermission";
+import KnowledgeIngestionJob from "../models/KnowledgeIngestionJob";
 import AiConversationLog from "../models/AiConversationLog";
 import MessageMediaFile from "../models/MessageMediaFile";
 import AiCopilotSuggestion from "../models/AiCopilotSuggestion";
@@ -105,9 +111,15 @@ const models = [
   AiAgent,
   AiAgentQueue,
   AiAgentKnowledgeBase,
+  KnowledgeDomain,
   KnowledgeBase,
+  KnowledgeCategory,
+  KnowledgeAsset,
+  KnowledgeAssetVersion,
   KnowledgeDocument,
   KnowledgeChunk,
+  KnowledgePermission,
+  KnowledgeIngestionJob,
   AiConversationLog,
   MessageMediaFile,
   AiCopilotSuggestion,

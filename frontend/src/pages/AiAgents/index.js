@@ -95,6 +95,7 @@ const AiAgents = () => {
   const [agents, setAgents] = useState([]);
   const [queues, setQueues] = useState([]);
   const [knowledgeBases, setKnowledgeBases] = useState([]);
+  const [publishedAssetsByBase, setPublishedAssetsByBase] = useState({});
   const [orchestratorStatus, setOrchestratorStatus] = useState(null);
   const [queuesLoading, setQueuesLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -129,11 +130,24 @@ const AiAgents = () => {
 
   const loadKnowledgeBases = useCallback(async () => {
     try {
-      const { data: kbData } = await api.get("/ai/knowledge-bases");
+      const [{ data: kbData }, { data: assetsData }] = await Promise.all([
+        api.get("/ai/knowledge-bases"),
+        api.get("/ai/assets", { params: { lifecycleStatus: "published" } })
+      ]);
       setKnowledgeBases(Array.isArray(kbData) ? kbData : []);
+
+      const counts = {};
+      (Array.isArray(assetsData) ? assetsData : []).forEach(asset => {
+        const baseId = asset.knowledgeBaseId;
+        if (baseId) {
+          counts[baseId] = (counts[baseId] || 0) + 1;
+        }
+      });
+      setPublishedAssetsByBase(counts);
     } catch (err) {
       toastError(err);
       setKnowledgeBases([]);
+      setPublishedAssetsByBase({});
     }
   }, []);
 
@@ -256,6 +270,12 @@ const AiAgents = () => {
     setSaveError("");
     setOpen(true);
   };
+
+  const emptyPublishedBases = (form.knowledgeBaseIds || [])
+    .map(Number)
+    .filter(baseId => !publishedAssetsByBase[baseId])
+    .map(baseId => knowledgeBases.find(base => base.id === baseId)?.name)
+    .filter(Boolean);
 
   const renderQueueField = () => {
     if (queuesLoading) {
@@ -530,10 +550,25 @@ const AiAgents = () => {
                     {knowledgeBases.map(base => (
                       <MenuItem key={base.id} value={base.id}>
                         {base.name}
+                        {publishedAssetsByBase[base.id]
+                          ? ` (${publishedAssetsByBase[base.id]} pub.)`
+                          : " (sem ativos publicados)"}
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
+                {emptyPublishedBases.length > 0 && (
+                  <Box mt={1}>
+                    <Alert severity="warning">
+                      Bases sem ativos publicados no RAG:{" "}
+                      {emptyPublishedBases.join(", ")}. Publique ativos em{" "}
+                      <Link component={RouterLink} to="/ai/assets">
+                        Ativos de Conhecimento
+                      </Link>{" "}
+                      para o especialista consultar conteúdo.
+                    </Alert>
+                  </Box>
+                )}
               </>
             )}
           </SectionBlock>

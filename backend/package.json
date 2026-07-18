@@ -20,7 +20,10 @@
     "ingest:pending": "ts-node-dev --transpile-only src/scripts/ingestPendingDocuments.ts",
     "seed:turnstile": "ts-node-dev --transpile-only src/scripts/seedTurnstileSettings.ts",
     "seed:ai-phase1": "ts-node-dev --transpile-only src/scripts/seedAiPhase1Orchestrator.ts",
-    "audit:ai-phase1": "ts-node-dev --transpile-only src/scripts/auditAiPhase1.ts",
+    "backfill:knowledge-assets": "ts-node-dev --transpile-only src/scripts/backfillKnowledgeAssets.ts",
+    "validate:knowledge-assets": "ts-node-dev --transpile-only src/scripts/validateKnowledgeAssetMigration.ts",
+    "seed:ai-phase2-permissions": "ts-node-dev --transpile-only src/scripts/seedAiPhase2Permissions.ts",
+    "audit:ai-phase2": "ts-node-dev --transpile-only src/scripts/auditAiPhase2.ts",
     "reset:test-env": "ts-node-dev --transpile-only scripts/reset-test-environment.ts",
     "set:user-password": "ts-node-dev --transpile-only scripts/set-user-password.ts"
   },

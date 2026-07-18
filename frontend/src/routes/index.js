@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter, Switch } from "react-router-dom";
+import { BrowserRouter, Redirect, Switch } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 
 import LoggedInLayout from "../layout";
@@ -34,13 +34,16 @@ import ToDoList from "../pages/ToDoList/";
 import AiAgents from "../pages/AiAgents";
 import AiDashboard from "../pages/AiDashboard";
 import AiKnowledgeBases from "../pages/AiKnowledgeBases";
-import AiDocuments from "../pages/AiDocuments";
+import AiKnowledgeDomains from "../pages/AiKnowledgeDomains";
+import AiAssets from "../pages/AiAssets";
 import AiLogs from "../pages/AiLogs";
 import AiLearnings from "../pages/AiLearnings";
 import AiReplay from "../pages/AiReplay";
 import AiDiagnostics from "../pages/AiDiagnostics";
 import AiPlayground from "../pages/AiPlayground";
 import Subscription from "../pages/Subscription/";
+
+const AiDocumentsRedirect = () => <Redirect to="/ai/assets" />;
 
 const Routes = () => {
   const [showCampaigns, setShowCampaigns] = useState(false);
@@ -126,8 +129,15 @@ const Routes = () => {
                 />
                 <Route
                   exact
+                  path="/ai/knowledge-domains"
+                  component={AiKnowledgeDomains}
+                  isPrivate
+                />
+                <Route exact path="/ai/assets" component={AiAssets} isPrivate />
+                <Route
+                  exact
                   path="/ai/documents"
-                  component={AiDocuments}
+                  component={AiDocumentsRedirect}
                   isPrivate
                 />
                 <Route exact path="/ai/logs" component={AiLogs} isPrivate />

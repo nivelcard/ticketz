@@ -568,6 +568,15 @@ const MainListItems = props => {
                 />
                 <AiSubmenuItem
                   icon={<ListIcon />}
+                  label="Domínios"
+                  selected={
+                    location.pathname === "/ai/knowledge-domains" ||
+                    location.pathname.startsWith("/ai/knowledge-domains/")
+                  }
+                  onClick={() => history.push("/ai/knowledge-domains")}
+                />
+                <AiSubmenuItem
+                  icon={<ListIcon />}
                   label="Base de Conhecimento"
                   selected={
                     location.pathname === "/ai/knowledge-bases" ||
@@ -577,12 +586,14 @@ const MainListItems = props => {
                 />
                 <AiSubmenuItem
                   icon={<ListIcon />}
-                  label="Documentos"
+                  label="Ativos"
                   selected={
+                    location.pathname === "/ai/assets" ||
+                    location.pathname.startsWith("/ai/assets/") ||
                     location.pathname === "/ai/documents" ||
                     location.pathname.startsWith("/ai/documents/")
                   }
-                  onClick={() => history.push("/ai/documents")}
+                  onClick={() => history.push("/ai/assets")}
                 />
                 <AiSubmenuItem
                   icon={<ListIcon />}
