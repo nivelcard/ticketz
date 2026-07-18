@@ -1,8 +1,19 @@
+export type JSONSchema = {
+  type: string;
+  properties?: Record<string, unknown>;
+  required?: string[];
+  description?: string;
+  [key: string]: unknown;
+};
+
 export type ToolDefinition = {
   id: string;
   name: string;
   description: string;
+  parameters: JSONSchema;
+  riskLevel: "read" | "handoff" | "write" | "destructive";
   enabled: boolean;
+  allowedOverrideParams: string[];
 };
 
 export type ToolExecutionContext = {
@@ -10,11 +21,19 @@ export type ToolExecutionContext = {
   aiAgentId: number;
   ticketId: number;
   contactId: number;
+  queueId?: number | null;
+  userId?: number | null;
+  userText?: string;
+  conversationText?: string;
+  knowledgeBaseIds?: number[];
+  providerId?: string;
 };
 
 export type ToolExecutionResult = {
   success: boolean;
   output: string;
+  errorCode?: string;
+  handoffTriggered?: boolean;
 };
 
 export interface AiTool {
@@ -27,12 +46,60 @@ export interface AiTool {
 
 const registeredTools: AiTool[] = [];
 
+const ensureToolsLoaded = (): void => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { ensurePilotToolsRegistered } = require("./registerPilotTools");
+    ensurePilotToolsRegistered();
+  } catch {
+    // Registration is optional until pilot tools module is imported.
+  }
+};
+
 export const registerTool = (tool: AiTool): void => {
+  const existingIndex = registeredTools.findIndex(
+    item => item.definition.id === tool.definition.id
+  );
+
+  if (existingIndex >= 0) {
+    registeredTools[existingIndex] = tool;
+    return;
+  }
+
   registeredTools.push(tool);
 };
 
-export const listTools = (): ToolDefinition[] =>
-  registeredTools.map(tool => tool.definition);
+export const registerTools = (tools: AiTool[]): void => {
+  tools.forEach(registerTool);
+};
 
-export const getAllowedTools = (allowedToolIds: string[]): AiTool[] =>
-  registeredTools.filter(tool => allowedToolIds.includes(tool.definition.id));
+export const listTools = (): ToolDefinition[] => {
+  ensureToolsLoaded();
+  return registeredTools.map(tool => tool.definition);
+};
+
+export const getToolById = (toolId: string): AiTool | undefined => {
+  ensureToolsLoaded();
+  return registeredTools.find(tool => tool.definition.id === toolId);
+};
+
+export const getAllowedTools = (allowedToolIds: string[]): AiTool[] => {
+  ensureToolsLoaded();
+  return registeredTools.filter(
+    tool =>
+      tool.definition.enabled && allowedToolIds.includes(tool.definition.id)
+  );
+};
+
+export const isToolCallingSupported = (providerId?: string): boolean => {
+  const normalized = String(providerId || "openai").toLowerCase();
+  return (
+    normalized === "openai" ||
+    normalized === "groq" ||
+    normalized === "openrouter" ||
+    normalized === "gemini"
+  );
+};
+
+export const isWriteRiskLevel = (riskLevel: string): boolean =>
+  riskLevel === "write" || riskLevel === "destructive";
