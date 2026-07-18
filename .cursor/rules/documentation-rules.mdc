@@ -1,0 +1,80 @@
+---
+description: Obriga atualização de docs/MANUAL_PLATAFORMA.md em toda alteração estrutural
+alwaysApply: true
+---
+
+# Documentação oficial — regras obrigatórias
+
+**Fonte de verdade:** `docs/MANUAL_PLATAFORMA.md`  
+**Índices temáticos:** `docs/architecture.md`, `docs/ai.md`, `docs/rag.md`, etc.  
+**Histórico:** `docs/changelog.md`  
+**Spec completa:** `docs/.documentation-rules.md`
+
+## Quando aplicar
+
+Em **toda** tarefa que altere código relacionado a:
+
+- arquitetura, banco, migrations, models
+- serviços, APIs, endpoints
+- IA, agentes, RAG, embeddings, prompts
+- filas (Bull/Redis), integrações, Socket.io
+- frontend administrativo, auth, permissões
+- deploy, env vars, CI/CD, dependências externas
+- organização de pastas
+
+## Obrigações antes de concluir a tarefa
+
+1. Localizar seção correspondente em `docs/MANUAL_PLATAFORMA.md`
+2. Atualizar o manual (ou criar seção nova se funcionalidade nova)
+3. Atualizar índice temático em `docs/<tema>.md` se aplicável
+4. Atualizar diagramas Mermaid, fluxos, tabelas e exemplos afetados
+5. Atualizar §22 (roadmap), §41 (dívidas), §43 (riscos) quando relevante
+6. Registrar entrada em `docs/changelog.md` (data, versão manual, seções, resumo)
+7. Incrementar versão do manual no cabeçalho quando houver mudança estrutural
+
+## Validação obrigatória (checklist)
+
+Antes de encerrar a implementação, confirmar:
+
+- [ ] Código atualizado
+- [ ] `MANUAL_PLATAFORMA.md` atualizado
+- [ ] Diagramas refletem o código atual
+- [ ] Exemplos e env vars corretos
+- [ ] Endpoints/serviços/tabelas/migrations documentados existem no repo
+- [ ] Roadmap consistente com §22 e `docs/roadmap.md`
+
+## Relatório final da tarefa
+
+Todo relatório técnico **deve** incluir:
+
+```
+Documentação:
+- Manual atualizado: sim/não
+- Seções alteradas: [lista]
+- Diagramas modificados: [lista ou nenhum]
+- Novos componentes documentados: [lista ou nenhum]
+- Sincronizado com código: sim/não
+- Changelog: docs/changelog.md atualizado sim/não
+```
+
+## Mapa rápido manual → tema
+
+| Tema | Manual | Índice |
+|------|--------|--------|
+| Arquitetura | §2, §25 | `architecture.md` |
+| IA | §11, §27, §38 | `ai.md` |
+| RAG | §28, §29 | `rag.md` |
+| Banco | §3, §33, §34 | `database.md` |
+| API | §15, §37 | `api.md` |
+| Deploy | §20, §21 | `deployment.md` |
+| Frontend | §5, §36 | `frontend.md` |
+| Backend | §2, §35, §37 | `backend.md` |
+| Integrações | §15, §39 | `integrations.md` |
+| Roadmap | §22, §44 | `roadmap.md` |
+
+## Proibições
+
+- Não concluir tarefa estrutural sem atualizar documentação
+- Não duplicar conteúdo extenso nos índices — eles apontam para o manual
+- Não documentar endpoints/serviços/tabelas que não existem no código
+- Não assumir comportamento — validar no código antes de escrever

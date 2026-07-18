@@ -19,7 +19,21 @@
 
 - [`AI_SETUP.md`](AI_SETUP.md) — setup operacional
 - [`AI_ARCHITECTURE_PLAN.md`](AI_ARCHITECTURE_PLAN.md) — roadmap Fase 1–2
+- [`AI_PHASE1_REPORT.md`](AI_PHASE1_REPORT.md) — relatório técnico Fase 1 (orquestrador)
 - [`AI_PHASE2_ARCHITECTURE.md`](AI_PHASE2_ARCHITECTURE.md) — spec oficial Fase 2 (CMS de ativos)
+- [`AI_PHASE2_REPORT.md`](AI_PHASE2_REPORT.md) — relatório técnico Fase 2 (CMS)
+
+## Fase 1 — Orquestrador (backend)
+
+| Componente | Caminho |
+|------------|---------|
+| Orquestrador | `AiOrchestratorService.ts`, `AiSpecialistReplyService.ts` |
+| Vínculo agente ↔ base | `AiAgentKnowledgeBaseService.ts`, model `AiAgentKnowledgeBase` |
+| Routing log | model `AiRoutingLog` |
+| Integração inbound | `ProcessInboundMessageService.ts` |
+| Feature flag | `AI_ORCHESTRATOR_ENABLED` + setting `aiOrchestratorEnabled` |
+| Migration | `20260718100000-ai-phase1-orchestrator.ts` |
+| Scripts | `COMPANY_ID=<id> npm run seed:ai-phase1`, `audit:ai-phase1` |
 
 ## Fase 2 — Knowledge CMS (backend)
 

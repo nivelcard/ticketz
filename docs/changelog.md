@@ -6,6 +6,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.2.1] — 2026-07-18
+
+### Adicionado (governança documental)
+
+- `.cursor/rules/documentation-rules.mdc` — rule permanente versionada no repositório
+- `docs/.documentation-rules.md` — spec completa de documentação
+- Índices temáticos: `architecture.md`, `backend.md`, `deployment.md`, `frontend.md`, `integrations.md`
+- `AGENTS.md` — guia para agentes de código
+- Sincronização de índices com Fases 1 e 2 (`ai.md`, `database.md`, `rag.md`, `roadmap.md`)
+
+---
+
 ## [1.2.0] — 2026-07-18
 
 ### Adicionado (Fase 2 — Knowledge CMS backend)

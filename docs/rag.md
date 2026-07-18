@@ -16,6 +16,8 @@
 | Serviço | Arquivo |
 |---------|---------|
 | Busca vetorial + keyword | `AiServices/RetrievalEngine.ts` |
+| Política RAG CMS vs legado | `KnowledgeCms/KnowledgeRetrievalPolicy.ts` |
+| CMS publish / swap | `KnowledgeCms/KnowledgeAtomicSwapService.ts` |
 | Contexto para prompt | `AiServices/KnowledgeContextService.ts` |
 | Ingestão documentos | `AiServices/IngestKnowledgeDocumentService.ts` |
 | Chunking | `AiServices/ChunkingService.ts` |
@@ -27,6 +29,14 @@
 - Modelo embedding: `text-embedding-3-small`
 - Dimensão vector: 1536 (pgvector)
 - Threshold confiável inbound: similarity ≥ 0.25
+- CMS ON: apenas chunks de versões **publicadas** e **indexadas** (`KnowledgeRetrievalPolicy`)
+
+## Scripts operacionais (pós-migration Fase 2)
+
+```bash
+COMPANY_ID=<id> npm run backfill:knowledge-assets
+COMPANY_ID=<id> npm run validate:knowledge-assets
+```
 
 ## Regra de atualização
 

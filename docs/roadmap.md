@@ -15,21 +15,25 @@
 ## Documentos de planejamento
 
 - [`AI_ARCHITECTURE_PLAN.md`](AI_ARCHITECTURE_PLAN.md) — Fase 0–2 IA
+- [`AI_PHASE1_REPORT.md`](AI_PHASE1_REPORT.md) — Fase 1 concluída
+- [`AI_PHASE2_ARCHITECTURE.md`](AI_PHASE2_ARCHITECTURE.md) — spec Fase 2
+- [`AI_PHASE2_REPORT.md`](AI_PHASE2_REPORT.md) — Fase 2 concluída
 - [`AI_SETUP.md`](AI_SETUP.md) — setup operacional
 
-## Estado atual (v1.1 manual)
+## Estado atual (pós-Fases 1 e 2)
 
-### Operacional
+### Concluído
 
-Atendimento WA, tickets, chatbot, IA (RAG/handoff/copilot), SaaS, deploy Docker.
+- Fase 1: orquestrador multi-agente, especialistas, RAG isolado por agente
+- Fase 2: Knowledge CMS — domínios, categorias, assets, publicação atômica, backfill
+- Atendimento WA, tickets, chatbot, IA (RAG/handoff/copilot), SaaS, deploy Docker
 
-### Parcial / Fase 2
+### Parcial / próximas fases
 
-- Orquestrador multi-agente (flag dupla env + Setting)
 - ToolRegistry (vazio)
-- Versionamento KB
 - Métricas custo dashboard IA
 - Providers gemini/anthropic (501)
+- Fase 3+ conforme `AI_ARCHITECTURE_PLAN.md`
 
 ### Melhorias prioritárias (§44)
 
