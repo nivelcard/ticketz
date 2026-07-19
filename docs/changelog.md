@@ -48,6 +48,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.5.2] — 2026-07-19
+
+### Adicionado
+
+- Permissões granulares integradas em endpoints/controllers do Repositório
+- CRUD categorias + filtros `categoryId`
+- Favoritos, Recentes, Mais usados (`RepositoryPanel` + API ticket-scoped)
+- Histórico/restauração de versões + status KB (reprocess/unlink)
+- Copiloto: estilos curta/técnica/cordial/objetiva + contexto Repositório
+- Painel admin unificado com ações de atendimento no drawer
+- Script `validate-content-repository-migrations.js`
+- Testes ampliados (15 casos ContentRepository + reopen)
+
+### Corrigido
+
+- Deploy VPS: paths `tools/definitions/` + migrations no patch list
+- Rotas ticket-scoped para favoritar/categorias (agentes sem isAdmin)
+
+---
+
 ### Corrigido (CI deploy produção)
 
 - `deploy-prod.yml`: `git rev-parse --short=7 HEAD` alinhado na geração e verificação de `gitinfo.json` (evita mismatch quando Git usa hash curto de 8 caracteres)

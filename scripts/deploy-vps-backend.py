@@ -112,8 +112,10 @@ PATCH_PATHS = [
     "services/ContentRepository/ContentRepositoryService.js",
     "services/ContentRepository/ContentRepositoryPermissionService.js",
     "services/ContentRepository/SendContentRepositoryItemService.js",
-    "services/AiServices/Tools/SearchRepositoryTool.js",
-    "services/AiServices/Tools/registerPilotTools.js",
+    "services/AiServices/tools/definitions/SearchRepositoryTool.js",
+    "services/AiServices/tools/registerPilotTools.js",
+    "database/migrations/20260719180000-content-repository.js",
+    "database/migrations/20260719200000-content-repository-v2.js",
 ]
 
 

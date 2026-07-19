@@ -170,7 +170,38 @@ aiRoutes.delete(
 );
 aiRoutes.get("/ai/tool-executions", AiToolController.toolExecutions);
 
+aiRoutes.get("/ai/repository/categories", ContentRepositoryController.categoriesIndex);
+aiRoutes.post("/ai/repository/categories", ContentRepositoryController.categoriesStore);
+aiRoutes.put(
+  "/ai/repository/categories/:categoryId",
+  ContentRepositoryController.categoriesUpdate
+);
+aiRoutes.delete(
+  "/ai/repository/categories/:categoryId",
+  ContentRepositoryController.categoriesRemove
+);
+aiRoutes.get("/ai/repository/favorites", ContentRepositoryController.favorites);
+aiRoutes.get("/ai/repository/recent", ContentRepositoryController.recent);
+aiRoutes.get("/ai/repository/popular", ContentRepositoryController.popular);
 aiRoutes.get("/ai/repository", ContentRepositoryController.index);
+aiRoutes.get("/ai/repository/:itemId/versions/compare", ContentRepositoryController.versionsCompare);
+aiRoutes.get("/ai/repository/:itemId/versions", ContentRepositoryController.versionsIndex);
+aiRoutes.post(
+  "/ai/repository/:itemId/versions/restore",
+  ContentRepositoryController.versionsRestore
+);
+aiRoutes.get(
+  "/ai/repository/:itemId/knowledge",
+  ContentRepositoryController.knowledgeStatus
+);
+aiRoutes.post(
+  "/ai/repository/:itemId/knowledge/reprocess",
+  ContentRepositoryController.knowledgeReprocess
+);
+aiRoutes.post(
+  "/ai/repository/:itemId/knowledge/unlink",
+  ContentRepositoryController.knowledgeUnlink
+);
 aiRoutes.get("/ai/repository/:itemId", ContentRepositoryController.show);
 aiRoutes.post("/ai/repository", ContentRepositoryController.store);
 aiRoutes.post(

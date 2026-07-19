@@ -292,11 +292,6 @@ const Ticket = () => {
         ></div>
         <TicketHeader loading={loading}>
           {renderTicketInfo()}
-          <TicketActionButtons
-            ticket={ticket}
-            showTabGroups={showTabGroups}
-            observationMode={isObserving}
-          />
         </TicketHeader>
         <ClosedTicketBar
           ticket={ticket}
@@ -339,7 +334,13 @@ const Ticket = () => {
           setAdminPanelOpen(false);
           setRepositoryOpen(true);
         }}
-        actionButtons={null}
+        actionButtons={
+          <TicketActionButtons
+            ticket={ticket}
+            showTabGroups={showTabGroups}
+            observationMode={isObserving}
+          />
+        }
       />
       <ContactDrawer
         open={drawerOpen}

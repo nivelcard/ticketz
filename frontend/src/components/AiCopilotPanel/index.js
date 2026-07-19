@@ -50,6 +50,7 @@ const AiCopilotPanel = ({
   ticket,
   compact = false,
   externalInstruction,
+  copilotStyle = "default",
   onApplySuggestion
 }) => {
   const classes = useStyles();
@@ -131,9 +132,11 @@ const AiCopilotPanel = ({
 
   useEffect(() => {
     if (!externalInstruction) return;
-    const instruction = externalInstruction.replace(/-\d+$/, "");
-    requestCopilot({ instruction, refresh: true });
-  }, [externalInstruction, requestCopilot]);
+    const parts = externalInstruction.split("|");
+    const instruction = parts[0];
+    const style = parts[1] || copilotStyle;
+    requestCopilot({ instruction, refresh: true, style });
+  }, [externalInstruction, requestCopilot, copilotStyle]);
 
   const runAction = async action => {
     if (!suggestion?.id) return;

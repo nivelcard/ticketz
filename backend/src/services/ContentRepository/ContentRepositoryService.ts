@@ -13,6 +13,10 @@ import Ticket from "../../models/Ticket";
 import { KnowledgeAssetType } from "../../models/KnowledgeAsset";
 import StorageService from "../StorageService/StorageService";
 import { createKnowledgeAsset } from "../AiServices/KnowledgeCms/KnowledgeAssetCmsService";
+import { ingestKnowledgeAssetVersion } from "../AiServices/KnowledgeCms/ingestKnowledgeAssetVersion";
+import KnowledgeAsset from "../../models/KnowledgeAsset";
+import KnowledgeAssetVersion from "../../models/KnowledgeAssetVersion";
+import { assertRepositoryPermission } from "./ContentRepositoryPermissionService";
 
 const BLOCKED_EXTENSIONS = new Set([
   "exe",
@@ -35,6 +39,7 @@ export type RepositoryListFilters = {
   search?: string;
   contentType?: string;
   category?: string;
+  categoryId?: number;
   tag?: string;
   active?: boolean;
   allowHumanUse?: boolean;
@@ -162,6 +167,9 @@ export const listRepositoryItems = async (
   if (filters.contentType) {
     where.contentType = filters.contentType;
   }
+  if (filters.categoryId) {
+    where.categoryId = filters.categoryId;
+  }
   if (filters.category) {
     where.category = filters.category;
   }
@@ -221,7 +229,10 @@ export const getRepositoryItem = async (
 ): Promise<ContentRepositoryItem> => {
   const item = await ContentRepositoryItem.findOne({
     where: { id: itemId, companyId, archivedAt: { [Op.is]: null } },
-    include: [{ model: ContentRepositoryItemVersion, as: "versions" }]
+    include: [
+      { model: ContentRepositoryItemVersion, as: "versions" },
+      { model: ContentRepositoryCategory, as: "categoryRef" }
+    ]
   });
   if (!item) {
     throw new AppError("ERR_REPOSITORY_ITEM_NOT_FOUND", 404);
@@ -277,6 +288,7 @@ export const createRepositoryItem = async (input: {
   displayTitle?: string;
   contentType: ContentRepositoryType;
   category?: string;
+  categoryId?: number;
   description?: string;
   sendCaption?: string;
   externalUrl?: string;
@@ -330,6 +342,7 @@ export const createRepositoryItem = async (input: {
     displayTitle: input.displayTitle || input.name,
     contentType: input.contentType,
     category: input.category || null,
+    categoryId: input.categoryId || null,
     description: input.description || null,
     sendCaption: input.sendCaption || null,
     storageKey: storageKey || null,
@@ -569,6 +582,7 @@ export const listRepositoryForTicket = async (input: {
   search?: string;
   contentType?: string;
   category?: string;
+  categoryId?: number;
 }) => {
   const queueIds =
     input.user.profile === "admin"
@@ -581,6 +595,7 @@ export const listRepositoryForTicket = async (input: {
       search: input.search,
       contentType: input.contentType,
       category: input.category,
+      categoryId: input.categoryId,
       allowHumanUse: true,
       active: true,
       limit: 100,
@@ -653,4 +668,356 @@ export const resolveRepositoryMime = (item: ContentRepositoryItem): string => {
     return mime.lookup(item.originalFileName) || "application/octet-stream";
   }
   return "application/octet-stream";
+};
+
+export const assertRepositoryAccess = async (
+  action: Parameters<typeof assertRepositoryPermission>[0],
+  user: Pick<User, "id" | "profile" | "companyId" | "super">,
+  companyId: number
+): Promise<void> => {
+  await assertRepositoryPermission(action, companyId, user);
+};
+
+const mapItemJson = (
+  item: ContentRepositoryItem,
+  extra: Record<string, unknown> = {}
+) => ({
+  ...item.toJSON(),
+  ...extra
+});
+
+export const attachFavoriteFlags = async (
+  items: ContentRepositoryItem[],
+  companyId: number,
+  userId: number
+): Promise<Record<string, unknown>[]> => {
+  if (!items.length) {
+    return [];
+  }
+  const favorites = await ContentRepositoryFavorite.findAll({
+    where: {
+      companyId,
+      userId,
+      repositoryItemId: { [Op.in]: items.map(i => i.id) }
+    }
+  });
+  const favSet = new Set(favorites.map(f => f.repositoryItemId));
+  return items.map(item =>
+    mapItemJson(item, { favorited: favSet.has(item.id) })
+  );
+};
+
+export const listFavoriteRepositoryItems = async (input: {
+  companyId: number;
+  userId: number;
+  access?: RepositoryAccessContext;
+  limit?: number;
+}) => {
+  const favorites = await ContentRepositoryFavorite.findAll({
+    where: { companyId: input.companyId, userId: input.userId },
+    order: [["updatedAt", "DESC"]],
+    limit: input.limit || 50
+  });
+  if (!favorites.length) {
+    return [];
+  }
+
+  const items = await ContentRepositoryItem.findAll({
+    where: {
+      id: { [Op.in]: favorites.map(f => f.repositoryItemId) },
+      companyId: input.companyId,
+      archivedAt: { [Op.is]: null },
+      active: true
+    }
+  });
+
+  let filtered = items;
+  if (input.access) {
+    filtered = items.filter(item => canAccessRepositoryItem(item, input.access!));
+  }
+
+  const orderMap = new Map(favorites.map((f, idx) => [f.repositoryItemId, idx]));
+  filtered.sort(
+    (a, b) => (orderMap.get(a.id) || 0) - (orderMap.get(b.id) || 0)
+  );
+  return attachFavoriteFlags(filtered, input.companyId, input.userId);
+};
+
+export const listRecentRepositoryItemsForUser = async (input: {
+  companyId: number;
+  userId: number;
+  access?: RepositoryAccessContext;
+  limit?: number;
+}) => {
+  const logs = await ContentRepositoryUsageLog.findAll({
+    where: { companyId: input.companyId, userId: input.userId, success: true },
+    order: [["createdAt", "DESC"]],
+    limit: 200
+  });
+
+  const seen = new Set<number>();
+  const itemIds: number[] = [];
+  for (const log of logs) {
+    if (seen.has(log.repositoryItemId)) continue;
+    seen.add(log.repositoryItemId);
+    itemIds.push(log.repositoryItemId);
+    if (itemIds.length >= (input.limit || 20)) break;
+  }
+
+  if (!itemIds.length) {
+    return [];
+  }
+
+  const items = await ContentRepositoryItem.findAll({
+    where: {
+      id: { [Op.in]: itemIds },
+      companyId: input.companyId,
+      archivedAt: { [Op.is]: null },
+      active: true
+    }
+  });
+
+  let filtered = items;
+  if (input.access) {
+    filtered = items.filter(item => canAccessRepositoryItem(item, input.access!));
+  }
+
+  const orderMap = new Map(itemIds.map((id, idx) => [id, idx]));
+  filtered.sort(
+    (a, b) => (orderMap.get(a.id) || 0) - (orderMap.get(b.id) || 0)
+  );
+  return attachFavoriteFlags(filtered, input.companyId, input.userId);
+};
+
+export const listPopularRepositoryItems = async (
+  filters: RepositoryListFilters,
+  access?: RepositoryAccessContext
+) =>
+  attachFavoriteFlags(
+    await listRepositoryItems({ ...filters, sortBy: "popular" }, access),
+    filters.companyId,
+    access?.userId || 0
+  );
+
+export const listRepositoryCategories = async (
+  companyId: number,
+  includeArchived = false
+): Promise<ContentRepositoryCategory[]> => {
+  const where: Record<string, unknown> = { companyId };
+  if (!includeArchived) {
+    where.archivedAt = { [Op.is]: null };
+    where.active = true;
+  }
+  return ContentRepositoryCategory.findAll({
+    where,
+    order: [["sortOrder", "ASC"], ["name", "ASC"]]
+  });
+};
+
+export const createRepositoryCategory = async (input: {
+  companyId: number;
+  slug: string;
+  name: string;
+  icon?: string;
+  sortOrder?: number;
+  allowAiUse?: boolean;
+  queueIds?: number[];
+}): Promise<ContentRepositoryCategory> =>
+  ContentRepositoryCategory.create({
+    companyId: input.companyId,
+    slug: input.slug,
+    name: input.name,
+    icon: input.icon || "other",
+    sortOrder: input.sortOrder ?? 100,
+    allowAiUse: input.allowAiUse !== false,
+    queueIds: input.queueIds || [],
+    active: true
+  });
+
+export const updateRepositoryCategory = async (input: {
+  companyId: number;
+  categoryId: number;
+  changes: Partial<ContentRepositoryCategory>;
+}): Promise<ContentRepositoryCategory> => {
+  const category = await ContentRepositoryCategory.findOne({
+    where: { id: input.categoryId, companyId: input.companyId }
+  });
+  if (!category) {
+    throw new AppError("ERR_REPOSITORY_CATEGORY_NOT_FOUND", 404);
+  }
+  await category.update(input.changes);
+  return category.reload();
+};
+
+export const archiveRepositoryCategory = async (
+  companyId: number,
+  categoryId: number
+): Promise<void> => {
+  const category = await ContentRepositoryCategory.findOne({
+    where: { id: categoryId, companyId }
+  });
+  if (!category) {
+    throw new AppError("ERR_REPOSITORY_CATEGORY_NOT_FOUND", 404);
+  }
+  await category.update({ active: false, archivedAt: new Date() });
+};
+
+export const listItemVersions = async (
+  companyId: number,
+  itemId: number
+): Promise<ContentRepositoryItemVersion[]> => {
+  await getRepositoryItem(companyId, itemId);
+  return ContentRepositoryItemVersion.findAll({
+    where: { companyId, repositoryItemId: itemId },
+    order: [["versionNumber", "DESC"]]
+  });
+};
+
+export const compareItemVersions = async (input: {
+  companyId: number;
+  itemId: number;
+  versionA: number;
+  versionB: number;
+}) => {
+  const versions = await listItemVersions(input.companyId, input.itemId);
+  const a = versions.find(v => v.versionNumber === input.versionA);
+  const b = versions.find(v => v.versionNumber === input.versionB);
+  if (!a || !b) {
+    throw new AppError("ERR_REPOSITORY_VERSION_NOT_FOUND", 404);
+  }
+  return {
+    versionA: a,
+    versionB: b,
+    diff: {
+      storageChanged: a.storageKey !== b.storageKey,
+      checksumChanged: a.checksum !== b.checksum,
+      fileNameChanged: a.originalFileName !== b.originalFileName,
+      mimeChanged: a.mimeType !== b.mimeType
+    }
+  };
+};
+
+export const restoreItemVersion = async (input: {
+  companyId: number;
+  itemId: number;
+  versionNumber: number;
+  authorUserId?: number;
+  changeReason?: string;
+}): Promise<ContentRepositoryItem> => {
+  const item = await getRepositoryItem(input.companyId, input.itemId);
+  const version = await ContentRepositoryItemVersion.findOne({
+    where: {
+      companyId: input.companyId,
+      repositoryItemId: input.itemId,
+      versionNumber: input.versionNumber
+    }
+  });
+
+  if (!version?.storageKey) {
+    throw new AppError("ERR_REPOSITORY_VERSION_FILE_MISSING", 400);
+  }
+
+  try {
+    await StorageService.download(version.storageKey, input.companyId);
+  } catch {
+    throw new AppError("ERR_REPOSITORY_VERSION_FILE_MISSING", 400);
+  }
+
+  const nextVersion = item.currentVersion + 1;
+  await ContentRepositoryItemVersion.create({
+    companyId: input.companyId,
+    repositoryItemId: item.id,
+    versionNumber: nextVersion,
+    storageKey: version.storageKey,
+    originalFileName: version.originalFileName,
+    fileSize: version.fileSize,
+    mimeType: version.mimeType,
+    checksum: version.checksum,
+    authorUserId: input.authorUserId || null,
+    changeReason: input.changeReason || `restore_from_v${input.versionNumber}`
+  });
+
+  await item.update({
+    storageKey: version.storageKey,
+    originalFileName: version.originalFileName,
+    fileSize: version.fileSize,
+    mimeType: version.mimeType,
+    checksum: version.checksum,
+    currentVersion: nextVersion
+  });
+
+  return item.reload();
+};
+
+export const reprocessRepositoryKnowledge = async (input: {
+  companyId: number;
+  itemId: number;
+  authorUserId?: number;
+}): Promise<ContentRepositoryItem> => {
+  const item = await getRepositoryItem(input.companyId, input.itemId);
+  if (!item.useForKnowledge || !item.knowledgeBaseId || !item.storageKey) {
+    throw new AppError("ERR_REPOSITORY_KB_NOT_LINKED", 400);
+  }
+
+  await maybeLinkKnowledgeAsset({
+    item,
+    companyId: input.companyId,
+    authorUserId: input.authorUserId,
+    knowledgeBaseId: item.knowledgeBaseId
+  });
+
+  const reloaded = await item.reload();
+  if (reloaded.knowledgeAssetId) {
+    const asset = await KnowledgeAsset.findByPk(reloaded.knowledgeAssetId, {
+      include: [{ model: KnowledgeAssetVersion, as: "currentVersion" }]
+    });
+    const versionId = asset?.currentVersion?.id || asset?.currentVersionId;
+    if (versionId) {
+      await ingestKnowledgeAssetVersion(input.companyId, versionId);
+    }
+  }
+
+  return reloaded;
+};
+
+export const unlinkRepositoryKnowledge = async (
+  companyId: number,
+  itemId: number
+): Promise<ContentRepositoryItem> => {
+  const item = await getRepositoryItem(companyId, itemId);
+  await item.update({
+    useForKnowledge: false,
+    knowledgeAssetId: null,
+    knowledgeBaseId: null
+  });
+  return item.reload();
+};
+
+export const getRepositoryKnowledgeStatus = async (
+  companyId: number,
+  itemId: number
+) => {
+  const item = await getRepositoryItem(companyId, itemId);
+  if (!item.knowledgeAssetId) {
+    return {
+      linked: false,
+      knowledgeBaseId: item.knowledgeBaseId,
+      useForKnowledge: item.useForKnowledge
+    };
+  }
+
+  const asset = await KnowledgeAsset.findOne({
+    where: { id: item.knowledgeAssetId, companyId },
+    include: [{ model: KnowledgeAssetVersion, as: "currentVersion" }]
+  });
+
+  return {
+    linked: true,
+    knowledgeBaseId: item.knowledgeBaseId,
+    knowledgeAssetId: item.knowledgeAssetId,
+    assetTitle: asset?.title,
+    ingestionStatus: asset?.currentVersion?.ingestionStatus || null,
+    versionNumber: asset?.currentVersion?.versionNumber || null,
+    errorMessage: asset?.currentVersion?.errorMessage || null
+  };
 };

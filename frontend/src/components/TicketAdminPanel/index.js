@@ -5,9 +5,6 @@ import {
   Divider,
   Drawer,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
   Typography,
   makeStyles
 } from "@material-ui/core";
@@ -19,7 +16,7 @@ import AiCopilotPanel from "../AiCopilotPanel";
 
 const useStyles = makeStyles(theme => ({
   drawer: {
-    width: 360,
+    width: 380,
     maxWidth: "92vw"
   },
   header: {
@@ -46,6 +43,14 @@ const useStyles = makeStyles(theme => ({
   }
 }));
 
+const COPILOT_STYLES = [
+  { key: "default", label: "Padrão" },
+  { key: "short", label: "Curta" },
+  { key: "technical", label: "Técnica" },
+  { key: "cordial", label: "Cordial" },
+  { key: "objective", label: "Objetiva" }
+];
+
 const TicketAdminPanel = ({
   open,
   onClose,
@@ -56,9 +61,11 @@ const TicketAdminPanel = ({
 }) => {
   const classes = useStyles();
   const [copilotInstruction, setCopilotInstruction] = useState("");
+  const [copilotStyle, setCopilotStyle] = useState("default");
 
-  const runCopilotQuick = instruction => {
-    setCopilotInstruction(`${instruction}-${Date.now()}`);
+  const runCopilotQuick = (instruction, style = copilotStyle) => {
+    setCopilotStyle(style);
+    setCopilotInstruction(`${instruction}|${style}|${Date.now()}`);
   };
 
   return (
@@ -101,14 +108,41 @@ const TicketAdminPanel = ({
             <Button
               size="small"
               variant="outlined"
-              onClick={() => runCopilotQuick("Sugerir material do Repositório")}
+              onClick={() =>
+                runCopilotQuick(
+                  "Sugerir material do Repositório para este atendimento"
+                )
+              }
             >
               Material Repositório
             </Button>
           </Box>
+          <Box className={classes.actionRow} mb={1}>
+            {COPILOT_STYLES.map(style => (
+              <Button
+                key={style.key}
+                size="small"
+                variant={copilotStyle === style.key ? "contained" : "outlined"}
+                color={copilotStyle === style.key ? "primary" : "default"}
+                onClick={() => runCopilotQuick("Sugerir resposta", style.key)}
+              >
+                {style.label}
+              </Button>
+            ))}
+            <Button
+              size="small"
+              onClick={() =>
+                runCopilotQuick("Regenerar sugestão com novo enfoque")
+              }
+            >
+              Regenerar
+            </Button>
+          </Box>
           <AiCopilotPanel
             ticket={ticket}
+            compact
             externalInstruction={copilotInstruction}
+            copilotStyle={copilotStyle}
             onApplySuggestion={text => {
               if (typeof window.__ticketzApplySuggestedReply === "function") {
                 window.__ticketzApplySuggestedReply(text);

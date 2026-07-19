@@ -57,7 +57,18 @@ export const checkRepositoryPermission = async (
     return false;
   }
 
-  if (user.super || profileAllows(user.profile, action)) {
+  if (user.super || user.profile === "admin") {
+    return true;
+  }
+
+  if (user.profile === "supervisor" && action === "diagnostics") {
+    return true;
+  }
+
+  if (
+    user.profile === "supervisor" &&
+    ["read", "send", "write", "archive", "copilot"].includes(action)
+  ) {
     return true;
   }
 

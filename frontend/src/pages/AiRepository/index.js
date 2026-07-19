@@ -19,7 +19,7 @@ import {
   TextField,
   Typography
 } from "@material-ui/core";
-import { CloudUpload, DeleteOutline, Edit } from "@material-ui/icons";
+import { CloudUpload, DeleteOutline, Edit, History } from "@material-ui/icons";
 import MainContainer from "../../components/MainContainer";
 import MainHeader from "../../components/MainHeader";
 import Title from "../../components/Title";
@@ -50,6 +50,7 @@ const defaultForm = {
   displayTitle: "",
   contentType: "link",
   category: "",
+  categoryId: "",
   description: "",
   sendCaption: "",
   externalUrl: "",
@@ -74,6 +75,7 @@ const typeIcon = type => {
 const AiRepository = () => {
   const classes = useAiPageStyles();
   const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [domains, setDomains] = useState([]);
   const [bases, setBases] = useState([]);
   const [search, setSearch] = useState("");
@@ -82,6 +84,10 @@ const AiRepository = () => {
   const [form, setForm] = useState(defaultForm);
   const [file, setFile] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const [versions, setVersions] = useState([]);
+  const [versionItem, setVersionItem] = useState(null);
+  const [kbStatus, setKbStatus] = useState(null);
 
   const domainOptions = useMemo(
     () =>
@@ -106,15 +112,17 @@ const AiRepository = () => {
       const params = {};
       if (search.trim()) params.search = search.trim();
       if (filterType) params.contentType = filterType;
-      const [{ data: repo }, { data: domainData }, { data: baseData }] =
+      const [{ data: repo }, { data: domainData }, { data: baseData }, { data: catData }] =
         await Promise.all([
           api.get("/ai/repository", { params }),
           api.get("/ai/knowledge-domains"),
-          api.get("/ai/knowledge-bases")
+          api.get("/ai/knowledge-bases"),
+          api.get("/ai/repository/categories")
         ]);
       setItems(Array.isArray(repo) ? repo : []);
       setDomains(Array.isArray(domainData) ? domainData : []);
       setBases(Array.isArray(baseData) ? baseData : []);
+      setCategories(Array.isArray(catData) ? catData : []);
     } catch (err) {
       toastError(err);
     }
@@ -131,12 +139,55 @@ const AiRepository = () => {
     setOpen(true);
   };
 
+  const openVersions = async item => {
+    setVersionItem(item);
+    setVersionsOpen(true);
+    try {
+      const [{ data: versionData }, { data: kbData }] = await Promise.all([
+        api.get(`/ai/repository/${item.id}/versions`),
+        api.get(`/ai/repository/${item.id}/knowledge`)
+      ]);
+      setVersions(Array.isArray(versionData) ? versionData : []);
+      setKbStatus(kbData || null);
+    } catch (err) {
+      toastError(err);
+      setVersions([]);
+      setKbStatus(null);
+    }
+  };
+
+  const restoreVersion = async versionNumber => {
+    if (!versionItem?.id) return;
+    try {
+      await api.post(`/ai/repository/${versionItem.id}/versions/restore`, {
+        versionNumber
+      });
+      toast.success(`Versão v${versionNumber} restaurada`);
+      setVersionsOpen(false);
+      load();
+    } catch (err) {
+      toastError(err);
+    }
+  };
+
+  const reprocessKb = async () => {
+    if (!versionItem?.id) return;
+    try {
+      await api.post(`/ai/repository/${versionItem.id}/knowledge/reprocess`);
+      toast.success("Reprocessamento KB enfileirado");
+      openVersions(versionItem);
+    } catch (err) {
+      toastError(err);
+    }
+  };
+
   const openEdit = item => {
     setEditingId(item.id);
     setForm({
       name: item.name || "",
       displayTitle: item.displayTitle || "",
       contentType: item.contentType || "link",
+      categoryId: item.categoryId || "",
       category: item.category || "",
       description: item.description || "",
       sendCaption: item.sendCaption || "",
@@ -162,7 +213,8 @@ const AiRepository = () => {
           : null,
         knowledgeBaseId: form.knowledgeBaseId
           ? Number(form.knowledgeBaseId)
-          : null
+          : null,
+        categoryId: form.categoryId ? Number(form.categoryId) : null
       };
 
       if (file) {
@@ -279,6 +331,9 @@ const AiRepository = () => {
                 </TableCell>
                 <TableCell>{item.usageCount || 0}</TableCell>
                 <TableCell align="right">
+                  <IconButton size="small" onClick={() => openVersions(item)}>
+                    <History fontSize="small" />
+                  </IconButton>
                   <IconButton size="small" onClick={() => openEdit(item)}>
                     <Edit fontSize="small" />
                   </IconButton>
@@ -324,9 +379,23 @@ const AiRepository = () => {
             options={CONTENT_TYPES}
           />
           <AiFormTextField
-            label="Categoria"
+            label="Categoria (texto legado)"
             value={form.category}
             onChange={e => setForm({ ...form, category: e.target.value })}
+          />
+          <AiFormSelect
+            label="Categoria"
+            value={form.categoryId}
+            onChange={e =>
+              setForm({ ...form, categoryId: e.target.value })
+            }
+            options={[
+              { value: "", label: "Nenhuma" },
+              ...categories.map(cat => ({
+                value: String(cat.id),
+                label: cat.name
+              }))
+            ]}
           />
           <AiFormTextField
             label="Descrição interna"
@@ -447,6 +516,57 @@ const AiRepository = () => {
           <Button color="primary" variant="contained" onClick={handleSave}>
             Salvar
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={versionsOpen}
+        onClose={() => setVersionsOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Histórico — {versionItem?.displayTitle || versionItem?.name}
+        </DialogTitle>
+        <DialogContent dividers>
+          {kbStatus?.linked && (
+            <Box mb={2}>
+              <Typography variant="body2">
+                KB: {kbStatus.assetTitle || kbStatus.knowledgeAssetId} ·{" "}
+                {kbStatus.ingestionStatus || "—"}
+              </Typography>
+              <Button size="small" onClick={reprocessKb}>
+                Reprocessar KB
+              </Button>
+            </Box>
+          )}
+          {versions.map(version => (
+            <Box
+              key={version.id}
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              mb={1}
+            >
+              <Typography variant="body2">
+                v{version.versionNumber} · {version.originalFileName || "metadados"} ·{" "}
+                {version.changeReason || "—"}
+              </Typography>
+              <Button
+                size="small"
+                disabled={!version.storageKey}
+                onClick={() => restoreVersion(version.versionNumber)}
+              >
+                Restaurar
+              </Button>
+            </Box>
+          ))}
+          {!versions.length && (
+            <Typography color="textSecondary">Sem versões registradas.</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setVersionsOpen(false)}>Fechar</Button>
         </DialogActions>
       </Dialog>
     </MainContainer>

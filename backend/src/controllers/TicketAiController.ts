@@ -113,16 +113,17 @@ export const copilot = async (
   res: Response
 ): Promise<Response> => {
   const { ticket, user } = await loadTicketForUser(req);
-  const { instruction, refresh } = req.body || {};
+  const { instruction, refresh, style } = req.body || {};
 
   if (!canAccessTicketAiData(ticket, user)) {
     throw new AppError("ERR_FORBIDDEN", 403);
   }
 
-  if (refresh || instruction) {
+  if (refresh || instruction || style) {
     const suggestion = await generateCopilotSuggestion({
       ticket,
       instruction,
+      style: style || "default",
       requestedByUserId: user.id
     });
     return res.status(200).json({ suggestion });

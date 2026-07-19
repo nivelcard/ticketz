@@ -5,9 +5,25 @@ import AiCopilotSuggestion from "../../models/AiCopilotSuggestion";
 import { chatCompletion } from "./ModelGateway";
 import { getActiveAgent, getKnowledgeBaseIdsForAgent } from "./AiHelpers";
 import { buildKnowledgeContextForQuery } from "./KnowledgeContextService";
+import { searchRepositoryForAi } from "../ContentRepository/ContentRepositoryService";
 import { getIO } from "../../libs/socket";
 import { logger } from "../../utils/logger";
 import { isAiFeaturesEnabled } from "./AiPlatformState";
+
+export type CopilotStyle =
+  | "default"
+  | "short"
+  | "technical"
+  | "cordial"
+  | "objective";
+
+const STYLE_PROMPTS: Record<CopilotStyle, string> = {
+  default: "Tom profissional padrão.",
+  short: "Resposta curta e direta, no máximo 2 frases.",
+  technical: "Tom técnico, preciso, com termos corretos do domínio.",
+  cordial: "Tom cordial, empático e acolhedor.",
+  objective: "Tom objetivo, sem floreios, focado na solução."
+};
 
 const COPILOT_SYSTEM = `Você é copiloto silencioso de atendentes humanos.
 NUNCA envie mensagens ao cliente.
@@ -82,12 +98,14 @@ export const generateCopilotSuggestion = async ({
   ticket,
   agent,
   instruction,
-  requestedByUserId
+  requestedByUserId,
+  style = "default"
 }: {
   ticket: Ticket;
   agent?: AiAgent | null;
   instruction?: string;
   requestedByUserId?: number;
+  style?: CopilotStyle;
 }): Promise<AiCopilotSuggestion | null> => {
   if (!shouldRunCopilot(ticket) && !instruction) {
     return null;
@@ -134,6 +152,26 @@ export const generateCopilotSuggestion = async ({
       provider: activeAgent.provider
     });
 
+    const repositoryMatches = await searchRepositoryForAi({
+      companyId: ticket.companyId,
+      query: userText || instruction || ticket.id.toString(),
+      queueId: ticket.queueId || undefined,
+      aiAgentId: activeAgent.id,
+      limit: 5
+    });
+
+    const repositoryBlock =
+      repositoryMatches.length > 0
+        ? repositoryMatches
+            .map(
+              item =>
+                `- [${item.id}] ${item.displayTitle || item.name} (${item.contentType})`
+            )
+            .join("\n")
+        : "sem itens do repositório";
+
+    const stylePrompt = STYLE_PROMPTS[style] || STYLE_PROMPTS.default;
+
     const completion = await chatCompletion(ticket.companyId, {
       model: activeAgent.textModel,
       temperature: 0.3,
@@ -146,6 +184,8 @@ export const generateCopilotSuggestion = async ({
           content: [
             `Histórico:\n${history}`,
             `Base de conhecimento:\n${knowledgeContext.contextBlock || "sem contexto"}`,
+            `Repositório (materiais disponíveis):\n${repositoryBlock}`,
+            `Estilo solicitado: ${stylePrompt}`,
             instruction
               ? `Instrução do atendente:\n${instruction}`
               : "Gere sugestão para a última mensagem do cliente."
@@ -183,7 +223,15 @@ export const generateCopilotSuggestion = async ({
       nextSteps: parsed.nextSteps,
       riskAssessment: parsed.riskAssessment,
       customerSentiment: parsed.customerSentiment,
-      usedChunks: knowledgeContext.usedChunks,
+      usedChunks: [
+        ...knowledgeContext.usedChunks,
+        ...repositoryMatches.map(item => ({
+          documentTitle: item.displayTitle || item.name,
+          topic: `Repositório #${item.id}`,
+          similarity: 0.5,
+          source: "repository"
+        }))
+      ],
       confidence,
       status: "pending"
     });

@@ -9,13 +9,18 @@ import {
   DialogTitle,
   IconButton,
   MenuItem,
+  Tab,
+  Tabs,
   TextField,
+  Tooltip,
   Typography,
   makeStyles
 } from "@material-ui/core";
 import CloseIcon from "@material-ui/icons/Close";
 import SendIcon from "@material-ui/icons/Send";
 import FolderSharedIcon from "@material-ui/icons/FolderShared";
+import StarIcon from "@material-ui/icons/Star";
+import StarBorderIcon from "@material-ui/icons/StarBorder";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import { toast } from "react-toastify";
@@ -43,6 +48,10 @@ const useStyles = makeStyles(theme => ({
     backgroundColor: theme.palette.background.default,
     borderRadius: 6,
     fontSize: "0.875rem"
+  },
+  tabs: {
+    marginBottom: theme.spacing(1),
+    minHeight: 36
   }
 }));
 
@@ -60,23 +69,48 @@ const typeLabel = type => {
   return map[type] || type;
 };
 
+const VIEWS = [
+  { key: "all", label: "Todos" },
+  { key: "favorites", label: "Favoritos" },
+  { key: "recent", label: "Recentes" },
+  { key: "popular", label: "Mais usados" }
+];
+
 const RepositoryPanel = ({ open, onClose, ticket }) => {
   const classes = useStyles();
   const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState("");
   const [contentType, setContentType] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [view, setView] = useState("all");
   const [selected, setSelected] = useState(null);
   const [caption, setCaption] = useState("");
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
 
+  const loadCategories = useCallback(async () => {
+    if (!ticket?.id) return;
+    try {
+      const { data } = await api.get(
+        `/tickets/${ticket.id}/repository/categories`
+      );
+      setCategories(Array.isArray(data) ? data : []);
+    } catch {
+      setCategories([]);
+    }
+  }, [ticket?.id]);
+
   const loadItems = useCallback(async () => {
     if (!ticket?.id) return;
     setLoading(true);
     try {
-      const params = {};
-      if (search.trim()) params.search = search.trim();
-      if (contentType) params.contentType = contentType;
+      const params = { view };
+      if (view === "all") {
+        if (search.trim()) params.search = search.trim();
+        if (contentType) params.contentType = contentType;
+        if (categoryId) params.categoryId = categoryId;
+      }
       const { data } = await api.get(`/tickets/${ticket.id}/repository`, {
         params
       });
@@ -87,19 +121,44 @@ const RepositoryPanel = ({ open, onClose, ticket }) => {
     } finally {
       setLoading(false);
     }
-  }, [ticket?.id, search, contentType]);
+  }, [ticket?.id, search, contentType, categoryId, view]);
+
+  useEffect(() => {
+    if (open) {
+      loadCategories();
+    }
+  }, [open, loadCategories]);
 
   useEffect(() => {
     if (open) {
       loadItems();
     }
-  }, [open, loadItems]);
+  }, [open, view, loadItems]);
 
   useEffect(() => {
     if (selected) {
       setCaption(selected.sendCaption || "");
     }
   }, [selected]);
+
+  const toggleFavorite = async (item, event) => {
+    event.stopPropagation();
+    try {
+      const { data } = await api.post(
+        `/tickets/${ticket.id}/repository/${item.id}/favorite`
+      );
+      setItems(prev =>
+        prev.map(row =>
+          row.id === item.id ? { ...row, favorited: data.favorited } : row
+        )
+      );
+      if (selected?.id === item.id) {
+        setSelected({ ...selected, favorited: data.favorited });
+      }
+    } catch (err) {
+      toastError(err);
+    }
+  };
 
   const handleSend = async () => {
     if (!selected?.id || !ticket?.id) return;
@@ -132,39 +191,76 @@ const RepositoryPanel = ({ open, onClose, ticket }) => {
         </Box>
       </DialogTitle>
       <DialogContent dividers>
-        <Box display="flex" gap={2} flexWrap="wrap" mb={2}>
-          <TextField
-            size="small"
-            variant="outlined"
-            label="Buscar"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && loadItems()}
-            style={{ minWidth: 220 }}
-          />
-          <TextField
-            select
-            size="small"
-            variant="outlined"
-            label="Tipo"
-            value={contentType}
-            onChange={e => setContentType(e.target.value)}
-            style={{ minWidth: 160 }}
-          >
-            <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="link">Link</MenuItem>
-            <MenuItem value="pdf">PDF</MenuItem>
-            <MenuItem value="image">Imagem</MenuItem>
-            <MenuItem value="document">Documento</MenuItem>
-            <MenuItem value="audio">Áudio</MenuItem>
-            <MenuItem value="text">Texto</MenuItem>
-          </TextField>
-          <Button variant="outlined" onClick={loadItems} disabled={loading}>
-            Filtrar
-          </Button>
-        </Box>
+        <Tabs
+          value={view}
+          onChange={(_, value) => {
+            setView(value);
+            setSelected(null);
+          }}
+          variant="scrollable"
+          scrollButtons="auto"
+          className={classes.tabs}
+        >
+          {VIEWS.map(tab => (
+            <Tab key={tab.key} value={tab.key} label={tab.label} />
+          ))}
+        </Tabs>
 
-        <Box display="flex" flexDirection={{ xs: "column", md: "row" }} gridGap={16}>
+        {view === "all" && (
+          <Box display="flex" gap={2} flexWrap="wrap" mb={2}>
+            <TextField
+              size="small"
+              variant="outlined"
+              label="Buscar"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && loadItems()}
+              style={{ minWidth: 220 }}
+            />
+            <TextField
+              select
+              size="small"
+              variant="outlined"
+              label="Tipo"
+              value={contentType}
+              onChange={e => setContentType(e.target.value)}
+              style={{ minWidth: 160 }}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="link">Link</MenuItem>
+              <MenuItem value="pdf">PDF</MenuItem>
+              <MenuItem value="image">Imagem</MenuItem>
+              <MenuItem value="document">Documento</MenuItem>
+              <MenuItem value="audio">Áudio</MenuItem>
+              <MenuItem value="text">Texto</MenuItem>
+            </TextField>
+            <TextField
+              select
+              size="small"
+              variant="outlined"
+              label="Categoria"
+              value={categoryId}
+              onChange={e => setCategoryId(e.target.value)}
+              style={{ minWidth: 180 }}
+            >
+              <MenuItem value="">Todas</MenuItem>
+              {categories.map(cat => (
+                <MenuItem key={cat.id} value={String(cat.id)}>
+                  {cat.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Button variant="outlined" onClick={loadItems} disabled={loading}>
+              Filtrar
+            </Button>
+          </Box>
+        )}
+
+        <Box
+          display="flex"
+          flexDirection={{ xs: "column", md: "row" }}
+          gridGap={16}
+        >
           <Box flex={1} minWidth={0}>
             {loading ? (
               <Typography color="textSecondary">Carregando...</Typography>
@@ -181,7 +277,25 @@ const RepositoryPanel = ({ open, onClose, ticket }) => {
                     <Typography variant="subtitle2">
                       {item.displayTitle || item.name}
                     </Typography>
-                    <Chip size="small" label={typeLabel(item.contentType)} />
+                    <Box display="flex" alignItems="center" gridGap={4}>
+                      <Tooltip
+                        title={
+                          item.favorited ? "Remover favorito" : "Favoritar"
+                        }
+                      >
+                        <IconButton
+                          size="small"
+                          onClick={e => toggleFavorite(item, e)}
+                        >
+                          {item.favorited ? (
+                            <StarIcon fontSize="small" color="primary" />
+                          ) : (
+                            <StarBorderIcon fontSize="small" />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+                      <Chip size="small" label={typeLabel(item.contentType)} />
+                    </Box>
                   </Box>
                   <Typography variant="caption" color="textSecondary">
                     {item.category || "Sem categoria"} · usado{" "}
@@ -195,7 +309,11 @@ const RepositoryPanel = ({ open, onClose, ticket }) => {
             )}
             {!loading && !items.length && (
               <Typography color="textSecondary">
-                Nenhum conteúdo disponível para este atendimento.
+                {view === "favorites"
+                  ? "Nenhum favorito ainda."
+                  : view === "recent"
+                    ? "Nenhum item usado recentemente."
+                    : "Nenhum conteúdo disponível para este atendimento."}
               </Typography>
             )}
           </Box>

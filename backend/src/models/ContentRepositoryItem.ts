@@ -17,6 +17,7 @@ import User from "./User";
 import KnowledgeDomain from "./KnowledgeDomain";
 import KnowledgeBase from "./KnowledgeBase";
 import KnowledgeAsset from "./KnowledgeAsset";
+import ContentRepositoryCategory from "./ContentRepositoryCategory";
 import ContentRepositoryItemVersion from "./ContentRepositoryItemVersion";
 
 export type ContentRepositoryType =
@@ -57,6 +58,13 @@ class ContentRepositoryItem extends Model<ContentRepositoryItem> {
 
   @Column
   category: string;
+
+  @ForeignKey(() => ContentRepositoryCategory)
+  @Column
+  categoryId: number;
+
+  @BelongsTo(() => ContentRepositoryCategory, "categoryId")
+  categoryRef: ContentRepositoryCategory;
 
   @Column(DataType.TEXT)
   description: string;

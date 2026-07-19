@@ -98,10 +98,24 @@ ticketRoutes.post(
 );
 
 ticketRoutes.get(
+  "/tickets/:ticketId/repository/categories",
+  isAuth,
+  isCompliant,
+  ContentRepositoryController.ticketCategories
+);
+
+ticketRoutes.get(
   "/tickets/:ticketId/repository",
   isAuth,
   isCompliant,
   ContentRepositoryController.ticketIndex
+);
+
+ticketRoutes.post(
+  "/tickets/:ticketId/repository/:itemId/favorite",
+  isAuth,
+  isCompliant,
+  ContentRepositoryController.ticketFavorite
 );
 
 ticketRoutes.post(
