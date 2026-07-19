@@ -97,6 +97,13 @@ Compact guidance for OpenCode sessions working in this repo.
 - Publishes to `ghcr.io/ticketz-oss/ticketz-backend` and `ghcr.io/ticketz-oss/ticketz-frontend`.
 - CI generates `backend/src/gitinfo.ts` and `frontend/public/gitinfo.json` from git metadata at build time.
 
+## VPS Contabo deploy (produção/homolog)
+
+- Script: `scripts/deploy-vps-backend.py` (WinRM → `31.220.103.226` ou `CONTABO_HOST`).
+- **Sempre ZIP**: compacta `dist/` + scripts ops → 1 upload → `Expand-Archive` em `C:\ticketz\backend`. **Nunca** arquivo a arquivo.
+- Modos: `DEPLOY_MODE=patch` (rápido, ~70 arquivos IA/triage) ou `full` (dist completo).
+- CI: `.github/workflows/deploy-prod.yml` com `SKIP_WHATSAPP_RESET=1`.
+
 ## Cross-stack conventions
 
 - **Backend messages** emitted to chat channels (WhatsApp, etc.) must be translated on the backend using `_t(key, entity)` before sending. Never send raw translation keys to end users.

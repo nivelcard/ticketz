@@ -125,7 +125,8 @@ jobs:
           CONTABO_PASSWORD: ${{ secrets.CONTABO_PASSWORD }}
           CONTABO_HOST: ${{ secrets.CONTABO_VPS_IP }}
           SKIP_WHATSAPP_RESET: "1"
-          DEPLOY_MODE: "zip"
+          DEPLOY_MODE: "patch"
+          DEPLOY_USE_ZIP: "1"
         run: |
           set -euo pipefail
           pip install pywinrm

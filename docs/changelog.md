@@ -16,6 +16,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - Correção áudio outbound do painel (validação ffmpeg + Opus/PTT)
 - Copiloto on-demand via `POST /tickets/:id/ai/copilot`
 - Manual §30 (triagem v2), §31 (copiloto ampliado)
+- Deploy VPS Contabo: **sempre 1 ZIP** (`deploy-vps-backend.py` → `Expand-Archive`); proibido upload arquivo a arquivo via WinRM
+- Read receipt WhatsApp adiado quando triagem v2 + IA ativa (`shouldDeferWhatsAppReadReceipt`)
+- Deploy VPS: `DEPLOY_MODE=patch` + zip único (`deploy-cache/`), chunks WinRM 2000, health poll (sem sleep 60s)
+- Read receipt WhatsApp adiado quando triagem v2 + IA ativa (`shouldDeferWhatsAppReadReceipt`)
 
 ---
 

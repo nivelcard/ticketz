@@ -79,6 +79,7 @@ import {
 } from "../AiServices/AiReengagementService";
 import { getActiveAgent } from "../AiServices/AiHelpers";
 import { isAiFeaturesEnabled } from "../AiServices/AiPlatformState";
+import { shouldDeferWhatsAppReadReceipt } from "../AiServices/Triage/AiReadReceiptService";
 import { _t } from "../TranslationServices/i18nService";
 import WhatsappLidMap from "../../models/WhatsappLidMap";
 import normalizePhone from "../../helpers/NormalizePhone";
@@ -1880,6 +1881,12 @@ const handleMessage = async (
       return;
     }
 
+    if (!msg.key.fromMe && !isGroup) {
+      if (!(await shouldDeferWhatsAppReadReceipt(ticket))) {
+        await wbot.sendReceipts([msg.key], undefined);
+      }
+    }
+
     // voltar para o menu inicial
 
     if (bodyMessage === "#" && !isGroup) {
@@ -2386,8 +2393,6 @@ const wbotMessageListener = async (
           );
           return;
         }
-
-        await wbot.sendReceipts([message.key], undefined);
 
         if (await verifyRecentCampaign(message, companyId)) {
           return;

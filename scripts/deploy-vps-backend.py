@@ -5,7 +5,7 @@ import base64
 import hashlib
 import os
 import sys
-import tempfile
+import time
 import zipfile
 from pathlib import Path
 from typing import List, Optional
@@ -30,7 +30,7 @@ PASSWORD = (os.environ.get("CONTABO_PASSWORD") or "").strip() or "74h9UFeGPbGni0
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 DIST = BACKEND / "dist"
-CHUNK = 2000
+CHUNK = int(os.environ.get("DEPLOY_B64_CHUNK", "2000"))
 
 # Hotfix paths — full dist sync is too slow over WinRM (600+ files).
 PATCH_PATHS = [
@@ -78,6 +78,14 @@ PATCH_PATHS = [
     "services/AiServices/AiCopilotService.js",
     "services/AiServices/AiScheduleContextService.js",
     "services/AiServices/KnowledgeContextService.js",
+    "services/AiServices/AiManualTranscriptionService.js",
+    "services/AiServices/AiDecisionLogger.js",
+    "services/AiServices/HandoffToHumanService.js",
+    "services/AiServices/AiHelpers.js",
+    "controllers/TicketAiController.js",
+    "controllers/MessageController.js",
+    "routes/ticketRoutes.js",
+    "models/AiTicketTimelineEvent.js",
     "services/StorageService/StorageService.js",
     "libs/wbot.js",
     "helpers/bufferToReadStreamTmp.js",
@@ -105,12 +113,20 @@ def run_ps(s, ps):
     return r.status_code, out, err
 
 
+def format_upload_label(local_path: Path) -> str:
+    try:
+        return str(local_path.relative_to(ROOT))
+    except ValueError:
+        return local_path.name
+
+
 def upload_file(s, local_path: Path, remote_path: str) -> None:
     data = local_path.read_bytes()
     digest = hashlib.sha256(data).hexdigest()
     b64 = base64.b64encode(data).decode("ascii")
     b64_path = f"{remote_path}.b64"
     tmp_path = f"{remote_path}.new"
+    expected_b64_len = len(b64)
 
     run_ps(
         s,
@@ -120,17 +136,27 @@ Remove-Item '{tmp_path}' -Force -ErrorAction SilentlyContinue
 """,
     )
 
-    for i in range(0, len(b64), CHUNK):
+    total_chunks = (len(b64) + CHUNK - 1) // CHUNK
+    for idx, i in enumerate(range(0, len(b64), CHUNK), start=1):
         chunk = b64[i : i + CHUNK].replace("'", "''")
-        run_ps(
+        code, _, err = run_ps(
             s,
-            f"Add-Content -Path '{b64_path}' -Value '{chunk}' -NoNewline -Encoding ASCII",
+            f"Add-Content -Path '{b64_path}' -Value '{chunk}' -NoNewline",
         )
+        if code != 0:
+            raise RuntimeError(
+                f"Chunk {idx}/{total_chunks} upload failed for {local_path}: {err}"
+            )
+        if idx == 1 or idx == total_chunks or idx % 10 == 0:
+            print(f"    upload {idx}/{total_chunks} chunks", flush=True)
 
     code, out, err = run_ps(
         s,
         f"""
 $b64raw = Get-Content '{b64_path}' -Raw
+if ($b64raw.Length -ne {expected_b64_len}) {{
+  throw "b64 length mismatch expected={expected_b64_len} got=$($b64raw.Length)"
+}}
 $bytes = [Convert]::FromBase64String($b64raw)
 [IO.File]::WriteAllBytes('{tmp_path}', $bytes)
 Remove-Item '{b64_path}' -Force
@@ -141,16 +167,18 @@ Remove-Item '{tmp_path}' -Force
 """,
     )
 
+    if code != 0:
+        raise RuntimeError(f"Remote decode failed for {local_path}: {out} {err}")
     if digest not in out.lower():
         raise RuntimeError(f"SHA256 mismatch for {local_path}: {out} {err}")
-    print(f"  ok {local_path.relative_to(ROOT)} ({len(data)} bytes)")
+    print(f"  ok {format_upload_label(local_path)} ({len(data)} bytes)")
 
 
 def build_zip_bundle(files: List[Path], extra_scripts: List[Path]) -> Path:
     """Cria ZIP com dist/ + scripts/ para um único upload WinRM."""
-    tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
-    tmp.close()
-    zip_path = Path(tmp.name)
+    cache_dir = ROOT / "deploy-cache"
+    cache_dir.mkdir(exist_ok=True)
+    zip_path = cache_dir / f"ticketz-dist-{int(time.time())}.zip"
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for local in files:
             arc = f"dist/{local.relative_to(DIST).as_posix()}"
@@ -189,12 +217,6 @@ Write-Output "extracted dist files=$count"
     zip_path.unlink(missing_ok=True)
 
 
-def should_use_zip(mode: str) -> bool:
-    if os.environ.get("DEPLOY_USE_ZIP", "").lower() in ("1", "true", "yes"):
-        return True
-    return mode in ("zip", "sync-routes", "full", "routes")
-
-
 def collect_files() -> List[Path]:
     mode = os.environ.get("DEPLOY_MODE", "patch").lower()
     if mode == "full":
@@ -215,6 +237,13 @@ def collect_files() -> List[Path]:
             raise FileNotFoundError(f"Missing build output: {path}")
         add(path)
 
+    for pattern in (
+        "services/AiServices/Triage/**/*.js",
+        "database/migrations/20260719100000-ai-triage-v2-professional-flow.js",
+    ):
+        for path in sorted(DIST.glob(pattern)):
+            add(path)
+
     if mode in ("sync-routes", "routes"):
         for pattern in (
             "routes/*.js",
@@ -223,6 +252,7 @@ def collect_files() -> List[Path]:
             "services/**/*.js",
             "helpers/*.js",
             "libs/*.js",
+            "database/migrations/*.js",
         ):
             for path in sorted(DIST.glob(pattern)):
                 add(path)
@@ -231,6 +261,13 @@ def collect_files() -> List[Path]:
 
 
 def main() -> int:
+    if os.environ.get("DEPLOY_USE_ZIP", "").lower() in ("0", "false", "no"):
+        print(
+            "::error::DEPLOY_USE_ZIP=false não é suportado. "
+            "Deploy Contabo deve ser sempre 1 ZIP + Expand-Archive."
+        )
+        return 1
+
     if not DIST.is_dir():
         print(f"Missing {DIST} — run npm run build in backend first")
         return 1
@@ -241,32 +278,25 @@ def main() -> int:
     extra_scripts = []
     reset_script = BACKEND / "scripts" / "reset-whatsapp-session.js"
     schema_script = BACKEND / "scripts" / "apply-db-schema.js"
-    if reset_script.is_file():
-        extra_scripts.append(reset_script)
-    if schema_script.is_file():
-        extra_scripts.append(schema_script)
+    triage_script = BACKEND / "scripts" / "apply-triage-v2-schema.js"
+    validate_script = BACKEND / "scripts" / "validate-triage-v2-schema.js"
+    enable_script = BACKEND / "scripts" / "enable-triage-v2-company.js"
+    for script in (
+        reset_script,
+        schema_script,
+        triage_script,
+        validate_script,
+        enable_script,
+    ):
+        if script.is_file():
+            extra_scripts.append(script)
 
-    if should_use_zip(mode):
-        print(f"Zip deploy: {len(files)} dist file(s) + {len(extra_scripts)} script(s)")
-        zip_path = build_zip_bundle(files, extra_scripts)
-        try:
-            upload_zip_bundle(s, zip_path)
-        finally:
-            zip_path.unlink(missing_ok=True)
-    else:
-        print(f"Uploading {len(files)} file(s) (mode={mode})...")
-        for idx, local in enumerate(files, start=1):
-            rel = local.relative_to(DIST).as_posix().replace("/", "\\")
-            remote = f"C:\\ticketz\\backend\\dist\\{rel}"
-            run_ps(
-                s,
-                f"New-Item -ItemType Directory -Force -Path (Split-Path '{remote}') | Out-Null",
-            )
-            upload_file(s, local, remote)
-            if idx % 50 == 0:
-                print(f"  ... {idx}/{len(files)} files uploaded")
-        for script in extra_scripts:
-            upload_file(s, script, f"C:\\ticketz\\backend\\scripts\\{script.name}")
+    print(f"Zip deploy: {len(files)} dist file(s) + {len(extra_scripts)} script(s)")
+    zip_path = build_zip_bundle(files, extra_scripts)
+    try:
+        upload_zip_bundle(s, zip_path)
+    finally:
+        zip_path.unlink(missing_ok=True)
 
     skip_reset = os.environ.get("SKIP_WHATSAPP_RESET", "").lower() in (
         "1",
@@ -298,19 +328,27 @@ Start-Sleep 3
 if (Test-Path "$Root\\backend\\scripts\\apply-db-schema.js") {
   Push-Location "$Root\\backend"
   node scripts\\apply-db-schema.js 2>&1
+  if (Test-Path "$Root\\backend\\scripts\\apply-triage-v2-schema.js") {
+    node scripts\\apply-triage-v2-schema.js 2>&1
+  }
   Pop-Location
 }
 $backend = @("$Root\\start-backend-watch.cmd","$Root\\start-backend.cmd","$Root\\run-backend.cmd") | Where-Object { Test-Path $_ } | Select-Object -First 1
 if ($backend) { Start-Process $backend -WindowStyle Hidden } else {
   Start-Process node -ArgumentList 'dist\\server.js' -WorkingDirectory 'C:\\ticketz\\backend' -WindowStyle Hidden
 }
-Start-Sleep 60
 $healthOk = $false
-try {
-  $h = Invoke-WebRequest http://127.0.0.1:8080/health -UseBasicParsing -TimeoutSec 20
-  Write-Output "health=$($h.Content)"
-  if ($h.StatusCode -eq 200) { $healthOk = $true }
-} catch { Write-Output "health fail $($_.Exception.Message)" }
+for ($i = 0; $i -lt 18; $i++) {
+  Start-Sleep 5
+  try {
+    $h = Invoke-WebRequest http://127.0.0.1:8080/health -UseBasicParsing -TimeoutSec 10
+    Write-Output "health=$($h.Content)"
+    if ($h.StatusCode -eq 200) { $healthOk = $true; break }
+  } catch {
+    Write-Output "health wait attempt=$i $($_.Exception.Message)"
+  }
+}
+if (-not $healthOk) { Write-Output "health fail after polling" }
 try {
   $r = Invoke-WebRequest 'http://127.0.0.1/health' -Headers @{Host='api.fortmax.com.br'} -UseBasicParsing -TimeoutSec 15
   Write-Output "iis_proxy=$($r.StatusCode) $($r.Content.Substring(0,[Math]::Min(120,$r.Content.Length)))"

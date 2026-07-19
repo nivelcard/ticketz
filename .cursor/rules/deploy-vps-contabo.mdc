@@ -1,0 +1,35 @@
+---
+description: Deploy backend na VPS Contabo — sempre ZIP, nunca arquivo a arquivo
+globs: scripts/deploy*.py,.github/workflows/deploy-prod.yml
+alwaysApply: true
+---
+
+# Deploy backend — VPS Contabo (WinRM)
+
+## Regra obrigatória
+
+**Nunca** enviar arquivos do backend um a um via WinRM para a Contabo.
+
+**Sempre** usar o fluxo:
+
+1. Montar o pacote local (`DEPLOY_MODE=patch` ou `full` — define *quais* arquivos entram no zip, não *como* enviar)
+2. Compactar em **um único ZIP** (`deploy-cache/ticketz-dist-*.zip`)
+3. Enviar **só o ZIP** (base64 chunked, SHA256)
+4. Na VPS: `Expand-Archive` em `C:\ticketz\backend` e remover o zip
+
+Script canônico: `scripts/deploy-vps-backend.py`
+
+## Proibido
+
+- Loop `upload_file()` por arquivo de `dist/` ou `scripts/` no deploy principal
+- `DEPLOY_USE_ZIP=false`
+- Zip temporário fora do repo (`/tmp/...`) — usar `deploy-cache/` dentro do projeto
+
+## CI
+
+`.github/workflows/deploy-prod.yml` → `DEPLOY_MODE=patch`, `SKIP_WHATSAPP_RESET=1`. O script sempre faz zip deploy.
+
+## Performance
+
+- Chunks base64: `DEPLOY_B64_CHUNK=2000` (limite WinRM)
+- Restart: polling `/health` a cada 5s (sem `Start-Sleep 60` fixo)

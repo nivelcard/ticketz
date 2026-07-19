@@ -9,4 +9,5 @@
 .env-frontend-*
 backend/.env
 frontend/.env
+deploy-cache/
 api-worker/node_modules/
