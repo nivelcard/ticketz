@@ -127,26 +127,35 @@ def upload_file(s, local_path: Path, remote_path: str) -> None:
     data = local_path.read_bytes()
     digest = hashlib.sha256(data).hexdigest()
     b64 = base64.b64encode(data).decode("ascii")
-    b64_path = f"{remote_path}.b64"
+    upload_id = int(time.time())
+    b64_dir = rf"C:\ticketz\deploy-cache\upload-{upload_id}"
     tmp_path = f"{remote_path}.new"
     expected_b64_len = len(b64)
 
     run_ps(
         s,
         f"""
-Remove-Item '{b64_path}' -Force -ErrorAction SilentlyContinue
+Remove-Item '{b64_dir}' -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item '{tmp_path}' -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path '{b64_dir}' | Out-Null
 """,
     )
 
     total_chunks = (len(b64) + CHUNK - 1) // CHUNK
     for idx, i in enumerate(range(0, len(b64), CHUNK), start=1):
-        chunk = b64[i : i + CHUNK].replace("'", "''")
-        if idx == 1:
-            write_ps = f"[IO.File]::WriteAllText('{b64_path}', '{chunk}')"
-        else:
-            write_ps = f"[IO.File]::AppendAllText('{b64_path}', '{chunk}')"
-        code, _, err = run_ps(s, write_ps)
+        chunk = b64[i : i + CHUNK]
+        part_path = rf"{b64_dir}\part{idx:04d}.txt"
+        chunk_b64 = base64.b64encode(chunk.encode("ascii")).decode("ascii")
+        code, _, err = run_ps(
+            s,
+            f"""
+$part = [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String('{chunk_b64}'))
+[IO.File]::WriteAllText('{part_path}', $part, [Text.UTF8Encoding]::new($false))
+if ((Get-Item '{part_path}').Length -ne {len(chunk)}) {{
+  throw "part {idx} size mismatch"
+}}
+""",
+        )
         if code != 0:
             raise RuntimeError(
                 f"Chunk {idx}/{total_chunks} upload failed for {local_path}: {err}"
@@ -157,13 +166,16 @@ Remove-Item '{tmp_path}' -Force -ErrorAction SilentlyContinue
     code, out, err = run_ps(
         s,
         f"""
-$b64raw = Get-Content '{b64_path}' -Raw
+$parts = Get-ChildItem '{b64_dir}\\part*.txt' | Sort-Object Name
+$b64raw = -join ($parts | ForEach-Object {{
+  [IO.File]::ReadAllText($_.FullName, [Text.UTF8Encoding]::new($false))
+}})
 if ($b64raw.Length -ne {expected_b64_len}) {{
   throw "b64 length mismatch expected={expected_b64_len} got=$($b64raw.Length)"
 }}
 $bytes = [Convert]::FromBase64String($b64raw)
 [IO.File]::WriteAllBytes('{tmp_path}', $bytes)
-Remove-Item '{b64_path}' -Force
+Remove-Item '{b64_dir}' -Recurse -Force
 $sha = (Get-FileHash '{tmp_path}' -Algorithm SHA256).Hash.ToLower()
 Write-Output "size=$($bytes.Length) sha=$sha"
 Copy-Item '{tmp_path}' '{remote_path}' -Force
