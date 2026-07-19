@@ -32,6 +32,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 DIST = BACKEND / "dist"
 CHUNK = int(os.environ.get("DEPLOY_B64_CHUNK", "1500"))
+UPLOAD_BATCH = max(1, int(os.environ.get("DEPLOY_UPLOAD_BATCH", "10")))
+DEPLOY_LOCK = r"C:\ticketz\deploy-cache\.deploy.lock"
 
 # Hotfix paths — full dist sync is too slow over WinRM (600+ files).
 PATCH_PATHS = [
@@ -117,6 +119,33 @@ def run_ps(s, ps):
     return r.status_code, out, err
 
 
+def acquire_deploy_lock(s) -> None:
+    code, out, err = run_ps(
+        s,
+        f"""
+$lock = '{DEPLOY_LOCK}'
+New-Item -ItemType Directory -Force -Path (Split-Path $lock) | Out-Null
+if (Test-Path $lock) {{
+  $age = (Get-Date) - (Get-Item $lock).LastWriteTime
+  if ($age.TotalMinutes -lt 45) {{
+    throw "deploy lock active: $(Get-Content $lock -Raw)"
+  }}
+  Remove-Item $lock -Force
+}}
+Set-Content -Path $lock -Value "pid={os.getpid()} ts={int(time.time())}" -NoNewline
+""",
+    )
+    if code != 0:
+        raise RuntimeError(f"Could not acquire deploy lock: {out} {err}")
+
+
+def release_deploy_lock(s) -> None:
+    run_ps(
+        s,
+        f"Remove-Item '{DEPLOY_LOCK}' -Force -ErrorAction SilentlyContinue",
+    )
+
+
 def format_upload_label(local_path: Path) -> str:
     try:
         return str(local_path.relative_to(ROOT))
@@ -136,35 +165,39 @@ def upload_file(s, local_path: Path, remote_path: str) -> None:
     run_ps(
         s,
         f"""
-Get-ChildItem 'C:\\ticketz\\deploy-cache\\upload-*' -ErrorAction SilentlyContinue |
-  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item '{b64_dir}' -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item '{tmp_path}' -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path '{b64_dir}' | Out-Null
+if (-not (Test-Path '{b64_dir}')) {{ throw "failed to create upload dir" }}
 """,
     )
 
     total_chunks = (len(b64) + CHUNK - 1) // CHUNK
-    for idx, i in enumerate(range(0, len(b64), CHUNK), start=1):
-        chunk = b64[i : i + CHUNK]
-        part_path = rf"{b64_dir}\part{idx:04d}.txt"
-        chunk_b64 = base64.b64encode(chunk.encode("ascii")).decode("ascii")
-        code, _, err = run_ps(
-            s,
-            f"""
+    for batch_start in range(1, total_chunks + 1, UPLOAD_BATCH):
+        batch_end = min(batch_start + UPLOAD_BATCH - 1, total_chunks)
+        batch_lines = []
+        for idx in range(batch_start, batch_end + 1):
+            i = (idx - 1) * CHUNK
+            chunk = b64[i : i + CHUNK]
+            part_path = rf"{b64_dir}\part{idx:04d}.txt"
+            chunk_b64 = base64.b64encode(chunk.encode("ascii")).decode("ascii")
+            batch_lines.append(
+                f"""
+$dir = Split-Path -Parent '{part_path}'
+New-Item -ItemType Directory -Force -Path $dir | Out-Null
 $part = [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String('{chunk_b64}'))
 [IO.File]::WriteAllText('{part_path}', $part, [Text.UTF8Encoding]::new($false))
 if ((Get-Item '{part_path}').Length -ne {len(chunk)}) {{
   throw "part {idx} size mismatch"
 }}
-""",
-        )
+"""
+            )
+        code, _, err = run_ps(s, "\n".join(batch_lines))
         if code != 0:
             raise RuntimeError(
-                f"Chunk {idx}/{total_chunks} upload failed for {local_path}: {err}"
+                f"Chunks {batch_start}-{batch_end}/{total_chunks} upload failed for {local_path}: {err}"
             )
-        if idx == 1 or idx == total_chunks or idx % 10 == 0:
-            print(f"    upload {idx}/{total_chunks} chunks", flush=True)
+        print(f"    upload {batch_end}/{total_chunks} chunks", flush=True)
 
     code, out, err = run_ps(
         s,
@@ -299,53 +332,55 @@ def main() -> int:
         return 1
 
     s = session()
-    files = collect_files()
-    mode = os.environ.get("DEPLOY_MODE", "patch").lower()
-    extra_scripts = []
-    reset_script = BACKEND / "scripts" / "reset-whatsapp-session.js"
-    schema_script = BACKEND / "scripts" / "apply-db-schema.js"
-    triage_script = BACKEND / "scripts" / "apply-triage-v2-schema.js"
-    validate_script = BACKEND / "scripts" / "validate-triage-v2-schema.js"
-    enable_script = BACKEND / "scripts" / "enable-triage-v2-company.js"
-    ensure_wa_script = BACKEND / "scripts" / "ensure-whatsapp-sessions.js"
-    report_wa_script = BACKEND / "scripts" / "report-whatsapp-status.js"
-    for script in (
-        reset_script,
-        schema_script,
-        triage_script,
-        validate_script,
-        enable_script,
-        ensure_wa_script,
-        report_wa_script,
-    ):
-        if script.is_file():
-            extra_scripts.append(script)
-
-    print(f"Zip deploy: {len(files)} dist file(s) + {len(extra_scripts)} script(s)")
-    zip_path = build_zip_bundle(files, extra_scripts)
+    acquire_deploy_lock(s)
     try:
-        upload_zip_bundle(s, zip_path)
-    finally:
-        zip_path.unlink(missing_ok=True)
+        files = collect_files()
+        mode = os.environ.get("DEPLOY_MODE", "patch").lower()
+        extra_scripts = []
+        reset_script = BACKEND / "scripts" / "reset-whatsapp-session.js"
+        schema_script = BACKEND / "scripts" / "apply-db-schema.js"
+        triage_script = BACKEND / "scripts" / "apply-triage-v2-schema.js"
+        validate_script = BACKEND / "scripts" / "validate-triage-v2-schema.js"
+        enable_script = BACKEND / "scripts" / "enable-triage-v2-company.js"
+        ensure_wa_script = BACKEND / "scripts" / "ensure-whatsapp-sessions.js"
+        report_wa_script = BACKEND / "scripts" / "report-whatsapp-status.js"
+        for script in (
+            reset_script,
+            schema_script,
+            triage_script,
+            validate_script,
+            enable_script,
+            ensure_wa_script,
+            report_wa_script,
+        ):
+            if script.is_file():
+                extra_scripts.append(script)
 
-    skip_reset = os.environ.get("SKIP_WHATSAPP_RESET", "").lower() in (
-        "1",
-        "true",
-        "yes",
-    )
-    reset_step = ""
-    if not skip_reset:
-        reset_step = (
-            "Push-Location C:\\ticketz\\backend\n"
-            "node scripts/reset-whatsapp-session.js 1 2>&1\n"
-            "Pop-Location\n"
+        print(f"Zip deploy: {len(files)} dist file(s) + {len(extra_scripts)} script(s)")
+        zip_path = build_zip_bundle(files, extra_scripts)
+        try:
+            upload_zip_bundle(s, zip_path)
+        finally:
+            zip_path.unlink(missing_ok=True)
+
+        skip_reset = os.environ.get("SKIP_WHATSAPP_RESET", "").lower() in (
+            "1",
+            "true",
+            "yes",
         )
+        reset_step = ""
+        if not skip_reset:
+            reset_step = (
+                "Push-Location C:\\ticketz\\backend\n"
+                "node scripts/reset-whatsapp-session.js 1 2>&1\n"
+                "Pop-Location\n"
+            )
 
-    print("Restart backend..." + (" (no WhatsApp reset)" if skip_reset else ""))
-    restart_ps = (
-        "$ErrorActionPreference='Continue'\n"
-        + reset_step
-        + """
+        print("Restart backend..." + (" (no WhatsApp reset)" if skip_reset else ""))
+        restart_ps = (
+            "$ErrorActionPreference='Continue'\n"
+            + reset_step
+            + """
 $Root='C:\\ticketz'
 schtasks /Change /TN TicketzBackend /DISABLE 2>&1 | Out-Null
 schtasks /Change /TN TicketzRedis /DISABLE 2>&1 | Out-Null
@@ -396,15 +431,17 @@ Get-Content C:\\ticketz\\logs\\backend.err.log -Tail 20 -EA SilentlyContinue
 Get-Content C:\\ticketz\\logs\\backend.log -Tail 12 -EA SilentlyContinue | Select-String 'listening|failed|error|Heavy'
 if (-not $healthOk) { exit 1 }
 """
-    )
-    code, out, err = run_ps(s, restart_ps)
-    print(out)
-    if err.strip():
-        print(err[-2000:])
-    if code != 0:
-        print("::error::Backend local health check failed after restart")
-        return 1
-    return 0
+        )
+        code, out, err = run_ps(s, restart_ps)
+        print(out)
+        if err.strip():
+            print(err[-2000:])
+        if code != 0:
+            print("::error::Backend local health check failed after restart")
+            return 1
+        return 0
+    finally:
+        release_deploy_lock(s)
 
 
 if __name__ == "__main__":
