@@ -6,6 +6,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.4.4] — 2026-07-19
+
+### Corrigido (CI deploy produção)
+
+- `deploy-prod.yml`: `git rev-parse --short=7 HEAD` alinhado na geração e verificação de `gitinfo.json` (evita mismatch quando Git usa hash curto de 8 caracteres)
+
+---
+
 ## [1.4.3] — 2026-07-19
 
 ### Adicionado (Triagem IA v2 + áudio/copiloto)

@@ -75,7 +75,7 @@ jobs:
 
       - name: Gerar gitinfo
         run: |
-          COMMIT_HASH=$(git rev-parse --short HEAD)
+          COMMIT_HASH=$(git rev-parse --short=7 HEAD)
           COMMIT_TS=$(git log -1 --format=%cI)
           BRANCH=$(git rev-parse --abbrev-ref HEAD)
           TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
@@ -209,7 +209,7 @@ jobs:
               VERSION_JSON=$(curl -fsS --max-time 10 "${API_URL}/version" || echo "{}")
               echo "Deployed version: ${VERSION_JSON}"
               DEPLOYED_HASH=$(echo "${VERSION_JSON}" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('commitHash',''))" 2>/dev/null || echo "")
-              EXPECTED_SHORT=$(echo "${EXPECTED_SHA}" | cut -c1-7)
+              EXPECTED_SHORT=$(git rev-parse --short=7 HEAD)
               if [ -n "${DEPLOYED_HASH}" ] && [ "${DEPLOYED_HASH}" = "${EXPECTED_SHORT}" ]; then
                 echo "Version match OK: ${DEPLOYED_HASH}"
               else
@@ -283,7 +283,7 @@ jobs:
         run: |
           cat frontend/build/gitinfo.json
           HASH=$(python3 -c "import json; print(json.load(open('frontend/build/gitinfo.json'))['commitHash'])")
-          EXPECTED=$(echo "${{ github.sha }}" | cut -c1-7)
+          EXPECTED=$(git rev-parse --short=7 HEAD)
           if [ "${HASH}" != "${EXPECTED}" ]; then
             echo "::error::gitinfo.json commit mismatch"
             exit 1
