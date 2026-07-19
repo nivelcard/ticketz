@@ -94,8 +94,8 @@ const AiCopilotPanel = ({ ticket }) => {
       setLoading(true);
       const { data } = await api.get(`/tickets/${ticket.id}/ai/copilot`);
       setSuggestion(data?.suggestion || null);
-    } catch (err) {
-      toastError(err);
+    } catch {
+      setSuggestion(null);
     } finally {
       setLoading(false);
     }
@@ -186,9 +186,14 @@ const AiCopilotPanel = ({ ticket }) => {
           size="small"
           color="primary"
           variant="contained"
-          disabled={loading || !instruction.trim()}
+          disabled={loading}
           onClick={() =>
-            requestCopilot({ instruction: instruction.trim(), refresh: true })
+            requestCopilot({
+              instruction:
+                instruction.trim() ||
+                "Analise a conversa e sugira a melhor resposta agora.",
+              refresh: true
+            })
           }
         >
           Chamar IA

@@ -64,12 +64,12 @@ const TicketAiTimeline = ({ ticketId }) => {
 
       try {
         setLoading(true);
-        const { data } = await api.get("/ai/tool-executions", {
-          params: { ticketId }
-        });
+        const { data } = await api.get(`/tickets/${ticketId}/ai/tool-executions`);
         setLogs(Array.isArray(data) ? data : []);
       } catch (err) {
-        toastError(err);
+        if (err?.response?.status !== 403) {
+          toastError(err);
+        }
         setLogs([]);
       } finally {
         setLoading(false);

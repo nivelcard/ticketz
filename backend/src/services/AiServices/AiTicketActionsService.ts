@@ -171,3 +171,53 @@ export const resumeTicketAi = async ({
 
   return updated;
 };
+
+type ReleaseToAiParams = {
+  ticket: Ticket;
+  user: User;
+};
+
+export const releaseTicketToAi = async ({
+  ticket,
+  user
+}: ReleaseToAiParams): Promise<Ticket> => {
+  if (ticket.status === "closed") {
+    throw new AppError("ERR_TICKET_CLOSED", 400);
+  }
+
+  const isOwner = ticket.userId === user.id;
+  if (!isOwner && !canManageAi(user)) {
+    throw new AppError("ERR_FORBIDDEN", 403);
+  }
+
+  const { ticket: updated } = await UpdateTicketService({
+    ticketId: ticket.id,
+    reqUserId: user.id,
+    companyId: user.companyId,
+    ticketData: {
+      userId: null,
+      status: "open",
+      aiHandoff: false,
+      aiPaused: false,
+      aiHandoffReason: null,
+      aiHandoffAt: null,
+      aiWaitingSince: null,
+      aiSlaBreached: false,
+      aiProcessingState: "ai_active",
+      aiAssistActive: false,
+      aiAssistMode: null,
+      aiHumanAssumedAt: null,
+      aiHumanAssumedBy: null
+    } as any
+  });
+
+  await logAiOperationalEvent({
+    companyId: user.companyId,
+    ticketId: ticket.id,
+    event: "ai_resumed",
+    userId: user.id,
+    details: { action: "release_to_ai" }
+  });
+
+  return updated;
+};

@@ -524,10 +524,12 @@ const messages = {
           observe: "Observar",
           pauseAi: "Pausar IA",
           resumeAi: "Retomar IA",
+          releaseToAi: "Devolver para IA",
           acceptAttendance: "Aceitar atendimento",
           refresh: "Atualizar",
           pauseSuccess: "IA pausada com sucesso.",
-          resumeSuccess: "IA retomada com sucesso."
+          resumeSuccess: "IA retomada com sucesso.",
+          releaseSuccess: "Conversa devolvida para a IA."
         },
         handoffAlert: {
           title: "🔴 IA TRANSFERIU PARA HUMANO",

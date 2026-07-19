@@ -4,6 +4,7 @@ import ShowTicketService from "../services/TicketServices/ShowTicketService";
 import {
   assumeTicketFromBot,
   pauseTicketAi,
+  releaseTicketToAi,
   resumeTicketAi
 } from "../services/AiServices/AiTicketActionsService";
 import {
@@ -20,6 +21,8 @@ import { transcribeTicketMessage } from "../services/AiServices/AiManualTranscri
 import SendWhatsAppMessage from "../services/WbotServices/SendWhatsAppMessage";
 import formatBody from "../helpers/Mustache";
 import User from "../models/User";
+import Ticket from "../models/Ticket";
+import { listToolExecutionLogs } from "../services/AiServices/tools/ToolExecutorService";
 
 const loadTicketForUser = async (req: Request) => {
   const { ticketId } = req.params;
@@ -32,6 +35,39 @@ const loadTicketForUser = async (req: Request) => {
   }
 
   return { ticket, user };
+};
+
+const canAccessTicketAiData = (ticket: Ticket, user: User): boolean => {
+  if (user.profile === "admin" || user.super) {
+    return true;
+  }
+
+  if (ticket.userId && ticket.userId === user.id) {
+    return true;
+  }
+
+  return (
+    !ticket.userId && Boolean(ticket.aiAgentId || ticket.aiHandoff)
+  );
+};
+
+export const toolExecutions = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { ticket, user } = await loadTicketForUser(req);
+
+  if (!canAccessTicketAiData(ticket, user)) {
+    throw new AppError("ERR_FORBIDDEN", 403);
+  }
+
+  const logs = await listToolExecutionLogs({
+    companyId: ticket.companyId,
+    ticketId: ticket.id,
+    limit: req.query.limit ? Number(req.query.limit) : 50
+  });
+
+  return res.json(logs);
 };
 
 export const assume = async (
@@ -74,6 +110,17 @@ export const resume = async (
   return res.status(200).json(updated);
 };
 
+export const releaseToAi = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { ticket, user } = await loadTicketForUser(req);
+
+  const updated = await releaseTicketToAi({ ticket, user });
+
+  return res.status(200).json(updated);
+};
+
 export const copilot = async (
   req: Request,
   res: Response
@@ -90,17 +137,10 @@ export const copilot = async (
     return res.status(200).json({ suggestion });
   }
 
-  let suggestion = await getLatestCopilotSuggestion(
+  const suggestion = await getLatestCopilotSuggestion(
     ticket.id,
     ticket.companyId
   );
-
-  if (!suggestion) {
-    suggestion = await generateCopilotSuggestion({
-      ticket,
-      requestedByUserId: user.id
-    });
-  }
 
   return res.status(200).json({ suggestion });
 };

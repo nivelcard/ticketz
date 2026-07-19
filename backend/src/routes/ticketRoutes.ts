@@ -54,6 +54,20 @@ ticketRoutes.post(
   TicketAiController.resume
 );
 
+ticketRoutes.post(
+  "/tickets/:ticketId/ai/release",
+  isAuth,
+  isCompliant,
+  TicketAiController.releaseToAi
+);
+
+ticketRoutes.get(
+  "/tickets/:ticketId/ai/tool-executions",
+  isAuth,
+  isCompliant,
+  TicketAiController.toolExecutions
+);
+
 ticketRoutes.get(
   "/tickets/:ticketId/ai/copilot",
   isAuth,

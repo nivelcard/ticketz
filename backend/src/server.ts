@@ -117,14 +117,29 @@ async function runPostListenBootstrap(_server: http.Server) {
     await startBackgroundServices();
   };
 
+  const kickWhatsAppWatchdog = () => {
+    setTimeout(() => {
+      import("./services/WbotServices/WhatsAppSessionWatchdogService")
+        .then(({ runWhatsAppSessionWatchdog }) => runWhatsAppSessionWatchdog())
+        .catch(error => {
+          logger.warn(
+            { error },
+            "Initial WhatsApp watchdog run skipped after startup"
+          );
+        });
+    }, 15000);
+  };
+
   i18nReady
     .then(async () => {
       logger.trace("i18n initialized");
       await bootstrapServices();
+      kickWhatsAppWatchdog();
     })
     .catch(async error => {
       logger.error(`i18n initialization failed: ${error.message}`);
       await bootstrapServices();
+      kickWhatsAppWatchdog();
     });
 }
 

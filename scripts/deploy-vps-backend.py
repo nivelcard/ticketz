@@ -26,7 +26,7 @@ def normalize_host(value: Optional[str]) -> str:
 
 HOST = normalize_host(os.environ.get("CONTABO_HOST"))
 USER = os.environ.get("CONTABO_USER", "administrator")
-PASSWORD = (os.environ.get("CONTABO_PASSWORD") or "").strip() or "74h9UFeGPbGni0"
+PASSWORD = (os.environ.get("CONTABO_PASSWORD") or "").strip()
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 DIST = BACKEND / "dist"
@@ -85,11 +85,13 @@ PATCH_PATHS = [
     "controllers/TicketAiController.js",
     "controllers/MessageController.js",
     "routes/ticketRoutes.js",
+    "services/AiServices/AiTicketActionsService.js",
     "models/AiTicketTimelineEvent.js",
     "services/StorageService/StorageService.js",
     "libs/wbot.js",
     "helpers/bufferToReadStreamTmp.js",
     "services/WbotServices/StartWhatsAppSession.js",
+    "services/WbotServices/WhatsAppSessionWatchdogService.js",
 ]
 
 
@@ -272,6 +274,10 @@ def main() -> int:
         print(f"Missing {DIST} — run npm run build in backend first")
         return 1
 
+    if not PASSWORD:
+        print("::error::CONTABO_PASSWORD is required for VPS deploy")
+        return 1
+
     s = session()
     files = collect_files()
     mode = os.environ.get("DEPLOY_MODE", "patch").lower()
@@ -281,12 +287,16 @@ def main() -> int:
     triage_script = BACKEND / "scripts" / "apply-triage-v2-schema.js"
     validate_script = BACKEND / "scripts" / "validate-triage-v2-schema.js"
     enable_script = BACKEND / "scripts" / "enable-triage-v2-company.js"
+    ensure_wa_script = BACKEND / "scripts" / "ensure-whatsapp-sessions.js"
+    report_wa_script = BACKEND / "scripts" / "report-whatsapp-status.js"
     for script in (
         reset_script,
         schema_script,
         triage_script,
         validate_script,
         enable_script,
+        ensure_wa_script,
+        report_wa_script,
     ):
         if script.is_file():
             extra_scripts.append(script)
@@ -331,6 +341,9 @@ if (Test-Path "$Root\\backend\\scripts\\apply-db-schema.js") {
   if (Test-Path "$Root\\backend\\scripts\\apply-triage-v2-schema.js") {
     node scripts\\apply-triage-v2-schema.js 2>&1
   }
+  if (Test-Path "$Root\\backend\\scripts\\ensure-whatsapp-sessions.js") {
+    node scripts\\ensure-whatsapp-sessions.js 2>&1
+  }
   Pop-Location
 }
 $backend = @("$Root\\start-backend-watch.cmd","$Root\\start-backend.cmd","$Root\\run-backend.cmd") | Where-Object { Test-Path $_ } | Select-Object -First 1
@@ -354,6 +367,11 @@ try {
   Write-Output "iis_proxy=$($r.StatusCode) $($r.Content.Substring(0,[Math]::Min(120,$r.Content.Length)))"
 } catch { Write-Output "iis_proxy=FAIL $($_.Exception.Message)" }
 try { $r=Invoke-WebRequest http://127.0.0.1:8080/queue -UseBasicParsing -TimeoutSec 15; Write-Output "queue=$($r.StatusCode)" } catch { Write-Output "queue=$($_.Exception.Response.StatusCode.value__)" }
+if (Test-Path "$Root\\backend\\scripts\\report-whatsapp-status.js") {
+  Push-Location "$Root\\backend"
+  node scripts\\report-whatsapp-status.js 2>&1
+  Pop-Location
+}
 Get-Content C:\\ticketz\\logs\\backend.err.log -Tail 20 -EA SilentlyContinue
 Get-Content C:\\ticketz\\logs\\backend.log -Tail 12 -EA SilentlyContinue | Select-String 'listening|failed|error|Heavy'
 if (-not $healthOk) { exit 1 }

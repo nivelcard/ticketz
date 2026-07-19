@@ -156,6 +156,20 @@ const TicketActionButtonsCustom = ({
     }
   };
 
+  const handleReleaseToAi = async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.post(`/tickets/${ticket.id}/ai/release`);
+      setObservationMode(true);
+      setCurrentTicket({ ...data, code: "#released" });
+      toast.success(i18n.t("aiSupervision.actions.releaseSuccess"));
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCloseTicket = () => {
     if (ticket.aiStartedAt && ticket.userId) {
       setLearningModalOpen(true);
@@ -187,6 +201,11 @@ const TicketActionButtonsCustom = ({
     ticket.aiPaused &&
     ticket.aiHandoff &&
     !ticket.userId;
+
+  const showReleaseToAi =
+    ticket.status === "open" &&
+    ticket.userId === user?.id &&
+    (ticket.aiHandoff || ticket.aiStartedAt || ticket.aiAgentId);
 
   const handleAcceptObservation = async () => {
     await handleUpdateTicketStatus(null, "open", user?.id);
@@ -357,6 +376,17 @@ const TicketActionButtonsCustom = ({
           onClick={handleResumeAi}
         >
           {i18n.t("aiSupervision.actions.resumeAi")}
+        </ButtonWithSpinner>
+      )}
+      {!observationMode && showReleaseToAi && (
+        <ButtonWithSpinner
+          loading={loading}
+          size="small"
+          variant="contained"
+          color="primary"
+          onClick={handleReleaseToAi}
+        >
+          {i18n.t("aiSupervision.actions.releaseToAi")}
         </ButtonWithSpinner>
       )}
       {!observationMode &&

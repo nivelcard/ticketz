@@ -1,38 +1,48 @@
-import { Op } from "sequelize";
+"use strict";
+
 import Whatsapp from "../../models/Whatsapp";
+import BaileysKeys from "../../models/BaileysKeys";
 import { getWbot } from "../../libs/wbot";
 import { StartWhatsAppSession } from "./StartWhatsAppSession";
 import { logger } from "../../utils/logger";
 
-const ACTIVE_STATUSES = ["CONNECTED", "PENDING", "OPENING", "qrcode"];
-
 export const runWhatsAppSessionWatchdog = async (): Promise<void> => {
-  const whatsapps = await Whatsapp.findAll({
-    where: {
-      status: {
-        [Op.in]: ACTIVE_STATUSES
-      }
-    }
-  });
+  const whatsapps = await Whatsapp.findAll();
 
   await Promise.all(
     whatsapps.map(async whatsapp => {
+      if (whatsapp.status === "qrcode" && whatsapp.qrcode) {
+        return;
+      }
+
+      const keyCount = await BaileysKeys.count({
+        where: { whatsappId: whatsapp.id }
+      });
+
+      if (keyCount === 0) {
+        return;
+      }
+
       try {
         getWbot(whatsapp.id);
+        return;
       } catch {
         logger.warn(
-          { whatsappId: whatsapp.id, status: whatsapp.status },
+          { whatsappId: whatsapp.id, status: whatsapp.status, keyCount },
           "WhatsApp session missing in memory — restarting"
         );
+      }
 
-        try {
-          await StartWhatsAppSession(whatsapp, whatsapp.companyId, true);
-        } catch (error) {
-          logger.error(
-            { error, whatsappId: whatsapp.id },
-            "WhatsApp watchdog failed to restart session"
-          );
+      try {
+        if (!["CONNECTED", "OPENING", "PENDING"].includes(whatsapp.status)) {
+          await whatsapp.update({ status: "OPENING", qrcode: "" });
         }
+        await StartWhatsAppSession(whatsapp, whatsapp.companyId, true);
+      } catch (error) {
+        logger.error(
+          { error, whatsappId: whatsapp.id },
+          "WhatsApp watchdog failed to restart session"
+        );
       }
     })
   );

@@ -54,6 +54,7 @@ const AiLearningCloseModal = ({ open, ticket, onClose, onComplete }) => {
   const closeTicket = async () => {
     await api.put(`/tickets/${ticket.id}`, {
       status: "closed",
+      justClose: true,
       userId: ticket.userId
     });
     onComplete();
