@@ -48,6 +48,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+---
+
+## [1.5.6] — 2026-07-19
+
+### Corrigido
+
+- **Mídia quebrada no chat / WhatsApp / repositório:** `servePublicMedia` + `extractCompanyIdFromStorageKey` corrigem download de arquivos em `suporte/{companyId}/...` (§18)
+- **Áudio gravado no painel (400):** conversão MP3→OGG sem validação prévia duplicada; MIME normalizado no upload
+- **Imagens do repositório:** `image/jpg`→`image/jpeg`; buffer vazio rejeitado no envio; preview com miniaturas e detecção de erro JSON
+- **403 genérico:** interceptor axios só renova token em **401** (não em 403 de negócio)
+- **Notificações duplicadas:** ticket aberto na aba Atendendo não entra mais no popover
+- **Copiloto:** feedback quando ticket não está aceito; erros 403 visíveis
+- **Histórico:** `MessagesList` infere tipo de mídia pela URL (áudio não renderiza mais como imagem quebrada)
+
+### Manual
+
+- §18 servir `/public/*`; §45 endpoint preview; versão manual **1.5.6**
+
+---
+
 ## [1.5.5] — 2026-07-19
 
 ### Corrigido

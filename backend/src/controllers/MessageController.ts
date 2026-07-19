@@ -142,23 +142,11 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
   }
 
   const requestUser = await User.findByPk(userId);
-  if (
-    !ticket.isGroup &&
-    ticket.userId &&
-    Number(ticket.userId) !== Number(userId) &&
-    requestUser?.profile !== "admin" &&
-    !requestUser?.super
-  ) {
-    throw new AppError("ERR_TICKET_NOT_ASSIGNED", 403);
-  }
+  const isOwner = !!ticket.userId && Number(ticket.userId) === Number(userId);
+  const isPrivileged =
+    requestUser?.profile === "admin" || requestUser?.super === true;
 
-  if (
-    !ticket.isGroup &&
-    !ticket.userId &&
-    ticket.status === "open" &&
-    requestUser?.profile !== "admin" &&
-    !requestUser?.super
-  ) {
+  if (!ticket.isGroup && !isOwner && !isPrivileged) {
     throw new AppError("ERR_TICKET_NOT_ASSIGNED", 403);
   }
 

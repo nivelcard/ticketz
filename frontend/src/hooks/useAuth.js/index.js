@@ -129,7 +129,7 @@ const useAuth = () => {
         const status = error?.response?.status;
 
         if (
-          (status === 401 || status === 403) &&
+          status === 401 &&
           originalRequest &&
           !originalRequest._retry &&
           !String(originalRequest.url || "").includes("/auth/refresh_token") &&

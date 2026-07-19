@@ -127,11 +127,20 @@ const NotificationsPopOver = props => {
   }, [play]);
 
   useEffect(() => {
-    setNotifications(tickets);
-  }, [tickets]);
+    setNotifications(tickets.filter(t => !isViewingTicket(t)));
+  }, [tickets, routeTicketId]);
 
   useEffect(() => {
     ticketIdRef.current = routeTicketId;
+    if (routeTicketId) {
+      setNotifications(prevState =>
+        prevState.filter(
+          t =>
+            String(t.id) !== String(routeTicketId) &&
+            (!t.uuid || t.uuid !== routeTicketId)
+        )
+      );
+    }
   }, [routeTicketId]);
 
   useEffect(() => {
@@ -197,6 +206,13 @@ const NotificationsPopOver = props => {
             (queueIds.includes(data.ticket.queueId) ||
               (!data.ticket.queueId && profile === "admin"))))
       ) {
+        if (
+          isViewingTicket(data.ticket) &&
+          document.visibilityState === "visible"
+        ) {
+          return;
+        }
+
         setNotifications(prevState => {
           const ticketIndex = prevState.findIndex(t => t.id === data.ticket.id);
           if (ticketIndex !== -1) {
@@ -230,6 +246,10 @@ const NotificationsPopOver = props => {
         !ticket.queueId;
 
       if (!belongsToQueue) {
+        return;
+      }
+
+      if (isViewingTicket(ticket) && document.visibilityState === "visible") {
         return;
       }
 

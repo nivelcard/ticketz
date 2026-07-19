@@ -3,13 +3,11 @@ import fs from "fs";
 import mime from "mime-types";
 import { Request, Response } from "express";
 import uploadConfig from "../config/upload";
-import { readMediaBuffer, normalizeStorageReference } from "./mediaStorage";
-
-const parseCompanyIdFromKey = (mediaKey: string): number => {
-  const first = mediaKey.split("/")[0];
-  const id = parseInt(first, 10);
-  return Number.isFinite(id) && id > 0 ? id : 1;
-};
+import {
+  readMediaBuffer,
+  normalizeStorageReference,
+  extractCompanyIdFromStorageKey
+} from "./mediaStorage";
 
 const setContentType = (res: Response, filePath: string): void => {
   const ext = path.extname(filePath).toLowerCase();
@@ -50,7 +48,7 @@ export const servePublicMedia = async (
     return;
   }
 
-  const companyId = parseCompanyIdFromKey(mediaKey);
+  const companyId = extractCompanyIdFromStorageKey(mediaKey);
   const buffer = await readMediaBuffer(
     normalizeStorageReference(mediaKey),
     companyId

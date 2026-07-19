@@ -50,6 +50,34 @@ const useStyles = makeStyles(theme => ({
   tabs: {
     marginBottom: theme.spacing(1),
     minHeight: 36
+  },
+  itemRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: theme.spacing(1)
+  },
+  thumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 6,
+    objectFit: "cover",
+    flexShrink: 0,
+    backgroundColor:
+      theme.palette.type === "dark" ? "#243447" : theme.palette.grey[200]
+  },
+  thumbPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 6,
+    flexShrink: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "0.65rem",
+    textAlign: "center",
+    color: theme.palette.text.secondary,
+    backgroundColor:
+      theme.palette.type === "dark" ? "#243447" : theme.palette.grey[200]
   }
 }));
 
@@ -89,6 +117,7 @@ const RepositoryPanel = ({ open, onClose, ticket }) => {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState(null);
+  const [thumbUrls, setThumbUrls] = useState({});
 
   const loadCategories = useCallback(async () => {
     if (!ticket?.id) return;
@@ -143,6 +172,62 @@ const RepositoryPanel = ({ open, onClose, ticket }) => {
   }, [selected]);
 
   useEffect(() => {
+    if (!open || !ticket?.id || !items.length) {
+      return undefined;
+    }
+
+    let active = true;
+    const createdUrls = [];
+
+    const loadThumbs = async () => {
+      const next = {};
+      const imageItems = items.filter(
+        item =>
+          item.contentType === "image" &&
+          (item.previewAvailable || item.storageKey || item.hasStorageFile)
+      );
+
+      await Promise.all(
+        imageItems.map(async item => {
+          try {
+            const response = await api.get(
+              `/tickets/${ticket.id}/repository/${item.id}/preview`,
+              { responseType: "blob" }
+            );
+            const blob = response.data;
+            const contentType =
+              response.headers["content-type"] || blob?.type || "";
+            if (!blob?.size || contentType.includes("application/json")) {
+              return;
+            }
+            const url = URL.createObjectURL(blob);
+            createdUrls.push(url);
+            next[item.id] = url;
+          } catch {
+            /* thumbnail optional */
+          }
+        })
+      );
+
+      if (active) {
+        setThumbUrls(prev => {
+          Object.values(prev).forEach(url => URL.revokeObjectURL(url));
+          return next;
+        });
+      } else {
+        createdUrls.forEach(url => URL.revokeObjectURL(url));
+      }
+    };
+
+    loadThumbs();
+
+    return () => {
+      active = false;
+      createdUrls.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [open, ticket?.id, items]);
+
+  useEffect(() => {
     let active = true;
     let objectUrl = null;
 
@@ -158,27 +243,57 @@ const RepositoryPanel = ({ open, onClose, ticket }) => {
       setPreviewUrl(null);
 
       try {
+        if (
+          selected.contentType === "text" ||
+          selected.contentType === "link"
+        ) {
+          return;
+        }
+
+        if (!selected.previewAvailable && !selected.storageKey) {
+          setPreviewError("Arquivo indisponível no storage.");
+          return;
+        }
+
         const response = await api.get(
           `/tickets/${ticket.id}/repository/${selected.id}/preview`,
           {
-            responseType: selected.storageKey ? "blob" : "json"
+            responseType: "blob"
           }
         );
 
         if (!active) return;
 
-        if (response.data?.previewType === "text") {
-          setPreviewUrl(null);
-          setPreviewError(null);
-        } else if (response.data instanceof Blob) {
-          objectUrl = URL.createObjectURL(response.data);
-          setPreviewUrl(objectUrl);
+        const blob = response.data;
+        const contentType =
+          response.headers["content-type"] || blob?.type || "";
+
+        if (contentType.includes("application/json")) {
+          const text = await blob.text();
+          let message = "Não foi possível carregar a pré-visualização.";
+          try {
+            const json = JSON.parse(text);
+            message = json.error || json.message || message;
+          } catch {
+            /* keep default */
+          }
+          setPreviewError(message);
+          return;
         }
+
+        if (!blob?.size) {
+          setPreviewError("Arquivo indisponível no storage.");
+          return;
+        }
+
+        objectUrl = URL.createObjectURL(blob);
+        setPreviewUrl(objectUrl);
       } catch (err) {
         if (active) {
           setPreviewError(
             err?.response?.data?.error ||
               err?.response?.data?.message ||
+              err?.message ||
               "Não foi possível carregar a pré-visualização."
           );
         }
@@ -197,7 +312,14 @@ const RepositoryPanel = ({ open, onClose, ticket }) => {
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [open, selected?.id, ticket?.id, selected?.storageKey]);
+  }, [
+    open,
+    selected?.id,
+    ticket?.id,
+    selected?.storageKey,
+    selected?.previewAvailable,
+    selected?.contentType
+  ]);
 
   const toggleFavorite = async (item, event) => {
     event.stopPropagation();
@@ -330,37 +452,57 @@ const RepositoryPanel = ({ open, onClose, ticket }) => {
                   }`}
                   onClick={() => setSelected(item)}
                 >
-                  <Box display="flex" justifyContent="space-between">
-                    <Typography variant="subtitle2">
-                      {item.displayTitle || item.name}
-                    </Typography>
-                    <Box display="flex" alignItems="center" gridGap={4}>
-                      <Tooltip
-                        title={
-                          item.favorited ? "Remover favorito" : "Favoritar"
-                        }
-                      >
-                        <IconButton
-                          size="small"
-                          onClick={e => toggleFavorite(item, e)}
-                        >
-                          {item.favorited ? (
-                            <StarIcon fontSize="small" color="primary" />
-                          ) : (
-                            <StarBorderIcon fontSize="small" />
-                          )}
-                        </IconButton>
-                      </Tooltip>
-                      <Chip size="small" label={typeLabel(item.contentType)} />
+                  <Box className={classes.itemRow}>
+                    {item.contentType === "image" ? (
+                      thumbUrls[item.id] ? (
+                        <img
+                          src={thumbUrls[item.id]}
+                          alt=""
+                          className={classes.thumb}
+                        />
+                      ) : (
+                        <Box className={classes.thumbPlaceholder}>
+                          {typeLabel(item.contentType)}
+                        </Box>
+                      )
+                    ) : null}
+                    <Box flex={1} minWidth={0}>
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="subtitle2">
+                          {item.displayTitle || item.name}
+                        </Typography>
+                        <Box display="flex" alignItems="center" gridGap={4}>
+                          <Tooltip
+                            title={
+                              item.favorited ? "Remover favorito" : "Favoritar"
+                            }
+                          >
+                            <IconButton
+                              size="small"
+                              onClick={e => toggleFavorite(item, e)}
+                            >
+                              {item.favorited ? (
+                                <StarIcon fontSize="small" color="primary" />
+                              ) : (
+                                <StarBorderIcon fontSize="small" />
+                              )}
+                            </IconButton>
+                          </Tooltip>
+                          <Chip
+                            size="small"
+                            label={typeLabel(item.contentType)}
+                          />
+                        </Box>
+                      </Box>
+                      <Typography variant="caption" color="textSecondary">
+                        {item.category || "Sem categoria"} · usado{" "}
+                        {item.usageCount || 0}x
+                      </Typography>
+                      <Typography variant="body2" noWrap>
+                        {item.sendCaption || item.description || "—"}
+                      </Typography>
                     </Box>
                   </Box>
-                  <Typography variant="caption" color="textSecondary">
-                    {item.category || "Sem categoria"} · usado{" "}
-                    {item.usageCount || 0}x
-                  </Typography>
-                  <Typography variant="body2" noWrap>
-                    {item.sendCaption || item.description || "—"}
-                  </Typography>
                 </Box>
               ))
             )}

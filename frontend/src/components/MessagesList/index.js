@@ -1039,7 +1039,32 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
     previewVideo.pause();
   };
 
+  const inferMessageMediaKind = message => {
+    const declared = String(message.mediaType || "").toLowerCase();
+    const url = String(message.mediaUrl || "").toLowerCase();
+    const body = String(message.body || "").toLowerCase();
+
+    if (
+      declared === "audio" ||
+      /\.(ogg|opus|mp3|mpeg|m4a|wav|webm)(\?|$)/.test(url) ||
+      body.includes("audio-record-site")
+    ) {
+      return "audio";
+    }
+
+    if (declared === "video" || /\.(mp4|mov|webm)(\?|$)/.test(url)) {
+      return "video";
+    }
+
+    if (declared === "image" || /\.(png|jpe?g|gif|webp)(\?|$)/.test(url)) {
+      return "image";
+    }
+
+    return declared || "document";
+  };
+
   const checkMessageMedia = (message, data, isSticker = false) => {
+    const mediaKind = inferMessageMediaKind(message);
     const document =
       data?.message?.documentMessage ||
       data?.message?.documentWithCaptionMessage?.message?.documentMessage;
@@ -1055,7 +1080,7 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
       );
     }
 
-    if (!document && message.mediaType === "image") {
+    if (!document && mediaKind === "image") {
       return (
         <>
           <img
@@ -1089,7 +1114,7 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
         </>
       );
     }
-    if (!document && message.mediaType === "audio") {
+    if (!document && mediaKind === "audio") {
       const audioSrc = message.mediaUrl;
       const audioType = (audioSrc || "").toLowerCase().includes(".ogg")
         ? "audio/ogg"
@@ -1109,7 +1134,7 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
       );
     }
 
-    if (!document || message.mediaType === "video") {
+    if (!document || mediaKind === "video") {
       return (
         <>
           <div

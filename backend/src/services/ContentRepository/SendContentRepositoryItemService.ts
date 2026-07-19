@@ -134,7 +134,9 @@ export const sendRepositoryItemToTicket = async (
     }
     if (!textPayload) {
       if (
-        ["image", "pdf", "audio", "video", "document"].includes(item.contentType)
+        ["image", "pdf", "audio", "video", "document"].includes(
+          item.contentType
+        )
       ) {
         throw new AppError("ERR_REPOSITORY_MEDIA_MISSING", 400);
       }
@@ -163,6 +165,10 @@ export const sendRepositoryItemToTicket = async (
     item.storageKey,
     input.companyId
   );
+
+  if (!buffer?.length) {
+    throw new AppError("ERR_REPOSITORY_MEDIA_MISSING", 400);
+  }
   const fileName = item.originalFileName || `${item.name}`;
   const tempPath = await writeTempFile(buffer, fileName);
 

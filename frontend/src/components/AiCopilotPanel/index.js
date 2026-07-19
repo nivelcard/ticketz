@@ -73,6 +73,7 @@ const AiCopilotPanel = ({
   const requestCopilot = useCallback(
     async (payload = {}) => {
       if (!ticket?.id || !ticket?.userId || ticket.status !== "open") {
+        toast.info("Aceite o ticket para usar o copiloto.");
         return;
       }
 
@@ -87,9 +88,7 @@ const AiCopilotPanel = ({
           toast.info(i18n.t("aiCopilot.empty"));
         }
       } catch (err) {
-        if (err?.response?.status !== 403) {
-          toastError(err);
-        }
+        toastError(err);
         setSuggestion(null);
       } finally {
         setGenerating(false);
@@ -170,6 +169,13 @@ const AiCopilotPanel = ({
   };
 
   if (!ticket?.userId || ticket.status !== "open") {
+    if (compact) {
+      return (
+        <Typography variant="body2" color="textSecondary">
+          Aceite o ticket para usar o copiloto.
+        </Typography>
+      );
+    }
     return null;
   }
 

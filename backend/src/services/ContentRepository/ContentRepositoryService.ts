@@ -10,11 +10,12 @@ import ContentRepositoryCategory from "../../models/ContentRepositoryCategory";
 import ContentRepositoryUsageLog from "../../models/ContentRepositoryUsageLog";
 import User from "../../models/User";
 import Ticket from "../../models/Ticket";
-import { KnowledgeAssetType } from "../../models/KnowledgeAsset";
+import KnowledgeAsset, {
+  KnowledgeAssetType
+} from "../../models/KnowledgeAsset";
 import StorageService from "../StorageService/StorageService";
 import { createKnowledgeAsset } from "../AiServices/KnowledgeCms/KnowledgeAssetCmsService";
 import { ingestKnowledgeAssetVersion } from "../AiServices/KnowledgeCms/ingestKnowledgeAssetVersion";
-import KnowledgeAsset from "../../models/KnowledgeAsset";
 import KnowledgeAssetVersion from "../../models/KnowledgeAssetVersion";
 import { assertRepositoryPermission } from "./ContentRepositoryPermissionService";
 
@@ -112,17 +113,13 @@ export const buildRepositoryAccessForTicket = (
   options: { forAi?: boolean; aiAgentId?: number } = {}
 ): RepositoryAccessContext => {
   const userQueueIds =
-    user.profile === "admin"
-      ? []
-      : (user.queues || []).map(q => q.id);
+    user.profile === "admin" ? [] : (user.queues || []).map(q => q.id);
 
   return {
     userId: user.id,
     profile: user.super ? "admin" : user.profile,
     companyId: ticket.companyId,
-    queueIds: ticket.queueId
-      ? [ticket.queueId, ...userQueueIds]
-      : userQueueIds,
+    queueIds: ticket.queueId ? [ticket.queueId, ...userQueueIds] : userQueueIds,
     aiAgentId: options.aiAgentId || ticket.aiAgentId || undefined,
     forAi: options.forAi
   };
@@ -671,13 +668,25 @@ export const searchRepositoryForAi = async (input: {
 };
 
 export const resolveRepositoryMime = (item: ContentRepositoryItem): string => {
-  if (item.mimeType) {
-    return item.mimeType;
+  const fromName = item.originalFileName
+    ? mime.lookup(item.originalFileName)
+    : false;
+  const raw = item.mimeType || fromName || "application/octet-stream";
+  const normalized = String(raw).split(";")[0].trim().toLowerCase();
+
+  if (normalized === "image/jpg") {
+    return "image/jpeg";
   }
-  if (item.originalFileName) {
-    return mime.lookup(item.originalFileName) || "application/octet-stream";
+
+  if (
+    item.contentType === "image" &&
+    (!normalized.startsWith("image/") ||
+      normalized === "application/octet-stream")
+  ) {
+    return "image/jpeg";
   }
-  return "application/octet-stream";
+
+  return normalized || "application/octet-stream";
 };
 
 export const assertRepositoryAccess = async (
@@ -693,6 +702,11 @@ const mapItemJson = (
   extra: Record<string, unknown> = {}
 ) => ({
   ...item.toJSON(),
+  hasStorageFile: Boolean(item.storageKey),
+  previewAvailable:
+    Boolean(item.storageKey) ||
+    item.contentType === "text" ||
+    item.contentType === "link",
   ...extra
 });
 
@@ -743,10 +757,14 @@ export const listFavoriteRepositoryItems = async (input: {
 
   let filtered = items;
   if (input.access) {
-    filtered = items.filter(item => canAccessRepositoryItem(item, input.access!));
+    filtered = items.filter(item =>
+      canAccessRepositoryItem(item, input.access!)
+    );
   }
 
-  const orderMap = new Map(favorites.map((f, idx) => [f.repositoryItemId, idx]));
+  const orderMap = new Map(
+    favorites.map((f, idx) => [f.repositoryItemId, idx])
+  );
   filtered.sort(
     (a, b) => (orderMap.get(a.id) || 0) - (orderMap.get(b.id) || 0)
   );
@@ -789,7 +807,9 @@ export const listRecentRepositoryItemsForUser = async (input: {
 
   let filtered = items;
   if (input.access) {
-    filtered = items.filter(item => canAccessRepositoryItem(item, input.access!));
+    filtered = items.filter(item =>
+      canAccessRepositoryItem(item, input.access!)
+    );
   }
 
   const orderMap = new Map(itemIds.map((id, idx) => [id, idx]));
@@ -820,7 +840,10 @@ export const listRepositoryCategories = async (
   }
   return ContentRepositoryCategory.findAll({
     where,
-    order: [["sortOrder", "ASC"], ["name", "ASC"]]
+    order: [
+      ["sortOrder", "ASC"],
+      ["name", "ASC"]
+    ]
   });
 };
 

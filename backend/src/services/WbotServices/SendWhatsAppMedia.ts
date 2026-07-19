@@ -40,7 +40,27 @@ const publicFolder = __dirname.endsWith("/dist")
   ? path.resolve(__dirname, "..", "public")
   : path.resolve(__dirname, "..", "..", "..", "public");
 
-const supportedImages = ["image/png", "image/jpg", "image/jpeg", "image/webp"];
+const supportedImages = new Set([
+  "image/png",
+  "image/jpg",
+  "image/jpeg",
+  "image/webp",
+  "image/gif"
+]);
+
+const normalizeOutboundMime = (rawMime?: string, fileName?: string): string => {
+  const fromName = fileName ? mime.lookup(fileName) : false;
+  const value = String(rawMime || fromName || "application/octet-stream")
+    .split(";")[0]
+    .trim()
+    .toLowerCase();
+
+  if (value === "image/jpg") {
+    return "image/jpeg";
+  }
+
+  return value || "application/octet-stream";
+};
 
 const MIN_AUDIO_BYTES = 256;
 const MIN_AUDIO_DURATION_SEC = 0.3;
@@ -121,7 +141,10 @@ export const getMessageFileOptions = async (
   mimetype?: string,
   ptt?: boolean
 ): Promise<AnyMediaMessageContent> => {
-  mimetype = mimetype || mime.lookup(pathMedia) || "application/octet-stream";
+  mimetype = normalizeOutboundMime(
+    mimetype || mime.lookup(pathMedia) || undefined,
+    fileName
+  );
 
   const url = pathMedia.match(/^https?:\/\//) && {
     url: pathMedia
@@ -141,7 +164,6 @@ export const getMessageFileOptions = async (
       const needConvert = !url && isPanelRecordedAudio(fileName, mimetype);
 
       if (needConvert) {
-        await validateOutboundAudio(pathMedia, fileName);
         const converted = await processRecordedAudio(pathMedia);
         tempConvertedPath = converted.outputPath;
         options = {
@@ -165,7 +187,7 @@ export const getMessageFileOptions = async (
           ptt: !!ptt
         };
       }
-    } else if (supportedImages.includes(mimetype)) {
+    } else if (supportedImages.has(mimetype)) {
       options = {
         fileName,
         image: url || { stream: fs.createReadStream(pathMedia) }
@@ -251,12 +273,7 @@ export const SendWhatsAppMedia = async ({
       fileName = media.originalname;
     }
 
-    if (
-      media.mimetype?.startsWith("audio/") &&
-      isPanelRecordedAudio(fileName, media.mimetype)
-    ) {
-      await validateOutboundAudio(pathMedia, fileName);
-    }
+    const normalizedMime = normalizeOutboundMime(media.mimetype, fileName);
 
     const fileLimit = parseInt(await CheckSettings("uploadLimit", "15"), 10);
 
@@ -264,7 +281,7 @@ export const SendWhatsAppMedia = async ({
     const savedPath = await saveMediaToFile(
       {
         data: readableFile,
-        mimetype: media.mimetype,
+        mimetype: normalizedMime,
         filename: fileName || media.originalname
       },
       { destination: ticket }
@@ -273,7 +290,7 @@ export const SendWhatsAppMedia = async ({
 
     const mediaInfo = {
       mediaUrl: savedPath,
-      mimetype: media.mimetype,
+      mimetype: normalizedMime,
       filename: fileName || media.originalname
     };
 
@@ -289,8 +306,8 @@ export const SendWhatsAppMedia = async ({
     const options = await getMessageFileOptions(
       fileName,
       pathMedia,
-      media.mimetype,
-      ptt ?? isPanelRecordedAudio(fileName, media.mimetype)
+      normalizedMime,
+      ptt ?? isPanelRecordedAudio(fileName, normalizedMime)
     );
 
     if (!options) {

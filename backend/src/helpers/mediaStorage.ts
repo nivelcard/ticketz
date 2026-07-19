@@ -63,6 +63,28 @@ export const inferMediaFolder = (
 export const normalizeStorageReference = (mediaPath: string): string =>
   mediaPath.replace(/^\/public\//, "").trim();
 
+export const extractCompanyIdFromStorageKey = (
+  mediaKey: string,
+  fallback = 1
+): number => {
+  const normalized = normalizeStorageReference(mediaKey);
+  const parts = normalized.split("/").filter(Boolean);
+
+  if (parts[0] === "suporte" && parts[1]) {
+    const companyId = Number.parseInt(parts[1], 10);
+    if (Number.isFinite(companyId) && companyId > 0) {
+      return companyId;
+    }
+  }
+
+  const first = Number.parseInt(parts[0] || "", 10);
+  if (Number.isFinite(first) && first > 0) {
+    return first;
+  }
+
+  return fallback;
+};
+
 export const extractStorageKeyFromUrl = (mediaUrl: string): string | null => {
   if (!/^https?:\/\//i.test(mediaUrl)) {
     return null;
