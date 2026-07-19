@@ -3,7 +3,10 @@
 import Whatsapp from "../../models/Whatsapp";
 import BaileysKeys from "../../models/BaileysKeys";
 import { getWbot } from "../../libs/wbot";
-import { StartWhatsAppSession } from "./StartWhatsAppSession";
+import {
+  StartWhatsAppSession,
+  isWhatsAppSessionStarting
+} from "./StartWhatsAppSession";
 import { logger } from "../../utils/logger";
 
 export const runWhatsAppSessionWatchdog = async (): Promise<void> => {
@@ -12,6 +15,13 @@ export const runWhatsAppSessionWatchdog = async (): Promise<void> => {
   await Promise.all(
     whatsapps.map(async whatsapp => {
       if (whatsapp.status === "qrcode" && whatsapp.qrcode) {
+        return;
+      }
+
+      if (
+        whatsapp.status === "OPENING" ||
+        isWhatsAppSessionStarting(whatsapp.id)
+      ) {
         return;
       }
 

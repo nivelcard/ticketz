@@ -288,7 +288,8 @@ Ordem real em `wbotMessageListener.ts` → `handleMessage` (linhas ~1655–2184)
 - Sessão: `WhatsAppSessionController`, `routes/whatsappSessionRoutes.ts`
 - Listener: `WbotServices/wbotMessageListener.ts`
 - Socket sessão: `libs/wbot.ts` emite `company-{id}-whatsappSession` e global `whatsappSession`
-- Watchdog: fila `WhatsappWatchdog`, cron `*/5 * * * *` (5 min)
+- Watchdog memória: `WhatsAppSessionWatchdogService` (15s pós-startup) + fila `WhatsappWatchdog` cron `*/5 * * * *`
+- Reconexão: conflito **440** preserva `BaileysKeys` e agenda restart único (sem apagar credenciais); timers pendentes cancelados em `connection === "open"`
 - Wavoip: `WavoipController`, model `Wavoip`
 - Capture token: `BuildCaptureExtensionService`, `buildCaptureExtensionRoutes`
 

@@ -24,7 +24,10 @@ import { logger, loggerBaileys } from "../utils/logger";
 import authState from "../helpers/authState";
 import AppError from "../errors/AppError";
 import { getIO } from "./socket";
-import { StartWhatsAppSession } from "../services/WbotServices/StartWhatsAppSession";
+import {
+  StartWhatsAppSession,
+  isWhatsAppSessionStarting
+} from "../services/WbotServices/StartWhatsAppSession";
 import DeleteBaileysService from "../services/BaileysServices/DeleteBaileysService";
 import Contact from "../models/Contact";
 import Ticket from "../models/Ticket";
@@ -80,8 +83,17 @@ const sessions: Session[] = [];
 
 const retriesQrCodeMap = new Map<number, number>();
 const sessionRestartAt = new Map<number, number>();
+const sessionRestartTimers = new Map<number, NodeJS.Timeout>();
 
 const MIN_SESSION_RESTART_MS = 8000;
+
+const cancelSessionRestart = (whatsappId: number): void => {
+  const timer = sessionRestartTimers.get(whatsappId);
+  if (timer) {
+    clearTimeout(timer);
+    sessionRestartTimers.delete(whatsappId);
+  }
+};
 
 const scheduleSessionRestart = (
   whatsapp: Whatsapp,
@@ -95,11 +107,34 @@ const scheduleSessionRestart = (
     MIN_SESSION_RESTART_MS - (now - lastRestart)
   );
 
+  cancelSessionRestart(whatsapp.id);
   sessionRestartAt.set(whatsapp.id, now + waitMs);
-  setTimeout(async () => {
+  const timer = setTimeout(async () => {
+    sessionRestartTimers.delete(whatsapp.id);
     await whatsapp.reload();
+
+    try {
+      getWbot(whatsapp.id);
+      logger.info(
+        { whatsappId: whatsapp.id },
+        "Scheduled session restart skipped — session already active"
+      );
+      return;
+    } catch {
+      // session not in memory — continue
+    }
+
+    if (isWhatsAppSessionStarting(whatsapp.id)) {
+      logger.info(
+        { whatsappId: whatsapp.id },
+        "Scheduled session restart skipped — start already in progress"
+      );
+      return;
+    }
+
     await StartWhatsAppSession(whatsapp, whatsapp.companyId, isRefresh);
   }, waitMs);
+  sessionRestartTimers.set(whatsapp.id, timer);
 };
 
 export const getWbot = (whatsappId: number): Session => {
@@ -463,16 +498,15 @@ export const initWASocket = async (
               if (isConflict) {
                 logger.warn(
                   { whatsappId: id, statusCode },
-                  `Session conflict — clearing creds and restarting QR for ${name}`
+                  `Session conflict — reconnecting with existing creds for ${name}`
                 );
-                await removeWbot(id);
-                await DeleteBaileysService(whatsapp.id);
+                cancelSessionRestart(id);
+                await removeWbot(id, false);
                 await whatsapp.update({
-                  status: "OPENING",
-                  session: "",
-                  qrcode: "",
-                  retries: 0
+                  status: "PENDING",
+                  qrcode: ""
                 });
+                await whatsapp.reload();
                 io.to(`company-${whatsapp.companyId}-admin`).emit(
                   `company-${whatsapp.companyId}-whatsappSession`,
                   {
@@ -480,7 +514,7 @@ export const initWASocket = async (
                     session: whatsapp
                   }
                 );
-                scheduleSessionRestart(whatsapp, 3000, true);
+                scheduleSessionRestart(whatsapp, 15000, true);
                 return;
               }
 
@@ -496,8 +530,10 @@ export const initWASocket = async (
                   }
                 );
                 removeWbot(id, false).then(() => {
-                  logger.info(`Reconnecting ${name} in 1 second`);
-                  scheduleSessionRestart(whatsapp, 1000, true);
+                  logger.info(
+                    `Reconnecting ${name} after transient disconnect`
+                  );
+                  scheduleSessionRestart(whatsapp, 8000, true);
                 });
               } else {
                 // logged out
@@ -519,6 +555,9 @@ export const initWASocket = async (
             }
 
             if (connection === "open") {
+              cancelSessionRestart(id);
+              retriesQrCodeMap.delete(id);
+
               wsocket.fetchAccountReachoutTimelock().then(timelock => {
                 handleReachoutTimelock(timelock, { timelock });
               });

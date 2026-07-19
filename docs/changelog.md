@@ -20,6 +20,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - Read receipt WhatsApp adiado quando triagem v2 + IA ativa (`shouldDeferWhatsAppReadReceipt`)
 - Fix CORS produção: `appFast.ts` carrega `bootstrap` antes do middleware cors (`.env` / `FRONTEND_URL`)
 - WhatsApp: `WHATSAPP_AUTO_START=true`, watchdog reconecta sessões com BaileysKeys, deploy não apaga credenciais
+- WhatsApp conflito 440: reconexão suave sem `DeleteBaileysService`; cancelamento de restarts duplicados em `wbot.ts`
 - Suporte Thiago: timeline IA sem 403, fechar ticket com `justClose`, botão Devolver para IA, Chamar IA ativo
 - Deploy VPS: `DEPLOY_MODE=patch` + zip único (`deploy-cache/`), chunks WinRM 2000, health poll (sem sleep 60s)
 - Read receipt WhatsApp adiado quando triagem v2 + IA ativa (`shouldDeferWhatsAppReadReceipt`)

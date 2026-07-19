@@ -8,6 +8,9 @@ import { sendWhatsappUpdate } from "../WhatsappService/SocketSendWhatsappUpdate"
 const DEFAULT_START_TIMEOUT_MS = 90 * 1000;
 const openingSessions = new Map<number, Promise<void>>();
 
+export const isWhatsAppSessionStarting = (whatsappId: number): boolean =>
+  openingSessions.has(whatsappId);
+
 const parsePositiveInt = (
   value: string | undefined,
   fallback: number
@@ -83,6 +86,20 @@ export const StartWhatsAppSession = async (
       "WhatsApp session start already in progress"
     );
     return activeStart;
+  }
+
+  if (!isRefresh && whatsapp.status === "CONNECTED") {
+    try {
+      const { getWbot } = await import("../../libs/wbot");
+      getWbot(whatsapp.id);
+      logger.info(
+        { whatsappId: whatsapp.id },
+        "WhatsApp session already connected — skipping start"
+      );
+      return;
+    } catch {
+      // stale CONNECTED status — proceed with start
+    }
   }
 
   const startPromise = (async (): Promise<void> => {
