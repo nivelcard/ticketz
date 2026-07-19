@@ -26,7 +26,8 @@ import { SocketContext } from "../../context/Socket/SocketContext";
 import useSettings from "../../hooks/useSettings";
 import {
   isAiHandlingTicket,
-  isHandoffPendingTicket
+  isHandoffPendingTicket,
+  getTicketListColumn
 } from "../../helpers/aiTicketStatus";
 import { isTicketObservationMode } from "../../helpers/ticketListVisibility";
 import { TicketsContext } from "../../context/Tickets/TicketsContext";
@@ -89,7 +90,12 @@ const Ticket = () => {
   const classes = useStyles();
 
   const { user } = useContext(AuthContext);
-  const { observationMode, setObservationMode } = useContext(TicketsContext);
+  const {
+    observationMode,
+    setObservationMode,
+    setListSubTab,
+    setCurrentTicket
+  } = useContext(TicketsContext);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -118,6 +124,20 @@ const Ticket = () => {
       setTagsMode(tagsMode);
     });
   }, []);
+
+  const syncTicketView = updatedTicket => {
+    if (!updatedTicket?.id) return;
+    setTicket(updatedTicket);
+    setObservationMode(isTicketObservationMode(updatedTicket, user));
+    setCurrentTicket({
+      ...updatedTicket,
+      code: updatedTicket.status === "open" ? "#open" : "#pending"
+    });
+    const column = getTicketListColumn(updatedTicket);
+    if (column === "ai" || column === "pending" || column === "open") {
+      setListSubTab(column);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -166,8 +186,7 @@ const Ticket = () => {
           }
 
           setContact(data.contact);
-          setTicket(data);
-          setObservationMode(isTicketObservationMode(data, user));
+          syncTicketView(data);
           setLoading(false);
         } catch (err) {
           setLoading(false);
@@ -192,8 +211,7 @@ const Ticket = () => {
 
     const onCompanyTicket = data => {
       if (data.action === "update" && data.ticket.id === ticket.id) {
-        setTicket(data.ticket);
-        setObservationMode(isTicketObservationMode(data.ticket, user));
+        syncTicketView(data.ticket);
       }
 
       if (data.action === "delete" && data.ticketId === ticket.id) {
@@ -291,19 +309,12 @@ const Ticket = () => {
           })}
           onClick={() => setDrawerOpen(false)}
         ></div>
-        <TicketHeader loading={loading}>
-          {renderTicketInfo()}
-        </TicketHeader>
-        <ClosedTicketBar
-          ticket={ticket}
-          onReopened={updated => {
-            setTicket(updated);
-            setObservationMode(isTicketObservationMode(updated, user));
-          }}
-        />
+        <TicketHeader loading={loading}>{renderTicketInfo()}</TicketHeader>
+        <ClosedTicketBar ticket={ticket} onReopened={syncTicketView} />
         <TicketConversationToolbar
           ticket={ticket}
           observationMode={isObserving}
+          user={user}
           tagsExpanded={tagsExpanded}
           onToggleTags={() => setTagsExpanded(prev => !prev)}
           onOpenAdminPanel={() => setAdminPanelOpen(true)}
@@ -340,6 +351,7 @@ const Ticket = () => {
             ticket={ticket}
             showTabGroups={showTabGroups}
             observationMode={isObserving}
+            onTicketUpdated={syncTicketView}
           />
         }
       />

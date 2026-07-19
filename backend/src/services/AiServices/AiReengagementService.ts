@@ -1,5 +1,5 @@
 import Ticket from "../../models/Ticket";
-import { canAiEngageTicket, getActiveAgent } from "./AiHelpers";
+import { isAiHandlingTicket, canAiEngageTicket, getActiveAgent } from "./AiHelpers";
 import { isAiFeaturesEnabled } from "./AiPlatformState";
 import { enqueueAiInboundMessage } from "./AiInboundQueueService";
 import { logger } from "../../utils/logger";
@@ -110,5 +110,5 @@ export const shouldAiBypassLegacyBotMessages = async (
   }
 
   const agent = await getActiveAgent(companyId, ticket.queueId);
-  return !!agent;
+  return !!agent && (canAiEngageTicket(ticket) || isAiHandlingTicket(ticket));
 };

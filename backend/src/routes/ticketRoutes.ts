@@ -111,6 +111,13 @@ ticketRoutes.get(
   ContentRepositoryController.ticketIndex
 );
 
+ticketRoutes.get(
+  "/tickets/:ticketId/repository/:itemId/preview",
+  isAuth,
+  isCompliant,
+  ContentRepositoryController.ticketPreview
+);
+
 ticketRoutes.post(
   "/tickets/:ticketId/repository/:itemId/favorite",
   isAuth,

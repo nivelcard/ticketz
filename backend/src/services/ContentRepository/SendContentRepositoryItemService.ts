@@ -12,7 +12,8 @@ import {
   canAccessRepositoryItem,
   getRepositoryItem,
   recordRepositoryUsage,
-  resolveRepositoryMime
+  resolveRepositoryMime,
+  buildRepositoryAccessForTicket
 } from "./ContentRepositoryService";
 import { logAiTicketTimelineEvent } from "../AiServices/Triage/AiTicketTimelineService";
 
@@ -80,6 +81,10 @@ export const sendRepositoryItemToTicket = async (
     throw new AppError("ERR_TICKET_CLOSED", 400);
   }
 
+  if (ticket.status !== "open" && ticket.status !== "pending") {
+    throw new AppError("ERR_TICKET_INVALID_STATUS", 400);
+  }
+
   const user = input.sentByAi
     ? null
     : await User.findByPk(input.userId, { include: ["queues"] });
@@ -87,14 +92,28 @@ export const sendRepositoryItemToTicket = async (
     throw new AppError("ERR_NO_USER", 404);
   }
 
-  const accessCtx = {
-    userId: input.userId,
-    profile: input.profile,
-    companyId: input.companyId,
-    queueIds: ticket.queueId ? [ticket.queueId] : [],
-    aiAgentId: input.aiAgentId,
-    forAi: !!input.sentByAi
-  };
+  if (
+    !input.sentByAi &&
+    ticket.userId &&
+    Number(ticket.userId) !== Number(input.userId) &&
+    input.profile !== "admin"
+  ) {
+    throw new AppError("ERR_FORBIDDEN", 403);
+  }
+
+  const accessCtx = user
+    ? buildRepositoryAccessForTicket(ticket, user, {
+        forAi: !!input.sentByAi,
+        aiAgentId: input.aiAgentId
+      })
+    : {
+        userId: input.userId,
+        profile: input.profile,
+        companyId: input.companyId,
+        queueIds: ticket.queueId ? [ticket.queueId] : [],
+        aiAgentId: input.aiAgentId,
+        forAi: true
+      };
 
   if (!canAccessRepositoryItem(item, accessCtx)) {
     throw new AppError("ERR_REPOSITORY_ACCESS_DENIED", 403);
@@ -110,7 +129,15 @@ export const sendRepositoryItemToTicket = async (
   ]);
 
   if (textOnlyTypes.has(item.contentType) || !item.storageKey) {
+    if (item.contentType === "internal_instruction") {
+      throw new AppError("ERR_REPOSITORY_NOT_DELIVERABLE", 400);
+    }
     if (!textPayload) {
+      if (
+        ["image", "pdf", "audio", "video", "document"].includes(item.contentType)
+      ) {
+        throw new AppError("ERR_REPOSITORY_MEDIA_MISSING", 400);
+      }
       throw new AppError("ERR_REPOSITORY_EMPTY_PAYLOAD", 400);
     }
     await SendWhatsAppMessage({

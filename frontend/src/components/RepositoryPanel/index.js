@@ -33,14 +33,12 @@ const useStyles = makeStyles(theme => ({
     marginBottom: theme.spacing(1),
     cursor: "pointer",
     "&:hover": {
-      backgroundColor:
-        theme.palette.type === "dark" ? "#1e2a38" : "#f5f9ff"
+      backgroundColor: theme.palette.type === "dark" ? "#1e2a38" : "#f5f9ff"
     }
   },
   selected: {
     borderColor: theme.palette.primary.main,
-    backgroundColor:
-      theme.palette.type === "dark" ? "#1b2838" : "#eef5ff"
+    backgroundColor: theme.palette.type === "dark" ? "#1b2838" : "#eef5ff"
   },
   preview: {
     marginTop: theme.spacing(1),
@@ -88,6 +86,9 @@ const RepositoryPanel = ({ open, onClose, ticket }) => {
   const [caption, setCaption] = useState("");
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(null);
 
   const loadCategories = useCallback(async () => {
     if (!ticket?.id) return;
@@ -141,6 +142,63 @@ const RepositoryPanel = ({ open, onClose, ticket }) => {
     }
   }, [selected]);
 
+  useEffect(() => {
+    let active = true;
+    let objectUrl = null;
+
+    const loadPreview = async () => {
+      if (!open || !selected?.id || !ticket?.id) {
+        setPreviewUrl(null);
+        setPreviewError(null);
+        return;
+      }
+
+      setPreviewLoading(true);
+      setPreviewError(null);
+      setPreviewUrl(null);
+
+      try {
+        const response = await api.get(
+          `/tickets/${ticket.id}/repository/${selected.id}/preview`,
+          {
+            responseType: selected.storageKey ? "blob" : "json"
+          }
+        );
+
+        if (!active) return;
+
+        if (response.data?.previewType === "text") {
+          setPreviewUrl(null);
+          setPreviewError(null);
+        } else if (response.data instanceof Blob) {
+          objectUrl = URL.createObjectURL(response.data);
+          setPreviewUrl(objectUrl);
+        }
+      } catch (err) {
+        if (active) {
+          setPreviewError(
+            err?.response?.data?.error ||
+              err?.response?.data?.message ||
+              "Não foi possível carregar a pré-visualização."
+          );
+        }
+      } finally {
+        if (active) {
+          setPreviewLoading(false);
+        }
+      }
+    };
+
+    loadPreview();
+
+    return () => {
+      active = false;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [open, selected?.id, ticket?.id, selected?.storageKey]);
+
   const toggleFavorite = async (item, event) => {
     event.stopPropagation();
     try {
@@ -164,10 +222,9 @@ const RepositoryPanel = ({ open, onClose, ticket }) => {
     if (!selected?.id || !ticket?.id) return;
     setSending(true);
     try {
-      await api.post(
-        `/tickets/${ticket.id}/repository/${selected.id}/send`,
-        { caption }
-      );
+      await api.post(`/tickets/${ticket.id}/repository/${selected.id}/send`, {
+        caption
+      });
       toast.success("Conteúdo enviado ao cliente");
       onClose();
     } catch (err) {
@@ -326,6 +383,46 @@ const RepositoryPanel = ({ open, onClose, ticket }) => {
                 </Typography>
                 <div className={classes.preview}>
                   <strong>{selected.displayTitle || selected.name}</strong>
+                  {previewLoading && (
+                    <Typography variant="body2" style={{ marginTop: 8 }}>
+                      Carregando pré-visualização…
+                    </Typography>
+                  )}
+                  {previewError && (
+                    <Typography
+                      variant="body2"
+                      color="error"
+                      style={{ marginTop: 8 }}
+                    >
+                      {previewError}
+                    </Typography>
+                  )}
+                  {previewUrl && selected.contentType === "image" && (
+                    <Box mt={1}>
+                      <img
+                        src={previewUrl}
+                        alt={selected.displayTitle || selected.name}
+                        style={{
+                          maxWidth: "100%",
+                          maxHeight: 240,
+                          borderRadius: 6
+                        }}
+                      />
+                    </Box>
+                  )}
+                  {previewUrl && selected.contentType !== "image" && (
+                    <Box mt={1}>
+                      <Button
+                        size="small"
+                        color="primary"
+                        href={previewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Abrir arquivo
+                      </Button>
+                    </Box>
+                  )}
                   <Typography variant="body2" style={{ marginTop: 8 }}>
                     {selected.description}
                   </Typography>
@@ -334,6 +431,19 @@ const RepositoryPanel = ({ open, onClose, ticket }) => {
                       {selected.externalUrl}
                     </Typography>
                   )}
+                  {!selected.storageKey &&
+                    ["image", "pdf", "audio", "video", "document"].includes(
+                      selected.contentType
+                    ) && (
+                      <Typography
+                        variant="body2"
+                        color="error"
+                        style={{ marginTop: 8 }}
+                      >
+                        Arquivo não encontrado no storage — envio indisponível
+                        até reprocessar o item.
+                      </Typography>
+                    )}
                 </div>
                 <TextField
                   fullWidth

@@ -6,6 +6,9 @@ import SendWhatsAppMessage from "../WbotServices/SendWhatsAppMessage";
 import formatBody from "../../helpers/Mustache";
 import { AI_HANDOFF_REASONS } from "./AiOperationalTypes";
 import { logAiOperationalEvent } from "./AiOperationalLogService";
+import { assertCanAcceptTicket, isHandoffPendingTicketState } from "../../helpers/assertCanAcceptTicket";
+import { isAiHandlingTicket } from "./AiHelpers";
+import ShowTicketService from "../TicketServices/ShowTicketService";
 
 const canManageAi = (user: User): boolean =>
   user.profile === "admin" || user.super === true;
@@ -28,6 +31,15 @@ export const assumeTicketFromBot = async ({
   if (ticket.status === "closed") {
     throw new AppError("ERR_TICKET_CLOSED", 400);
   }
+
+  if (
+    !isAiHandlingTicket(ticket) &&
+    !isHandoffPendingTicketState(ticket)
+  ) {
+    throw new AppError("ERR_TICKET_NOT_AI_HANDLING", 409);
+  }
+
+  await assertCanAcceptTicket(ticket, user);
 
   const { ticket: updated } = await UpdateTicketService({
     ticketId: ticket.id,
@@ -83,7 +95,7 @@ export const assumeTicketFromBot = async ({
     }
   });
 
-  return updated;
+  return ShowTicketService(updated.id, user.companyId);
 };
 
 type PauseAiParams = {
@@ -202,7 +214,7 @@ export const releaseTicketToAi = async ({
     companyId: user.companyId,
     ticketData: {
       userId: null,
-      status: "open",
+      status: "pending",
       aiHandoff: false,
       aiPaused: false,
       aiHandoffReason: null,
@@ -225,5 +237,5 @@ export const releaseTicketToAi = async ({
     details: { action: "release_to_ai" }
   });
 
-  return updated;
+  return ShowTicketService(updated.id, user.companyId);
 };

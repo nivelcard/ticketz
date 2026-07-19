@@ -4,6 +4,7 @@ import SetTicketMessagesAsRead from "../../helpers/SetTicketMessagesAsRead";
 import { getIO } from "../../libs/socket";
 import Ticket from "../../models/Ticket";
 import ShowTicketService from "./ShowTicketService";
+import { assertCanAcceptTicket } from "../../helpers/assertCanAcceptTicket";
 import SendWhatsAppMessage from "../WbotServices/SendWhatsAppMessage";
 import FindOrCreateATicketTrakingService from "./FindOrCreateATicketTrakingService";
 import GetTicketWbot from "../../helpers/GetTicketWbot";
@@ -89,11 +90,19 @@ const sendFormattedMessage = async (
 
 export function websocketUpdateTicket(ticket: Ticket, moreChannels?: string[]) {
   const io = getIO();
-  let ioStack = io
-    .to(ticket.id.toString())
-    .to(`user-${ticket?.userId}`)
-    .to(`queue-${ticket.queueId}-notification`)
-    .to(`queue-${ticket.queueId}-${ticket.status}`)
+  let ioStack = io.to(ticket.id.toString());
+
+  if (ticket.userId) {
+    ioStack = ioStack.to(`user-${ticket.userId}`);
+  }
+
+  if (ticket.queueId) {
+    ioStack = ioStack
+      .to(`queue-${ticket.queueId}-notification`)
+      .to(`queue-${ticket.queueId}-${ticket.status}`);
+  }
+
+  ioStack = ioStack
     .to(`company-${ticket.companyId}-notification`)
     .to(`company-${ticket.companyId}-${ticket.status}`);
 
@@ -215,6 +224,16 @@ const UpdateTicketService = async ({
       }
     }
 
+    if (
+      user &&
+      oldStatus === "pending" &&
+      status === "open" &&
+      userId &&
+      !ticket.userId
+    ) {
+      await assertCanAcceptTicket(ticket, user);
+    }
+
     if (oldStatus === "closed") {
       await CheckContactOpenTickets(
         ticket.contactId,
@@ -333,10 +352,6 @@ const UpdateTicketService = async ({
       ticketTraking.chatbotendAt = moment().toDate();
     }
 
-    if (status !== undefined && ["open"].indexOf(status) > -1 && userId) {
-      aiHandoff = true;
-    }
-
     const humanAccepted =
       status === "open" &&
       userId &&
@@ -344,11 +359,17 @@ const UpdateTicketService = async ({
       (ticket.aiAgentId || ticket.aiHandoff);
 
     if (humanAccepted) {
+      aiHandoff = true;
       ticketData.aiHumanAssumedAt = new Date();
       ticketData.aiHumanAssumedBy = userId;
       if (ticket.aiHandoffReason && !ticket.aiHandoffOriginalReason) {
         ticketData.aiHandoffOriginalReason = ticket.aiHandoffReason;
       }
+      if (!ticket.aiHandoffMode) {
+        ticketData.aiHandoffMode = "definitive";
+      }
+      ticketData.aiPaused = true;
+      ticketData.aiProcessingState = "awaiting_human";
     }
 
     const normalizedTicketData = normalizeAiTicketFields(ticket, {

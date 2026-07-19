@@ -106,6 +106,28 @@ export const assertRepositoryFileAllowed = (
   }
 };
 
+export const buildRepositoryAccessForTicket = (
+  ticket: Ticket,
+  user: User,
+  options: { forAi?: boolean; aiAgentId?: number } = {}
+): RepositoryAccessContext => {
+  const userQueueIds =
+    user.profile === "admin"
+      ? []
+      : (user.queues || []).map(q => q.id);
+
+  return {
+    userId: user.id,
+    profile: user.super ? "admin" : user.profile,
+    companyId: ticket.companyId,
+    queueIds: ticket.queueId
+      ? [ticket.queueId, ...userQueueIds]
+      : userQueueIds,
+    aiAgentId: options.aiAgentId || ticket.aiAgentId || undefined,
+    forAi: options.forAi
+  };
+};
+
 export const canAccessRepositoryItem = (
   item: ContentRepositoryItem,
   ctx: RepositoryAccessContext
@@ -584,11 +606,6 @@ export const listRepositoryForTicket = async (input: {
   category?: string;
   categoryId?: number;
 }) => {
-  const queueIds =
-    input.user.profile === "admin"
-      ? []
-      : (input.user.queues || []).map(q => q.id);
-
   return listRepositoryItems(
     {
       companyId: input.ticket.companyId,
@@ -601,14 +618,7 @@ export const listRepositoryForTicket = async (input: {
       limit: 100,
       sortBy: "popular"
     },
-    {
-      userId: input.user.id,
-      profile: input.user.profile,
-      companyId: input.ticket.companyId,
-      queueIds: input.ticket.queueId
-        ? [input.ticket.queueId, ...queueIds]
-        : queueIds
-    }
+    buildRepositoryAccessForTicket(input.ticket, input.user)
   );
 };
 

@@ -48,7 +48,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
-## [1.5.3] — 2026-07-19
+## [1.5.4] — 2026-07-19
+
+### Adicionado
+
+- `TicketOperationalStateService` — payload canônico `operationalState` em tickets (owner, coluna, ações permitidas)
+- `assertCanAcceptTicket` — validação unificada de aceite/assumir por fila
+- Preview autenticado do Repositório: `GET /tickets/:id/repository/:itemId/preview`
+
+### Corrigido
+
+- Assumir/Aceitar/Devolver/Reabrir: transações atômicas, feedback e sync frontend pós-ação
+- Listas IA/Aguardando/Atendendo alinhadas backend↔frontend (handoff operacional, F5, socket)
+- Repositório: acesso unificado list/send, erros 400 explicados (`ERR_REPOSITORY_MEDIA_MISSING`)
+- IA vs mensagens automáticas: bypass legado quando IA ativa; `releaseToAi` volta para `pending`
+
+---
 
 ### Corrigido
 

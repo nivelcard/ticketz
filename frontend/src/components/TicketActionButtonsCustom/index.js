@@ -26,7 +26,9 @@ import { PhoneCallContext } from "../../context/PhoneCall/PhoneCallContext";
 import { wavoipAvailable, wavoipCall } from "../../helpers/wavoipCallManager";
 import {
   canSuperviseAi,
-  isAiHandlingTicket,
+  canAssumeFromBot,
+  canAcceptTicket,
+  canReleaseTicketToAi,
   isHandoffPendingTicket
 } from "../../helpers/aiTicketStatus";
 import { toast } from "react-toastify";
@@ -47,7 +49,8 @@ const useStyles = makeStyles(theme => ({
 const TicketActionButtonsCustom = ({
   ticket,
   showTabGroups,
-  observationMode = false
+  observationMode = false,
+  onTicketUpdated
 }) => {
   const classes = useStyles();
   const history = useHistory();
@@ -115,14 +118,26 @@ const TicketActionButtonsCustom = ({
       });
   };
 
+  const applyTicketUpdate = updatedTicket => {
+    if (onTicketUpdated) {
+      onTicketUpdated(updatedTicket);
+      return;
+    }
+    setObservationMode(false);
+    setCurrentTicket({
+      ...updatedTicket,
+      code: updatedTicket.status === "open" ? "#open" : "#pending"
+    });
+  };
+
   const handleAssumeFromBot = async () => {
     setLoading(true);
     try {
       const { data } = await api.post(`/tickets/${ticket.id}/ai/assume`, {
         notifyCustomer: true
       });
-      setObservationMode(false);
-      setCurrentTicket({ ...data, code: "#open" });
+      applyTicketUpdate(data);
+      toast.success("Atendimento assumido com sucesso.");
     } catch (err) {
       toastError(err);
     } finally {
@@ -160,8 +175,8 @@ const TicketActionButtonsCustom = ({
     setLoading(true);
     try {
       const { data } = await api.post(`/tickets/${ticket.id}/ai/release`);
+      applyTicketUpdate(data);
       setObservationMode(true);
-      setCurrentTicket({ ...data, code: "#released" });
       toast.success(i18n.t("aiSupervision.actions.releaseSuccess"));
     } catch (err) {
       toastError(err);
@@ -185,9 +200,7 @@ const TicketActionButtonsCustom = ({
     history.push("/tickets");
   };
 
-  const showAssumeFromBot =
-    (isAiHandlingTicket(ticket) || isHandoffPendingTicket(ticket)) &&
-    !ticket.userId;
+  const showAssumeFromBot = canAssumeFromBot(ticket, user);
 
   const showPauseAi =
     canSuperviseAi(user) &&
@@ -202,10 +215,9 @@ const TicketActionButtonsCustom = ({
     ticket.aiHandoff &&
     !ticket.userId;
 
-  const showReleaseToAi =
-    ticket.status === "open" &&
-    ticket.userId === user?.id &&
-    (ticket.aiHandoff || ticket.aiStartedAt || ticket.aiAgentId);
+  const showReleaseToAi = canReleaseTicketToAi(ticket, user);
+
+  const showAcceptTicket = canAcceptTicket(ticket, user);
 
   const handleAcceptTicket = async e => {
     if (e) {
@@ -213,16 +225,17 @@ const TicketActionButtonsCustom = ({
     }
     setLoading(true);
     try {
+      let data;
       if (isHandoffPendingTicket(ticket)) {
-        await api.post(`/tickets/${ticket.id}/ai/assume`);
+        ({ data } = await api.post(`/tickets/${ticket.id}/ai/assume`));
       } else {
-        await api.put(`/tickets/${ticket.id}`, {
+        ({ data } = await api.put(`/tickets/${ticket.id}`, {
           status: "open",
           userId: user?.id
-        });
+        }));
       }
-      setObservationMode(false);
-      setCurrentTicket({ ...ticket, code: "#open" });
+      applyTicketUpdate(data);
+      toast.success("Atendimento aceito.");
     } catch (err) {
       toastError(err);
     } finally {
@@ -352,18 +365,17 @@ const TicketActionButtonsCustom = ({
               {i18n.t("aiSupervision.actions.resumeAi")}
             </ButtonWithSpinner>
           )}
-          {ticket.status === "pending" &&
-            (!showTabGroups || !ticket.isGroup) && (
-              <ButtonWithSpinner
-                loading={loading}
-                size="small"
-                variant="contained"
-                color="primary"
-                onClick={handleAcceptObservation}
-              >
-                {i18n.t("aiSupervision.actions.acceptAttendance")}
-              </ButtonWithSpinner>
-            )}
+          {showAcceptTicket && (!showTabGroups || !ticket.isGroup) && (
+            <ButtonWithSpinner
+              loading={loading}
+              size="small"
+              variant="contained"
+              color="primary"
+              onClick={handleAcceptObservation}
+            >
+              {i18n.t("aiSupervision.actions.acceptAttendance")}
+            </ButtonWithSpinner>
+          )}
         </>
       )}
       {!observationMode && showAssumeFromBot && (
@@ -411,7 +423,7 @@ const TicketActionButtonsCustom = ({
         </ButtonWithSpinner>
       )}
       {!observationMode &&
-        ticket.status === "pending" &&
+        showAcceptTicket &&
         (!showTabGroups || !ticket.isGroup) && (
           <ButtonWithSpinner
             loading={loading}

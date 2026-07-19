@@ -20,6 +20,7 @@ import TabPanel from "../TabPanel";
 
 import { i18n } from "../../translate/i18n";
 import { AuthContext } from "../../context/Auth/AuthContext";
+import { TicketsContext } from "../../context/Tickets/TicketsContext";
 import { Can } from "../Can";
 import TicketsQueueSelect from "../TicketsQueueSelect";
 import { Box, Button } from "@material-ui/core";
@@ -130,13 +131,14 @@ const TicketsManagerTabs = () => {
 
   const [searchParam, setSearchParam] = useState("");
   const [tab, setTab] = useState("open");
-  const [tabOpen, setTabOpen] = useState("open");
   const [newTicketModalOpen, setNewTicketModalOpen] = useState(false);
   const [showAllTickets, setShowAllTickets] = useState(false);
   const searchInputRef = useRef();
   const { user } = useContext(AuthContext);
+  const { listSubTab, setListSubTab } = useContext(TicketsContext);
   const { profile } = user || {};
   const userQueues = user?.queues ?? [];
+  const tabOpen = listSubTab;
 
   const [openCount, setOpenCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
@@ -191,7 +193,7 @@ const TicketsManagerTabs = () => {
   };
 
   const handleChangeTabOpen = (e, newValue) => {
-    setTabOpen(newValue);
+    setListSubTab(newValue);
   };
 
   const applyPanelStyle = status => {
@@ -388,7 +390,7 @@ const TicketsManagerTabs = () => {
             selectedQueueIds={selectedQueueIds}
             updateCount={val => setOpenCount(val)}
             style={applyPanelStyle("open")}
-            setTabOpen={setTabOpen}
+            setTabOpen={setListSubTab}
             showTabGroups={showTabGroups}
           />
           <TicketsList
@@ -396,7 +398,7 @@ const TicketsManagerTabs = () => {
             selectedQueueIds={selectedQueueIds}
             updateCount={val => setPendingCount(val)}
             style={applyPanelStyle("pending")}
-            setTabOpen={setTabOpen}
+            setTabOpen={setListSubTab}
             showTabGroups={showTabGroups}
           />
           <TicketsList
@@ -405,7 +407,7 @@ const TicketsManagerTabs = () => {
             selectedQueueIds={selectedQueueIds}
             updateCount={val => setAiCount(val)}
             style={applyPanelStyle("ai")}
-            setTabOpen={setTabOpen}
+            setTabOpen={setListSubTab}
             showTabGroups={showTabGroups}
           />
         </Paper>

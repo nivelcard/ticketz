@@ -1405,6 +1405,18 @@ const messages = {
         ERR_USER_CREATION_DISABLED:
           "A criação do usuário foi desabilitada pelo administrador.",
         ERR_NO_PERMISSION: "Você não tem permissão para acessar este recurso.",
+        ERR_TICKET_NOT_AI_HANDLING:
+          "Este ticket não está mais sendo atendido pela IA.",
+        ERR_TICKET_ALREADY_ASSIGNED:
+          "Este ticket já foi assumido por outro atendente.",
+        ERR_TICKET_INVALID_STATUS:
+          "Status do ticket não permite esta ação.",
+        ERR_REPOSITORY_MEDIA_MISSING:
+          "Arquivo do repositório não encontrado no storage. Reprocesse o item.",
+        ERR_REPOSITORY_NOT_DELIVERABLE:
+          "Este tipo de conteúdo não pode ser enviado ao cliente.",
+        ERR_REPOSITORY_EMPTY_PAYLOAD:
+          "Conteúdo vazio — adicione legenda, descrição ou URL antes de enviar.",
         ERR_DUPLICATED_CONTACT: "Já existe um contato com este número.",
         ERR_NO_SETTING_FOUND: "Nenhuma configuração encontrada com este ID.",
         ERR_NO_CONTACT_FOUND: "Nenhum contato encontrado com este ID.",

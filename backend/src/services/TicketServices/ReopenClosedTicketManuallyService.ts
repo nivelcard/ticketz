@@ -48,9 +48,15 @@ const resolveConflictingTicket = async (
   });
 };
 
-const buildAiReopenData = (ticket: Ticket): Record<string, unknown> => {
+const buildAiReopenData = (
+  ticket: Ticket,
+  releaseToAi = false
+): Record<string, unknown> => {
   const disableBot = ticket.contact?.disableBot === true;
-  const waitingForHuman = Boolean(ticket.aiHandoff && !ticket.aiPaused);
+  const waitingForHuman =
+    Boolean(ticket.aiHandoff && !ticket.aiPaused) &&
+    ticket.aiHandoffMode !== "operational" &&
+    !releaseToAi;
   const canReengageAi =
     Boolean(ticket.aiAgentId) &&
     !ticket.aiPaused &&
@@ -125,7 +131,7 @@ export const reopenClosedTicketManually = async ({
       ticketId: ticket.id,
       reqUserId: user.id,
       companyId: user.companyId,
-      ticketData: buildAiReopenData(ticket) as any
+      ticketData: buildAiReopenData(ticket, true) as any
     });
     return { ticket: updated, releasedToAi: true };
   }

@@ -24,6 +24,7 @@ import User from "../models/User";
 import Ticket from "../models/Ticket";
 import { listToolExecutionLogs } from "../services/AiServices/tools/ToolExecutorService";
 import canAccessTicketAiData from "../helpers/canAccessTicketAiData";
+import { serializeTicketWithOperationalState } from "../services/TicketServices/TicketOperationalStateService";
 
 const loadTicketForUser = async (req: Request) => {
   const { ticketId } = req.params;
@@ -70,7 +71,9 @@ export const assume = async (
     notifyCustomer: notifyCustomer !== false
   });
 
-  return res.status(200).json(updated);
+  return res
+    .status(200)
+    .json(serializeTicketWithOperationalState(updated, user.id));
 };
 
 export const pause = async (req: Request, res: Response): Promise<Response> => {
@@ -105,7 +108,9 @@ export const releaseToAi = async (
 
   const updated = await releaseTicketToAi({ ticket, user });
 
-  return res.status(200).json(updated);
+  return res
+    .status(200)
+    .json(serializeTicketWithOperationalState(updated, user.id));
 };
 
 export const copilot = async (

@@ -13,6 +13,7 @@ import UpdateTicketService from "../services/TicketServices/UpdateTicketService"
 import AppError from "../errors/AppError";
 import ListTicketsServiceKanban from "../services/TicketServices/ListTicketsServiceKanban";
 import reopenClosedTicketManually from "../services/TicketServices/ReopenClosedTicketManuallyService";
+import { serializeTicketWithOperationalState } from "../services/TicketServices/TicketOperationalStateService";
 import User from "../models/User";
 
 type IndexQuery = {
@@ -113,7 +114,9 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
   });
 
   return res.status(200).json({
-    tickets,
+    tickets: tickets.map(ticket =>
+      serializeTicketWithOperationalState(ticket, Number(userId))
+    ),
     count
   });
 };
@@ -200,7 +203,9 @@ export const show = async (req: Request, res: Response): Promise<Response> => {
 
   const contact = await ShowTicketService(ticketId, companyId);
 
-  return res.status(200).json(contact);
+  return res
+    .status(200)
+    .json(serializeTicketWithOperationalState(contact, Number(req.user.id)));
 };
 
 export const showFromUUID = async (
@@ -240,7 +245,9 @@ export const showFromUUID = async (
     throw new AppError("ERR_NO_PERMISSION", 403);
   }
 
-  return res.status(200).json(ticket);
+  return res
+    .status(200)
+    .json(serializeTicketWithOperationalState(ticket, Number(userId)));
 };
 
 export const update = async (
@@ -258,7 +265,9 @@ export const update = async (
     return result;
   });
 
-  return res.status(200).json(ticket);
+  return res
+    .status(200)
+    .json(serializeTicketWithOperationalState(ticket, Number(req.user.id)));
 };
 
 export const remove = async (

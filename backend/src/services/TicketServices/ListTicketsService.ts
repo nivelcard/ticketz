@@ -198,10 +198,13 @@ const ListTicketsService = async ({
       case AI_TICKET_FILTERS.ai_handling:
         Object.assign(aiConditions, {
           aiAgentId: { [Op.ne]: null },
-          aiHandoff: false,
           aiPaused: false,
           userId: null,
-          status: { [Op.ne]: "closed" }
+          status: { [Op.ne]: "closed" },
+          [Op.or]: [
+            { aiHandoff: false },
+            { aiHandoffMode: "operational" }
+          ]
         });
         break;
       case AI_TICKET_FILTERS.ai_resolved:
@@ -220,9 +223,9 @@ const ListTicketsService = async ({
       case AI_TICKET_FILTERS.handoff_pending:
         Object.assign(aiConditions, {
           aiHandoff: true,
+          aiHandoffMode: { [Op.or]: [{ [Op.ne]: "operational" }, { [Op.is]: null }] },
           status: "pending",
-          userId: null,
-          queueId: { [Op.ne]: null }
+          userId: null
         });
         break;
       case AI_TICKET_FILTERS.human_handling:

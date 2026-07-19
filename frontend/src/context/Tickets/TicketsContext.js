@@ -9,6 +9,7 @@ const TicketsContextProvider = ({ children }) => {
     uuid: null
   });
   const [observationMode, setObservationMode] = useState(false);
+  const [listSubTab, setListSubTab] = useState("open");
 
   return (
     <TicketsContext.Provider
@@ -16,7 +17,9 @@ const TicketsContextProvider = ({ children }) => {
         currentTicket,
         setCurrentTicket,
         observationMode,
-        setObservationMode
+        setObservationMode,
+        listSubTab,
+        setListSubTab
       }}
     >
       {children}

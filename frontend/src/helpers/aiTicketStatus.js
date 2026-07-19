@@ -18,7 +18,10 @@ export const isAiHandlingTicket = ticket =>
   ticket?.status !== "closed";
 
 export const isHandoffPendingTicket = ticket =>
-  !!ticket?.aiHandoff && ticket?.status === "pending" && !ticket?.userId;
+  !!ticket?.aiHandoff &&
+  ticket?.aiHandoffMode !== "operational" &&
+  ticket?.status === "pending" &&
+  !ticket?.userId;
 
 export const isHumanHandlingTicket = ticket =>
   !!ticket?.userId && ticket?.status === "open";
@@ -28,6 +31,52 @@ export const isAiPausedTicket = ticket =>
 
 export const isAiResolvedTicket = ticket =>
   !!ticket?.aiResolvedByAi && ticket?.status === "closed";
+
+export const getTicketListColumn = ticket => {
+  if (ticket?.operationalState?.listColumn) {
+    return ticket.operationalState.listColumn;
+  }
+  if (ticket?.status === "closed") return "closed";
+  if (isHumanHandlingTicket(ticket)) return "open";
+  if (isHandoffPendingTicket(ticket)) return "pending";
+  if (isAiHandlingTicket(ticket)) return "ai";
+  if (ticket?.status === "pending") return "pending";
+  return "none";
+};
+
+export const getOperationalLabel = ticket =>
+  ticket?.operationalState?.label ||
+  getAiTicketBadge(ticket)?.label ||
+  ticket?.status ||
+  "—";
+
+export const canAssumeFromBot = (ticket, user) => {
+  if (ticket?.operationalState?.allowedActions) {
+    return ticket.operationalState.allowedActions.assume;
+  }
+  return (
+    (isAiHandlingTicket(ticket) || isHandoffPendingTicket(ticket)) &&
+    !ticket?.userId
+  );
+};
+
+export const canAcceptTicket = (ticket, user) => {
+  if (ticket?.operationalState?.allowedActions) {
+    return ticket.operationalState.allowedActions.accept;
+  }
+  return ticket?.status === "pending" && !ticket?.userId;
+};
+
+export const canReleaseTicketToAi = (ticket, user) => {
+  if (ticket?.operationalState?.allowedActions) {
+    return ticket.operationalState.allowedActions.releaseToAi;
+  }
+  return (
+    ticket?.status === "open" &&
+    ticket?.userId === user?.id &&
+    (ticket?.aiHandoff || ticket?.aiStartedAt || ticket?.aiAgentId)
+  );
+};
 
 export const getAiTicketBadge = ticket => {
   if (isAiResolvedTicket(ticket)) {

@@ -8,6 +8,8 @@ import {
   archiveRepositoryItem,
   assertRepositoryAccess,
   attachFavoriteFlags,
+  buildRepositoryAccessForTicket,
+  canAccessRepositoryItem,
   compareItemVersions,
   createRepositoryCategory,
   createRepositoryItem,
@@ -22,6 +24,7 @@ import {
   listRepositoryForTicket,
   listRepositoryItems,
   reprocessRepositoryKnowledge,
+  resolveRepositoryMime,
   restoreItemVersion,
   toggleRepositoryFavorite,
   unlinkRepositoryKnowledge,
@@ -30,6 +33,7 @@ import {
 } from "../services/ContentRepository/ContentRepositoryService";
 import sendRepositoryItemToTicket from "../services/ContentRepository/SendContentRepositoryItemService";
 import { ContentRepositoryType } from "../models/ContentRepositoryItem";
+import StorageService from "../services/StorageService/StorageService";
 
 const currentUserId = (req: Request): number | undefined => {
   const parsed = Number(req.user.id);
@@ -532,4 +536,43 @@ export const ticketSend = async (
   });
 
   return res.json(result);
+};
+
+export const ticketPreview = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const user = await loadUser(req);
+  await assertRepositoryAccess("read", user, user.companyId);
+  const ticket = await ShowTicketService(
+    Number(req.params.ticketId),
+    user.companyId
+  );
+  const item = await getRepositoryItem(user.companyId, Number(req.params.itemId));
+  const access = buildRepositoryAccessForTicket(ticket, user);
+
+  if (!canAccessRepositoryItem(item, access)) {
+    throw new AppError("ERR_REPOSITORY_ACCESS_DENIED", 403);
+  }
+
+  if (!item.storageKey) {
+    return res.json({
+      previewType: "text",
+      title: item.displayTitle || item.name,
+      description: item.description,
+      externalUrl: item.externalUrl,
+      contentType: item.contentType
+    });
+  }
+
+  await StorageService.ensureReady(user.companyId);
+  const buffer = await StorageService.download(item.storageKey, user.companyId);
+  const mime = resolveRepositoryMime(item);
+  res.setHeader("Content-Type", mime);
+  res.setHeader("Cache-Control", "private, max-age=300");
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename="${encodeURIComponent(item.originalFileName || item.name)}"`
+  );
+  return res.send(buffer);
 };
