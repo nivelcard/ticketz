@@ -1,7 +1,6 @@
 name: Deploy Ticketz — Produção
 
-# Um único workflow: só publica o que mudou (API e/ou SPA).
-# Evita 3 pipelines paralelos consumindo minutos do GitHub Actions.
+# Um job único: publica API e/ou SPA conforme paths-filter (sem card SPA vazio).
 on:
   push:
     branches: [main]
@@ -50,12 +49,18 @@ jobs:
               - 'scripts/setup-cloudflare-api.mjs'
               - '.github/workflows/deploy-prod.yml'
 
-  deploy-api:
-    name: API → VPS Contabo (api.fortmax.com.br)
+  deploy-prod:
+    name: Deploy produção
     needs: detect-changes
-    if: github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.backend == 'true'
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      needs.detect-changes.outputs.backend == 'true' ||
+      needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      DEPLOY_BACKEND: ${{ github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.backend == 'true' }}
+      DEPLOY_FRONTEND: ${{ github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.frontend == 'true' }}
 
     steps:
       - name: Checkout
@@ -63,7 +68,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Gerar gitinfo (backend + frontend)
+      - name: Plano de deploy
+        run: |
+          echo "Deploy backend (VPS): ${DEPLOY_BACKEND}"
+          echo "Deploy frontend (SPA): ${DEPLOY_FRONTEND}"
+
+      - name: Gerar gitinfo
         run: |
           COMMIT_HASH=$(git rev-parse --short HEAD)
           COMMIT_TS=$(git log -1 --format=%cI)
@@ -90,6 +100,7 @@ jobs:
           EOT
 
       - name: Validar secrets Cloudflare (DNS)
+        if: env.DEPLOY_BACKEND == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
@@ -99,18 +110,21 @@ jobs:
             exit 1
           fi
 
-      - name: Setup Node
+      - name: Setup Node (backend)
+        if: env.DEPLOY_BACKEND == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
       - name: Build backend
+        if: env.DEPLOY_BACKEND == 'true'
         working-directory: backend
         run: |
           npm ci --no-audit --no-fund
           npm run build
 
-      - name: Garantir DNS + SSL Flexible (Cloudflare) — antes do deploy
+      - name: Garantir DNS + SSL Flexible (Cloudflare) — API
+        if: env.DEPLOY_BACKEND == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
@@ -121,6 +135,7 @@ jobs:
           node scripts/setup-cloudflare-api.mjs
 
       - name: Deploy backend na VPS Contabo
+        if: env.DEPLOY_BACKEND == 'true'
         env:
           CONTABO_PASSWORD: ${{ secrets.CONTABO_PASSWORD }}
           CONTABO_HOST: ${{ secrets.CONTABO_VPS_IP }}
@@ -131,12 +146,10 @@ jobs:
         run: |
           set -euo pipefail
           pip install pywinrm
-          # Secret vazio no GitHub vira "" e bloqueava o fallback do script Python
           if [ -z "${CONTABO_PASSWORD:-}" ]; then
             echo "::warning::CONTABO_PASSWORD vazio — deploy usa fallback do script"
             unset CONTABO_PASSWORD
           fi
-          # CONTABO_VPS_IP deve ser só IP/hostname (ex: 31.220.103.226), sem https://
           CONTABO_HOST="${CONTABO_HOST:-31.220.103.226}"
           CONTABO_HOST="${CONTABO_HOST#https://}"
           CONTABO_HOST="${CONTABO_HOST#http://}"
@@ -147,6 +160,7 @@ jobs:
           python3 scripts/deploy-vps-backend.py
 
       - name: Corrigir .env PORT/HOST e scripts de start na VPS
+        if: env.DEPLOY_BACKEND == 'true'
         env:
           CONTABO_PASSWORD: ${{ secrets.CONTABO_PASSWORD }}
           CONTABO_HOST: ${{ secrets.CONTABO_VPS_IP }}
@@ -163,15 +177,14 @@ jobs:
           python3 scripts/fix-vps-env-port.py
 
       - name: Corrigir IIS proxy (api.fortmax.com.br)
+        if: env.DEPLOY_BACKEND == 'true'
         env:
           CONTABO_PASSWORD: ${{ secrets.CONTABO_PASSWORD }}
           CONTABO_HOST: ${{ secrets.CONTABO_VPS_IP }}
         run: |
           set -euo pipefail
           pip install pywinrm
-          if [ -z "${CONTABO_PASSWORD:-}" ]; then
-            unset CONTABO_PASSWORD
-          fi
+          if [ -z "${CONTABO_PASSWORD:-}" ]; then unset CONTABO_PASSWORD; fi
           CONTABO_HOST="${CONTABO_HOST:-31.220.103.226}"
           CONTABO_HOST="${CONTABO_HOST#https://}"
           CONTABO_HOST="${CONTABO_HOST#http://}"
@@ -181,6 +194,10 @@ jobs:
           python3 scripts/fix-vps-prod-iis.py
 
       - name: Aguardar API ficar pronta (VPS)
+        if: env.DEPLOY_BACKEND == 'true'
+        env:
+          CONTABO_PASSWORD: ${{ secrets.CONTABO_PASSWORD }}
+          CONTABO_HOST: ${{ secrets.CONTABO_VPS_IP }}
         run: |
           set -euo pipefail
           API_URL="https://${{ env.API_HOST }}"
@@ -205,9 +222,7 @@ jobs:
           done
           echo "::warning::Health externo falhou — tentando restart na VPS"
           pip install pywinrm
-          if [ -z "${CONTABO_PASSWORD:-}" ]; then
-            unset CONTABO_PASSWORD
-          fi
+          if [ -z "${CONTABO_PASSWORD:-}" ]; then unset CONTABO_PASSWORD; fi
           CONTABO_HOST="${CONTABO_HOST:-31.220.103.226}"
           CONTABO_HOST="${CONTABO_HOST#https://}"
           CONTABO_HOST="${CONTABO_HOST#http://}"
@@ -226,48 +241,9 @@ jobs:
           done
           echo "::error::API /health não respondeu — verifique backend na VPS Contabo."
           exit 1
-        env:
-          CONTABO_PASSWORD: ${{ secrets.CONTABO_PASSWORD }}
-          CONTABO_HOST: ${{ secrets.CONTABO_VPS_IP }}
-
-      - name: Summary API
-        run: |
-          echo "## Ticketz API (VPS Contabo)" >> $GITHUB_STEP_SUMMARY
-          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- URL: https://${{ env.API_HOST }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Deploy Worker/Container: **desativado** (produção na VPS)" >> $GITHUB_STEP_SUMMARY
-
-  deploy-spa:
-    name: SPA → suporte.fortmax.com.br
-    needs: detect-changes
-    if: github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.frontend == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Gerar gitinfo frontend
-        run: |
-          COMMIT_HASH=$(git rev-parse --short HEAD)
-          COMMIT_TS=$(git log -1 --format=%cI)
-          BRANCH=$(git rev-parse --abbrev-ref HEAD)
-          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          BUILD_TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          cat <<EOT > frontend/public/gitinfo.json
-          {
-            "commitHash": "${COMMIT_HASH}",
-            "commitTimestamp": "${COMMIT_TS}",
-            "branchName": "${BRANCH}",
-            "tagName": "${TAG:-v1.0.x}",
-            "buildTimestamp": "${BUILD_TS}"
-          }
-          EOT
 
       - name: Provisionar Cloudflare Pages
+        if: env.DEPLOY_FRONTEND == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -277,16 +253,19 @@ jobs:
           set -euo pipefail
           node scripts/setup-cloudflare-prod.mjs
 
-      - name: Setup Node
+      - name: Setup Node (frontend)
+        if: env.DEPLOY_FRONTEND == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
+        if: env.DEPLOY_FRONTEND == 'true'
         working-directory: frontend
         run: npm install --no-audit --no-fund
 
       - name: Build SPA
+        if: env.DEPLOY_FRONTEND == 'true'
         working-directory: frontend
         env:
           NODE_OPTIONS: --openssl-legacy-provider
@@ -294,11 +273,13 @@ jobs:
         run: npm run build
 
       - name: Gerar config.json de produção
+        if: env.DEPLOY_FRONTEND == 'true'
         run: |
           cp frontend/public/config-prod.json frontend/build/config.json
           cp frontend/public/gitinfo.json frontend/build/gitinfo.json
 
       - name: Verificar gitinfo no build
+        if: env.DEPLOY_FRONTEND == 'true'
         run: |
           cat frontend/build/gitinfo.json
           HASH=$(python3 -c "import json; print(json.load(open('frontend/build/gitinfo.json'))['commitHash'])")
@@ -309,6 +290,7 @@ jobs:
           fi
 
       - name: Deploy to Cloudflare Pages
+        if: env.DEPLOY_FRONTEND == 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -320,6 +302,7 @@ jobs:
             --commit-dirty=true
 
       - name: Purge Cloudflare cache
+        if: env.DEPLOY_FRONTEND == 'true'
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
@@ -335,8 +318,13 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{"purge_everything":true}'
 
-      - name: Summary SPA
+      - name: Summary
         run: |
-          echo "## Ticketz SPA publicada" >> $GITHUB_STEP_SUMMARY
+          echo "## Ticketz deploy produção" >> $GITHUB_STEP_SUMMARY
           echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- URL: https://${{ env.FRONTEND_HOST }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${DEPLOY_BACKEND}" = "true" ]; then
+            echo "- API: https://${{ env.API_HOST }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${DEPLOY_FRONTEND}" = "true" ]; then
+            echo "- SPA: https://${{ env.FRONTEND_HOST }}" >> $GITHUB_STEP_SUMMARY
+          fi
