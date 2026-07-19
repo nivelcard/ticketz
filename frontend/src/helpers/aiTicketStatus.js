@@ -12,7 +12,7 @@ export const getHandoffReasonLabel = reason =>
 
 export const isAiHandlingTicket = ticket =>
   !!ticket?.aiAgentId &&
-  !ticket?.aiHandoff &&
+  (!ticket?.aiHandoff || ticket?.aiHandoffMode === "operational") &&
   !ticket?.aiPaused &&
   !ticket?.userId &&
   ticket?.status !== "closed";

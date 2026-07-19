@@ -92,7 +92,7 @@ export const shouldRunCopilot = (ticket: Ticket): boolean =>
   isAiFeaturesEnabled() &&
   Boolean(ticket.userId) &&
   ticket.status === "open" &&
-  Boolean(ticket.aiStartedAt || ticket.aiHandoff);
+  Boolean(ticket.aiStartedAt || ticket.aiHandoff || ticket.aiAgentId);
 
 export const generateCopilotSuggestion = async ({
   ticket,
@@ -116,7 +116,9 @@ export const generateCopilotSuggestion = async ({
   }
 
   const activeAgent =
-    agent || (await getActiveAgent(ticket.companyId, ticket.queueId));
+    agent ||
+    (ticket.aiAgentId ? await AiAgent.findByPk(ticket.aiAgentId) : null) ||
+    (await getActiveAgent(ticket.companyId, ticket.queueId));
   if (!activeAgent) {
     return null;
   }
@@ -195,12 +197,28 @@ export const generateCopilotSuggestion = async ({
     });
 
     const parsed = parseCopilotJson(completion.content || "");
-    if (!parsed) {
+    const fallbackText = (completion.content || "").trim();
+    const parsedOrFallback =
+      parsed ||
+      (fallbackText
+        ? {
+            suggestedResponse: fallbackText.slice(0, 2000),
+            improvedResponse: "",
+            rationale: "Resposta gerada sem JSON estruturado.",
+            relatedDocument: "",
+            nextSteps: "",
+            riskAssessment: "",
+            customerSentiment: "",
+            confidence: 0.5
+          }
+        : null);
+
+    if (!parsedOrFallback) {
       return null;
     }
 
     const topSimilarity = knowledgeContext.usedChunks[0]?.similarity || 0;
-    const confidence = Math.max(parsed.confidence, topSimilarity);
+    const confidence = Math.max(parsedOrFallback.confidence, topSimilarity);
 
     await AiCopilotSuggestion.update(
       { status: "superseded" },
@@ -216,13 +234,13 @@ export const generateCopilotSuggestion = async ({
     const suggestion = await AiCopilotSuggestion.create({
       companyId: ticket.companyId,
       ticketId: ticket.id,
-      suggestedResponse: parsed.suggestedResponse,
-      improvedResponse: parsed.improvedResponse,
-      rationale: parsed.rationale,
-      relatedDocument: parsed.relatedDocument,
-      nextSteps: parsed.nextSteps,
-      riskAssessment: parsed.riskAssessment,
-      customerSentiment: parsed.customerSentiment,
+      suggestedResponse: parsedOrFallback.suggestedResponse,
+      improvedResponse: parsedOrFallback.improvedResponse,
+      rationale: parsedOrFallback.rationale,
+      relatedDocument: parsedOrFallback.relatedDocument,
+      nextSteps: parsedOrFallback.nextSteps,
+      riskAssessment: parsedOrFallback.riskAssessment,
+      customerSentiment: parsedOrFallback.customerSentiment,
       usedChunks: [
         ...knowledgeContext.usedChunks,
         ...repositoryMatches.map(item => ({

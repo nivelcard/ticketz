@@ -331,10 +331,13 @@ const TicketsListCustom = props => {
 
       if (
         data.action === "update" &&
-        (listMode === "ai" || data.ticket.status === status) &&
-        shouldUpdateTicket(data.ticket)
+        (listMode === "ai" || data.ticket.status === status)
       ) {
-        syncTicketUpdate(data.ticket);
+        if (shouldUpdateTicket(data.ticket)) {
+          syncTicketUpdate(data.ticket);
+        } else if (listMode === "ai") {
+          dispatch({ type: "DELETE_TICKET", payload: data.ticket?.id });
+        }
       }
 
       if (

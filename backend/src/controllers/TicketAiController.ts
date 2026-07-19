@@ -126,6 +126,11 @@ export const copilot = async (
       style: style || "default",
       requestedByUserId: user.id
     });
+
+    if (!suggestion) {
+      throw new AppError("ERR_COPILOT_SUGGESTION_FAILED", 422);
+    }
+
     return res.status(200).json({ suggestion });
   }
 

@@ -805,6 +805,16 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
   }, [ticketId]);
 
   useEffect(() => {
+    if (markAsRead !== false || !hasMore || loading) {
+      return;
+    }
+
+    loadPageMutex.runExclusive(async () => {
+      loadData(true);
+    });
+  }, [markAsRead, hasMore, loading, ticketId]);
+
+  useEffect(() => {
     if (!ticket.id) {
       return;
     }
@@ -2061,6 +2071,25 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
         onScroll={handleScroll}
         ref={scrollRef}
       >
+        {hasMore && (
+          <div
+            style={{ display: "flex", justifyContent: "center", padding: 8 }}
+          >
+            <Button
+              size="small"
+              color="primary"
+              variant="outlined"
+              onClick={loadMore}
+              disabled={loading}
+            >
+              {loading ? (
+                <CircularProgress size={18} />
+              ) : (
+                i18n.t("messagesList.loadMore")
+              )}
+            </Button>
+          </div>
+        )}
         {messagesList.length > 0 ? renderMessages() : []}
         {contactPresence === "composing" && (
           <div className={classes.messageLeft}>

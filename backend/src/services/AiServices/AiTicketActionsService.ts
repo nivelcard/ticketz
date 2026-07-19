@@ -37,6 +37,7 @@ export const assumeTicketFromBot = async ({
       status: "open",
       userId: user.id,
       aiHandoff: true,
+      aiHandoffMode: "definitive",
       aiHandoffOriginalReason:
         ticket.aiHandoffOriginalReason || ticket.aiHandoffReason,
       aiHandoffReason: AI_HANDOFF_REASONS.manual_takeover,
@@ -190,8 +191,7 @@ export const releaseTicketToAi = async ({
     throw new AppError("ERR_TICKET_CLOSED", 400);
   }
 
-  const isOwner =
-    ticket.userId && Number(ticket.userId) === Number(user.id);
+  const isOwner = ticket.userId && Number(ticket.userId) === Number(user.id);
   if (!isOwner && !canManageAi(user)) {
     throw new AppError("ERR_FORBIDDEN", 403);
   }

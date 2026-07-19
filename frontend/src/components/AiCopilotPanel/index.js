@@ -55,6 +55,7 @@ const AiCopilotPanel = ({
 }) => {
   const classes = useStyles();
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [suggestion, setSuggestion] = useState(null);
   const [instruction, setInstruction] = useState("");
   const socketManager = useContext(SocketContext);
@@ -76,18 +77,22 @@ const AiCopilotPanel = ({
       }
 
       try {
-        setLoading(true);
+        setGenerating(true);
         const { data } = await api.post(
           `/tickets/${ticket.id}/ai/copilot`,
           payload
         );
         setSuggestion(data?.suggestion || null);
+        if (!data?.suggestion) {
+          toast.info(i18n.t("aiCopilot.empty"));
+        }
       } catch (err) {
         if (err?.response?.status !== 403) {
           toastError(err);
         }
+        setSuggestion(null);
       } finally {
-        setLoading(false);
+        setGenerating(false);
       }
     },
     [ticket?.id, ticket?.userId, ticket?.status]
@@ -222,9 +227,16 @@ const AiCopilotPanel = ({
         </Box>
       )}
 
-      {loading ? (
+      {generating ? (
         <Box display="flex" justifyContent="center" p={1}>
           <CircularProgress size={22} />
+          <Typography
+            variant="body2"
+            color="textSecondary"
+            style={{ marginLeft: 8 }}
+          >
+            {i18n.t("aiCopilot.analyzing")}
+          </Typography>
         </Box>
       ) : suggestion ? (
         <>

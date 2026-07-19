@@ -64,6 +64,7 @@ import {
 } from "./Triage/TriageOrchestratorService";
 import { HandoffPolicyDecision } from "./Triage/AiTriageTypes";
 import { logAiTicketTimelineEvent } from "./Triage/AiTicketTimelineService";
+import { sanitizeAiOutboundText } from "./sanitizeAiOutboundText";
 
 export type InboundMessageItem = {
   messageBody: string;
@@ -768,7 +769,7 @@ const ProcessInboundMessageService = async ({
       return;
     }
 
-    const outboundText = aiResponse;
+    const outboundText = sanitizeAiOutboundText(aiResponse);
     const confidence = computeConfidenceScore({
       topSimilarity: usedChunks[0]?.similarity || 0,
       hasReliableContext,

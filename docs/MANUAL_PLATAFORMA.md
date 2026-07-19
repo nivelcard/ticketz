@@ -1,6 +1,6 @@
 # Manual Oficial da Plataforma Ticketz
 
-**Versão:** 1.5.2 — auditada contra o código  
+**Versão:** 1.5.3 — auditada contra o código  
 **Data:** julho/2026  
 **Status:** documentação oficial — mantida por rule permanente  
 **Repositório:** `ticketz/` (backend + frontend independentes)  
@@ -319,6 +319,8 @@ CRUD + **`POST /tickets/:ticketId/reopen`** (reabertura manual de ticket fechado
 - Barra de ticket fechado: apenas ícones (Reabrir / Reabrir e chamar IA)
 - `TicketConversationToolbar`: ícones para Repositório, Tags (colapsável), Painel administrativo e estado IA
 - Diagnóstico IA (timeline, explicabilidade, copiloto) concentrados no drawer `TicketAdminPanel`, não no topo da conversa
+- **Supervisão / observação:** `MessagesList` com `markAsRead={false}` carrega automaticamente todas as páginas de histórico e exibe botão **Carregar mensagens anteriores** quando houver mais registros
+- **Lista IA:** ao assumir ticket (`userId` preenchido), o socket remove o item da aba **IA** imediatamente (`TicketsListCustom`)
 
 ### Controllers
 `TicketController.ts`, `TicketAiController.ts`, `AiLearningController.ts`
@@ -925,6 +927,8 @@ Componentes em `backend/src/services/AiServices/Triage/`:
 - Handoff **operacional** (`aiHandoffMode=operational`): ticket entra na fila, IA continua (`canAiEngageTicket`), sem mensagem legada de fora do horário (`aiSkipLegacyOutOfHoursOnHandoff`).
 - Handoff **definitivo** (`aiHandoffMode=definitive`): IA para (`aiPaused=true`).
 - `aiHandoffOriginalReason` preserva motivo original; assunção humana grava `aiHumanAssumedAt/By` sem sobrescrever motivo original na UI.
+- Assunção manual (`assumeTicketFromBot`) define `aiHandoffMode=definitive` e `aiPaused=true` — a IA **não** responde mais ao cliente; cabe ao atendente humano.
+- Respostas outbound da IA passam por `sanitizeAiOutboundText` (`ProcessInboundMessageService`) para remover frases proativas de transferência/humano que o modelo possa gerar apesar das regras do prompt.
 - Timeline auditável em `AiTicketTimelineEvents` com `correlationId`.
 
 **Settings por empresa:** `aiTriageMaxInvestigationRounds`, `aiTriageMinConfidenceForHandoff`, `aiTranscribeOnlyWhenAiActive`, `aiMarkReadWhenAiResponds`, etc.
@@ -993,7 +997,7 @@ sequenceDiagram
   CP->>IO: company-{id}-ai-copilot
 ```
 
-**UI:** painel `AiCopilotPanel` com botão **Chamar IA**, ações rápidas e campo de instrução. Resposta privada; envio ao cliente exige ação explícita (`copilot/action` com `send`).
+**UI:** painel `AiCopilotPanel` com botão **Chamar IA**, ações rápidas e campo de instrução. Resposta privada; envio ao cliente exige ação explícita (`copilot/action` com `send`). Estado **Gerando sugestão…** só durante POST; falhas retornam `ERR_COPILOT_SUGGESTION_FAILED` (422) com toast de erro. Fallback de agente: usa `ticket.aiAgentId` quando não houver agente ativo na fila.
 
 **Trigger automático adicional:** `CreateMessageService.ts:169` ao criar mensagem inbound em ticket aberto com humano.
 

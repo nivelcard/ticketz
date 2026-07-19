@@ -48,6 +48,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.5.3] — 2026-07-19
+
+### Corrigido
+
+- IA outbound: `sanitizeAiOutboundText` remove ofertas proativas de atendimento humano; regras de prompt/horário reforçadas
+- Supervisão: `MessagesList` carrega histórico completo em modo observação + botão "Carregar mensagens anteriores"
+- Lista aba **IA**: ticket some ao ser assumido por humano (socket `TicketsListCustom`)
+- Copiloto: estados loading/empty separados, erro 422 visível, fallback de agente por `aiAgentId`
+- Badge `isAiHandlingTicket` alinhado ao backend (`aiHandoffMode === operational`)
+
+---
+
 ## [1.5.2] — 2026-07-19
 
 ### Adicionado

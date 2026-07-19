@@ -552,7 +552,8 @@ const messages = {
         ignore: "Ignorar",
         copied: "Sugestão copiada.",
         sent: "Sugestão enviada ao cliente.",
-        empty: "A IA está analisando a conversa para sugerir uma resposta."
+        empty: "Clique em Sugerir resposta ou aguarde a sugestão da IA.",
+        analyzing: "Gerando sugestão…"
       },
       aiLearning: {
         closeModal: {
@@ -1248,6 +1249,7 @@ const messages = {
         alreadyOpen: "Este atendimento já foi reaberto. Atualizando..."
       },
       messagesList: {
+        loadMore: "Carregar mensagens anteriores",
         header: {
           assignedTo: "Atribuído à:",
           buttons: {

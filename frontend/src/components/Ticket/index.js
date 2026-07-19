@@ -262,6 +262,7 @@ const Ticket = () => {
           ticketId={ticket.id}
           isGroup={ticket.isGroup}
           markAsRead={!isObserving}
+          readOnly={isObserving}
         ></MessagesList>
         <MessageInput
           ref={messageInputRef}

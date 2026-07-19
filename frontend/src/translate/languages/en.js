@@ -1102,6 +1102,7 @@ const messages = {
         }
       },
       messagesList: {
+        loadMore: "Load earlier messages",
         header: {
           assignedTo: "Assigned to:",
           buttons: {

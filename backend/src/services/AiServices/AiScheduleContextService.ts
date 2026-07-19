@@ -144,7 +144,9 @@ export const buildAiSchedulePromptBlock = (
     return "";
   }
 
-  const lines = ["Informações de horário de atendimento humano:"];
+  const lines = [
+    "Informações internas de horário (NÃO mencione ao cliente salvo se ele pedir atendente humano):"
+  ];
 
   if (context.scheduleSummary) {
     lines.push(
@@ -160,8 +162,13 @@ export const buildAiSchedulePromptBlock = (
 
   lines.push(
     context.inBusinessHours
-      ? "Situação atual: dentro do horário de atendimento humano."
-      : "Situação atual: FORA do horário de atendimento humano."
+      ? "Situação atual: dentro do horário comercial configurado."
+      : "Situação atual: fora do horário comercial configurado."
+  );
+
+  lines.push(
+    "Use estas informações apenas se o cliente perguntar sobre horário ou pedir humano.",
+    "Enquanto estiver ajudando o cliente, NÃO sugira aguardar atendimento humano nem cite horário de atendimento."
   );
 
   if (!context.inBusinessHours) {
