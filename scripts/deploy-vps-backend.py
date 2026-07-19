@@ -33,6 +33,7 @@ BACKEND = ROOT / "backend"
 DIST = BACKEND / "dist"
 CHUNK = int(os.environ.get("DEPLOY_B64_CHUNK", "1500"))
 DEPLOY_LOCK = r"C:\ticketz\deploy-cache\.deploy.lock"
+LOCK_STALE_SEC = int(os.environ.get("DEPLOY_LOCK_STALE_SEC", "120"))
 
 # Hotfix paths — full dist sync is too slow over WinRM (600+ files).
 PATCH_PATHS = [
@@ -119,17 +120,26 @@ def run_ps(s, ps):
 
 
 def acquire_deploy_lock(s) -> None:
+    force = os.environ.get("DEPLOY_FORCE_LOCK", "").lower() in ("1", "true", "yes")
+    force_ps = "$true" if force else "$false"
     code, out, err = run_ps(
         s,
         f"""
 $lock = '{DEPLOY_LOCK}'
+$staleSec = {LOCK_STALE_SEC}
+$force = {force_ps}
 New-Item -ItemType Directory -Force -Path (Split-Path $lock) | Out-Null
 if (Test-Path $lock) {{
-  $age = (Get-Date) - (Get-Item $lock).LastWriteTime
-  if ($age.TotalMinutes -lt 45) {{
-    throw "deploy lock active: $(Get-Content $lock -Raw)"
+  if ($force) {{
+    Remove-Item $lock -Force
+  }} else {{
+    $recentFiles = @(Get-ChildItem 'C:\\ticketz\\dc' -Recurse -File -EA SilentlyContinue |
+      Where-Object {{ $_.LastWriteTime -gt (Get-Date).AddSeconds(-$staleSec) }}).Count
+    if ($recentFiles -gt 0) {{
+      throw "deploy in progress ($recentFiles recent upload files): $(Get-Content $lock -Raw)"
+    }}
+    Remove-Item $lock -Force
   }}
-  Remove-Item $lock -Force
 }}
 Set-Content -Path $lock -Value "pid={os.getpid()} ts={int(time.time())}" -NoNewline
 """,
