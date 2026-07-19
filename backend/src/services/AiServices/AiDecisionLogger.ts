@@ -10,6 +10,7 @@ export type AiDecisionAction =
   | "process_skipped"
   | "handoff"
   | "investigate"
+  | "confirm_handoff"
   | "respond"
   | "no_response";
 

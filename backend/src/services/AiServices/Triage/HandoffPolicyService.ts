@@ -37,6 +37,16 @@ const buildInvestigateDecision = (
   investigationQuestion: buildInvestigationQuestion(snapshot)
 });
 
+const buildConfirmHandoffDecision = (
+  schedule: Awaited<ReturnType<typeof getAiScheduleContext>>,
+  handoffReason: keyof typeof AI_HANDOFF_REASONS
+): HandoffPolicyDecision => ({
+  action: "confirm_handoff",
+  handoffMode: schedule.inBusinessHours ? "definitive" : "operational",
+  handoffReason: AI_HANDOFF_REASONS[handoffReason],
+  skipLegacyOutOfHours: true
+});
+
 export const evaluateHandoffPolicy = async (
   context: HandoffEvaluationContext
 ): Promise<HandoffPolicyDecision> => {
@@ -94,12 +104,7 @@ export const evaluateHandoffPolicy = async (
       return buildInvestigateDecision(snapshot);
     }
 
-    return {
-      action: schedule.inBusinessHours ? "definitive" : "operational",
-      handoffMode: schedule.inBusinessHours ? "definitive" : "operational",
-      handoffReason: AI_HANDOFF_REASONS.provider_error,
-      skipLegacyOutOfHours: true
-    };
+    return buildConfirmHandoffDecision(schedule, "provider_error");
   }
 
   if (
@@ -117,12 +122,7 @@ export const evaluateHandoffPolicy = async (
       return buildInvestigateDecision(snapshot);
     }
 
-    return {
-      action: schedule.inBusinessHours ? "definitive" : "operational",
-      handoffMode: schedule.inBusinessHours ? "definitive" : "operational",
-      handoffReason: AI_HANDOFF_REASONS.no_knowledge_found,
-      skipLegacyOutOfHours: true
-    };
+    return buildConfirmHandoffDecision(schedule, "no_knowledge_found");
   }
 
   if (
@@ -144,12 +144,7 @@ export const evaluateHandoffPolicy = async (
       return buildInvestigateDecision(snapshot);
     }
 
-    return {
-      action: schedule.inBusinessHours ? "definitive" : "operational",
-      handoffMode: schedule.inBusinessHours ? "definitive" : "operational",
-      handoffReason: AI_HANDOFF_REASONS.low_confidence,
-      skipLegacyOutOfHours: true
-    };
+    return buildConfirmHandoffDecision(schedule, "low_confidence");
   }
 
   if (snapshot.isVagueStatement) {

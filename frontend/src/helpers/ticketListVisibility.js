@@ -1,7 +1,4 @@
-import {
-  isAiHandlingTicket,
-  isHandoffPendingTicket
-} from "./aiTicketStatus";
+import { isAiHandlingTicket, isHandoffPendingTicket } from "./aiTicketStatus";
 
 export const ticketMatchesSelectedQueues = (
   ticket,
@@ -9,6 +6,9 @@ export const ticketMatchesSelectedQueues = (
   { supervision = false, listMode } = {}
 ) => {
   if (!ticket?.queueId) {
+    if (isHandoffPendingTicket(ticket)) {
+      return true;
+    }
     return (supervision || listMode === "ai") && isAiHandlingTicket(ticket);
   }
 

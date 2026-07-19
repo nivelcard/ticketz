@@ -364,3 +364,45 @@ export const detectCustomerResolution = (message: string): boolean => {
     .replace(/[\u0300-\u036f]/g, "");
   return RESOLUTION_KEYWORDS.some(keyword => lower.includes(keyword));
 };
+
+const normalizeForMatch = (message: string): string =>
+  message
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+export const detectAgentIdentityQuestion = (message: string): boolean => {
+  const text = normalizeForMatch(message);
+  return (
+    /quem (e|esta|está)|vc e|voce e|você é|seu nome|quem fala|quem esta|quem está|com quem falo|e voce|é você|e vc/i.test(
+      text
+    ) && text.length <= 80
+  );
+};
+
+export const detectHandoffConfirmationAccept = (message: string): boolean => {
+  const text = normalizeForMatch(message);
+  return (
+    /^(sim|ok|pode|quero|prefiro|atendente|humano|transferir|passa|passe)\b/.test(
+      text
+    ) ||
+    /\b(atendente|humano|transferir|passar para)\b/.test(text)
+  );
+};
+
+export const detectHandoffConfirmationDecline = (message: string): boolean => {
+  const text = normalizeForMatch(message);
+  return (
+    /^(nao|não|explicar|continuar|tentar|melhor)\b/.test(text) ||
+    /\b(explicar melhor|continuar com voce|continuar com você|prefiro explicar)\b/.test(
+      text
+    )
+  );
+};
+
+export const buildAgentIdentityReply = (agentName: string): string =>
+  `Sou ${agentName}, assistente virtual da Fortmax. Estou aqui para ajudar com dúvidas sobre nossos sistemas. Como posso te ajudar hoje?`;
+
+export const buildHandoffConfirmationQuestion = (): string =>
+  "Não encontrei uma resposta segura na nossa base de conhecimento. Você prefere me explicar melhor sua necessidade ou prefere que eu passe para um atendente humano? Responda *explicar* ou *atendente*.";

@@ -207,8 +207,31 @@ const TicketActionButtonsCustom = ({
     ticket.userId === user?.id &&
     (ticket.aiHandoff || ticket.aiStartedAt || ticket.aiAgentId);
 
+  const handleAcceptTicket = async e => {
+    if (e) {
+      e.preventDefault();
+    }
+    setLoading(true);
+    try {
+      if (isHandoffPendingTicket(ticket)) {
+        await api.post(`/tickets/${ticket.id}/ai/assume`);
+      } else {
+        await api.put(`/tickets/${ticket.id}`, {
+          status: "open",
+          userId: user?.id
+        });
+      }
+      setObservationMode(false);
+      setCurrentTicket({ ...ticket, code: "#open" });
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAcceptObservation = async () => {
-    await handleUpdateTicketStatus(null, "open", user?.id);
+    await handleAcceptTicket(null);
   };
 
   return (
@@ -228,15 +251,13 @@ const TicketActionButtonsCustom = ({
               <AddBoxIcon />
             </IconButton>
           </Tooltip>
-          {user.profile === "admin" && (
-            <Tooltip title={i18n.t("messagesList.header.buttons.reopen")}>
-              <IconButton
-                onClick={e => handleUpdateTicketStatus(e, "open", user?.id)}
-              >
-                <Replay />
-              </IconButton>
-            </Tooltip>
-          )}
+          <Tooltip title={i18n.t("messagesList.header.buttons.reopen")}>
+            <IconButton
+              onClick={e => handleUpdateTicketStatus(e, "open", user?.id)}
+            >
+              <Replay />
+            </IconButton>
+          </Tooltip>
         </>
       )}
       {(ticket.status === "open" || (showTabGroups && ticket.isGroup)) && (
@@ -397,7 +418,7 @@ const TicketActionButtonsCustom = ({
             size="small"
             variant="contained"
             color="primary"
-            onClick={e => handleUpdateTicketStatus(e, "open", user?.id)}
+            onClick={handleAcceptTicket}
           >
             {i18n.t("messagesList.header.buttons.accept")}
           </ButtonWithSpinner>

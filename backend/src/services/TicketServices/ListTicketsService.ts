@@ -118,11 +118,25 @@ const ListTicketsService = async ({
     });
   }
 
+  const includeHandoffPendingWithoutQueue =
+    status === "pending" && !isSupervision && !isAiHandlingList;
+
   const queueFilter =
     (isAiHandlingList || (isSupervision && canSupervise)) && queueIds.length
       ? { [Op.or]: [queueIds, null] }
       : queueIds.length
-        ? { [Op.in]: queueIds }
+        ? includeHandoffPendingWithoutQueue
+          ? {
+              [Op.or]: [
+                { [Op.in]: queueIds },
+                {
+                  aiHandoff: true,
+                  status: "pending",
+                  userId: { [Op.is]: null }
+                }
+              ]
+            }
+          : { [Op.in]: queueIds }
         : { [Op.ne]: null };
 
   let whereCondition: WhereOptions<Ticket> = {

@@ -231,12 +231,17 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
       e.stopPropagation();
     }
     try {
-      await api.put(`/tickets/${id}`, {
-        status: "open",
-        userId: user?.id
-      });
+      if (isHandoffPendingTicket(ticket)) {
+        await api.post(`/tickets/${id}/ai/assume`);
+      } else {
+        await api.put(`/tickets/${id}`, {
+          status: "open",
+          userId: user?.id
+        });
+      }
     } catch (err) {
       toastError(err);
+      return;
     }
 
     setObservationMode(false);

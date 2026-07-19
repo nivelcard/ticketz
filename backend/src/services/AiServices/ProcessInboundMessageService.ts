@@ -12,7 +12,12 @@ import {
   detectSensitiveTopic,
   detectLowConfidenceResponse,
   detectCustomerResolution,
-  canAiEngageTicket
+  canAiEngageTicket,
+  detectAgentIdentityQuestion,
+  detectHandoffConfirmationAccept,
+  detectHandoffConfirmationDecline,
+  buildAgentIdentityReply,
+  buildHandoffConfirmationQuestion
 } from "./AiHelpers";
 import {
   buildAiSchedulePromptBlock,
@@ -54,6 +59,7 @@ import {
   executeHandoffDecision,
   finalizeAiResponse,
   isTriageV2Active,
+  sendHandoffConfirmationRequest,
   sendInvestigationResponse
 } from "./Triage/TriageOrchestratorService";
 import { HandoffPolicyDecision } from "./Triage/AiTriageTypes";
@@ -203,6 +209,18 @@ const applyTriageDecision = async ({
       ticket,
       agent,
       snapshot,
+      messageId,
+      companyId,
+      userText
+    });
+    return true;
+  }
+
+  if (decision.action === "confirm_handoff") {
+    await sendHandoffConfirmationRequest({
+      ticket,
+      agent,
+      decision,
       messageId,
       companyId,
       userText
@@ -392,6 +410,83 @@ const ProcessInboundMessageService = async ({
     }
 
     const conversationText = await buildConversationText(ticket.id, userText);
+
+    if (detectAgentIdentityQuestion(userText)) {
+      const agentName = agent.name?.trim() || "assistente virtual";
+      await SendWhatsAppMessage({
+        body: formatBody(buildAgentIdentityReply(agentName), ticket),
+        ticket
+      });
+
+      if (triageV2Enabled) {
+        await finalizeAiResponse(ticket, primaryMessageId);
+      }
+
+      await persistAiDecisionLog({
+        companyId,
+        ticketId: ticket.id,
+        messageId: primaryMessageId,
+        action: "respond",
+        reason: "agent_identity_question",
+        userMessage: maskSensitiveLog(userText),
+        aiResponse: buildAgentIdentityReply(agentName)
+      });
+      return;
+    }
+
+    if (
+      triageV2Enabled &&
+      (ticket as any).aiProcessingState === "awaiting_handoff_confirmation"
+    ) {
+      await ticket.reload();
+      const pendingReason = ticket.aiHandoffOriginalReason;
+      const pendingMode = (ticket as any).aiHandoffMode as
+        | "operational"
+        | "definitive"
+        | undefined;
+
+      if (detectHandoffConfirmationAccept(userText)) {
+        await executeHandoffDecision({
+          ticket,
+          agent,
+          decision: {
+            action:
+              pendingMode === "operational" ? "operational" : "definitive",
+            handoffMode: pendingMode || "definitive",
+            handoffReason: pendingReason as any,
+            skipLegacyOutOfHours: true
+          },
+          userText,
+          messageId: primaryMessageId,
+          conversationText
+        });
+        return;
+      }
+
+      if (detectHandoffConfirmationDecline(userText)) {
+        await ticket.update({
+          aiProcessingState: "awaiting_customer",
+          aiHandoffOriginalReason: null,
+          aiInvestigationRound: 0
+        } as any);
+        await SendWhatsAppMessage({
+          body: formatBody(
+            "Sem problemas! Me conte com mais detalhes o que você precisa que eu te ajudo da melhor forma possível.",
+            ticket
+          ),
+          ticket
+        });
+        await finalizeAiResponse(ticket, primaryMessageId);
+        return;
+      }
+
+      await SendWhatsAppMessage({
+        body: formatBody(buildHandoffConfirmationQuestion(), ticket),
+        ticket
+      });
+      await finalizeAiResponse(ticket, primaryMessageId);
+      return;
+    }
 
     if (
       forceHandoff ||

@@ -6,6 +6,7 @@ export type AiProcessingState =
   | "idle"
   | "processing"
   | "awaiting_customer"
+  | "awaiting_handoff_confirmation"
   | "awaiting_human"
   | "resolved_by_ai"
   | "failed";
@@ -32,7 +33,12 @@ export type CaseCompletenessSnapshot = {
 };
 
 export type HandoffPolicyDecision = {
-  action: "none" | "investigate" | "operational" | "definitive";
+  action:
+    | "none"
+    | "investigate"
+    | "confirm_handoff"
+    | "operational"
+    | "definitive";
   handoffMode: AiHandoffMode;
   handoffReason?: AiHandoffReason;
   investigationQuestion?: string;

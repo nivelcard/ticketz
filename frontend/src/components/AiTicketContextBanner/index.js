@@ -58,7 +58,7 @@ const AiTicketContextBanner = ({ ticket, observationMode = false }) => {
     const reasonLabel = getHandoffReasonLabel(ticket.aiHandoffReason);
     const priorityBadge = getPriorityBadge(ticket.aiPriority);
 
-    if (handoffPending || ticket.aiHandoff) {
+    if (handoffPending || (ticket.aiHandoff && !ticket.userId)) {
       return (
         <Box className={`${classes.root} ${classes.handoffRoot}`}>
           <Typography className={classes.title} color="error">
@@ -73,11 +73,13 @@ const AiTicketContextBanner = ({ ticket, observationMode = false }) => {
           <Typography className={classes.line}>
             {i18n.t("aiSupervision.banner.startedByAi")}
           </Typography>
-          {reasonLabel && (
-            <Typography className={classes.line}>
-              {i18n.t("aiSupervision.banner.handoffReason")}: {reasonLabel}
-            </Typography>
-          )}
+          {reasonLabel &&
+            ticket.aiHandoffReason !== "manual_takeover" &&
+            !ticket.aiHandoffSummary?.includes(reasonLabel) && (
+              <Typography className={classes.line}>
+                {i18n.t("aiSupervision.banner.handoffReason")}: {reasonLabel}
+              </Typography>
+            )}
           {ticket.aiHandoffReason === "low_confidence" &&
             ticket.aiLastConfidence !== null &&
             ticket.aiLastConfidence !== undefined && (

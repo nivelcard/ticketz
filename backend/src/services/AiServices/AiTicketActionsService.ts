@@ -47,7 +47,12 @@ export const assumeTicketFromBot = async ({
       aiLastSlaAlertAt: null,
       aiHumanAssumedAt: new Date(),
       aiHumanAssumedBy: user.id,
-      aiProcessingState: "awaiting_human"
+      aiProcessingState: "awaiting_human",
+      aiHandoffSummary: [
+        "Resumo",
+        "- Atendente assumiu o atendimento transferido pela IA.",
+        "- Revise o histórico completo antes de responder."
+      ].join("\n")
     } as any
   });
 

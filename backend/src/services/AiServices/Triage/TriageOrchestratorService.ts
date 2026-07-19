@@ -4,6 +4,7 @@ import SendWhatsAppMessage from "../../WbotServices/SendWhatsAppMessage";
 import formatBody from "../../../helpers/Mustache";
 import { AI_HANDOFF_REASONS } from "../AiOperationalTypes";
 import { persistAiDecisionLog } from "../AiDecisionLogger";
+import { buildHandoffConfirmationQuestion } from "../AiHelpers";
 import {
   evaluateCaseCompleteness,
   buildInvestigationQuestion
@@ -115,6 +116,61 @@ export const sendInvestigationResponse = async ({
   });
 };
 
+export const sendHandoffConfirmationRequest = async ({
+  ticket,
+  agent,
+  decision,
+  messageId,
+  companyId,
+  userText
+}: {
+  ticket: Ticket;
+  agent: AiAgent;
+  decision: HandoffPolicyDecision;
+  messageId?: string;
+  companyId: number;
+  userText: string;
+}): Promise<void> => {
+  const question = buildHandoffConfirmationQuestion();
+
+  await SendWhatsAppMessage({
+    body: formatBody(question, ticket),
+    ticket
+  });
+
+  await ticket.update({
+    aiProcessingState: "awaiting_handoff_confirmation",
+    aiHandoffOriginalReason: decision.handoffReason,
+    aiHandoffMode: decision.handoffMode
+  } as any);
+
+  await markInboundMessagesReadForAi(ticket, messageId);
+
+  await persistAiDecisionLog({
+    companyId,
+    ticketId: ticket.id,
+    messageId,
+    action: "confirm_handoff",
+    reason: decision.handoffReason,
+    userMessage: userText,
+    aiResponse: question
+  });
+
+  await logAiTicketTimelineEvent({
+    companyId,
+    ticketId: ticket.id,
+    eventType: "handoff_confirmation_requested",
+    stage: "triage",
+    operation: "confirm_before_handoff",
+    messageId,
+    agentId: agent.id,
+    details: {
+      handoffReason: decision.handoffReason,
+      handoffMode: decision.handoffMode
+    }
+  });
+};
+
 export const executeHandoffDecision = async ({
   ticket,
   agent,
@@ -139,6 +195,7 @@ export const executeHandoffDecision = async ({
   if (
     decision.action === "none" ||
     decision.action === "investigate" ||
+    decision.action === "confirm_handoff" ||
     !decision.handoffReason
   ) {
     return;

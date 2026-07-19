@@ -200,23 +200,13 @@ const UpdateTicketService = async ({
     const oldUserId = ticket.user?.id;
     const oldQueueId = ticket.queueId;
 
-    // only admin can accept pending tickets that have no queue
+    // only admin can accept pending tickets that have no queue (except IA handoff)
     if (!oldQueueId && userId && oldStatus === "pending" && status === "open") {
       const acceptUser = await User.findByPk(userId);
-      if (acceptUser.profile !== "admin") {
+      const isAiHandoffAccept = Boolean(ticket.aiHandoff);
+      if (acceptUser.profile !== "admin" && !isAiHandoffAccept) {
         throw new AppError("ERR_NO_PERMISSION", 403);
       }
-    }
-
-    // only admin can reopen closed tickets
-    if (
-      status &&
-      oldStatus === "closed" &&
-      status !== "closed" &&
-      user &&
-      user.profile !== "admin"
-    ) {
-      throw new AppError("ERR_NO_PERMISSION", 403);
     }
 
     if (oldStatus === "closed") {

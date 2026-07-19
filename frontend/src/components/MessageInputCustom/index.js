@@ -335,7 +335,7 @@ const ActionButtons = props => {
           aria-label="cancelRecording"
           component="span"
           fontSize="large"
-          disabled={disableOption}
+          disabled={loading}
           onClick={handleCancelAudio}
         >
           <HighlightOffIcon className={classes.cancelAudioIcon} />
@@ -352,7 +352,7 @@ const ActionButtons = props => {
           aria-label="sendRecordedAudio"
           component="span"
           onClick={handleUploadAudio}
-          disabled={disableOption}
+          disabled={loading}
         >
           <CheckCircleOutlineIcon className={classes.sendAudioIcon} />
         </IconButton>
@@ -1069,7 +1069,9 @@ const MessageInputCustom = props => {
     try {
       const [, blob] = await Mp3Recorder.stop().getMp3();
       if (blob.size < 500) {
-        toastError(new Error("Áudio muito curto ou vazio. Tente gravar novamente."));
+        toastError(
+          new Error("Áudio muito curto ou vazio. Tente gravar novamente.")
+        );
         setLoading(false);
         setRecording(false);
         return;
@@ -1102,10 +1104,7 @@ const MessageInputCustom = props => {
 
   const isGroup = showTabGroups && ticket.isGroup;
   const disableOption =
-    (!isGroup && loading) ||
-    recording ||
-    ticketStatus === "closed" ||
-    props.observationMode;
+    (!isGroup && loading) || ticketStatus === "closed" || props.observationMode;
 
   const renderReplyingMessage = message => {
     return (
@@ -1232,7 +1231,7 @@ const MessageInputCustom = props => {
             loading={loading}
             recording={recording}
             ticketStatus={ticketStatus}
-            disabeleOption={disableOption}
+            disableOption={disableOption}
             handleSendMessage={handleSendMessage}
             handleCancelAudio={handleCancelAudio}
             handleUploadAudio={handleUploadAudio}
