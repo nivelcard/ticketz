@@ -14,6 +14,7 @@ import AiExplainabilityPanel from "../AiExplainabilityPanel";
 import TicketAiTimeline from "../Ai/TicketAiTimeline";
 import AiCopilotPanel from "../AiCopilotPanel";
 import { canUserOperateTicket } from "../../helpers/ticketListVisibility";
+import { toast } from "react-toastify";
 
 const useStyles = makeStyles(theme => ({
   drawer: {
@@ -65,6 +66,10 @@ const TicketAdminPanel = ({
   const [copilotStyle, setCopilotStyle] = useState("default");
 
   const runCopilotQuick = (instruction, style = copilotStyle) => {
+    if (!ticket?.userId || ticket.status !== "open") {
+      toast.info("Aceite o ticket para usar o copiloto.");
+      return;
+    }
     setCopilotStyle(style);
     setCopilotInstruction(`${instruction}|${style}|${Date.now()}`);
   };

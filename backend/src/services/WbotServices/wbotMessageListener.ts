@@ -78,7 +78,7 @@ import {
   tryEngageAiOnInboundMessage,
   shouldAiBypassLegacyBotMessages
 } from "../AiServices/AiReengagementService";
-import { getActiveAgent } from "../AiServices/AiHelpers";
+import { getActiveAgent, isAiHandlingTicket } from "../AiServices/AiHelpers";
 import { isAiFeaturesEnabled } from "../AiServices/AiPlatformState";
 import { shouldDeferWhatsAppReadReceipt } from "../AiServices/Triage/AiReadReceiptService";
 import { _t } from "../TranslationServices/i18nService";
@@ -2037,6 +2037,7 @@ const handleMessage = async (
 
         const isOpenOnline =
           isHumanHandlingTicket(ticket) ||
+          isAiHandlingTicket(ticket) ||
           (ticket.status === "open" &&
             (ticket.user?.socketSessions?.length || 0) > 0);
 

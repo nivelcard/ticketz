@@ -84,6 +84,9 @@ const AiRepository = () => {
   const [form, setForm] = useState(defaultForm);
   const [file, setFile] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [thumbUrls, setThumbUrls] = useState({});
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [versions, setVersions] = useState([]);
   const [versionItem, setVersionItem] = useState(null);
@@ -112,13 +115,17 @@ const AiRepository = () => {
       const params = {};
       if (search.trim()) params.search = search.trim();
       if (filterType) params.contentType = filterType;
-      const [{ data: repo }, { data: domainData }, { data: baseData }, { data: catData }] =
-        await Promise.all([
-          api.get("/ai/repository", { params }),
-          api.get("/ai/knowledge-domains"),
-          api.get("/ai/knowledge-bases"),
-          api.get("/ai/repository/categories")
-        ]);
+      const [
+        { data: repo },
+        { data: domainData },
+        { data: baseData },
+        { data: catData }
+      ] = await Promise.all([
+        api.get("/ai/repository", { params }),
+        api.get("/ai/knowledge-domains"),
+        api.get("/ai/knowledge-bases"),
+        api.get("/ai/repository/categories")
+      ]);
       setItems(Array.isArray(repo) ? repo : []);
       setDomains(Array.isArray(domainData) ? domainData : []);
       setBases(Array.isArray(baseData) ? baseData : []);
@@ -132,8 +139,107 @@ const AiRepository = () => {
     load();
   }, [load]);
 
+  useEffect(() => {
+    let active = true;
+    const createdUrls = [];
+
+    const loadThumbs = async () => {
+      const next = {};
+      const imageItems = items.filter(
+        item =>
+          item.contentType === "image" &&
+          (item.previewAvailable || item.storageKey || item.hasStorageFile)
+      );
+
+      await Promise.all(
+        imageItems.map(async item => {
+          try {
+            const response = await api.get(
+              `/ai/repository/${item.id}/preview`,
+              { responseType: "blob" }
+            );
+            const blob = response.data;
+            const contentType =
+              response.headers["content-type"] || blob?.type || "";
+            if (!blob?.size || contentType.includes("application/json")) {
+              return;
+            }
+            const url = URL.createObjectURL(blob);
+            createdUrls.push(url);
+            next[item.id] = url;
+          } catch {
+            /* optional thumbnail */
+          }
+        })
+      );
+
+      if (active) {
+        setThumbUrls(prev => {
+          Object.values(prev).forEach(url => URL.revokeObjectURL(url));
+          return next;
+        });
+      } else {
+        createdUrls.forEach(url => URL.revokeObjectURL(url));
+      }
+    };
+
+    if (items.length) {
+      loadThumbs();
+    }
+
+    return () => {
+      active = false;
+      createdUrls.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [items]);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = null;
+
+    const loadPreview = async () => {
+      if (!open || !editingId || !editingItem?.storageKey) {
+        setPreviewUrl(null);
+        return;
+      }
+
+      try {
+        const response = await api.get(`/ai/repository/${editingId}/preview`, {
+          responseType: "blob"
+        });
+        const blob = response.data;
+        const contentType =
+          response.headers["content-type"] || blob?.type || "";
+        if (
+          !active ||
+          !blob?.size ||
+          contentType.includes("application/json")
+        ) {
+          return;
+        }
+        objectUrl = URL.createObjectURL(blob);
+        setPreviewUrl(objectUrl);
+      } catch {
+        if (active) {
+          setPreviewUrl(null);
+        }
+      }
+    };
+
+    loadPreview();
+
+    return () => {
+      active = false;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [open, editingId, editingItem?.storageKey]);
+
   const openCreate = () => {
     setEditingId(null);
+    setEditingItem(null);
+    setPreviewUrl(null);
     setForm(defaultForm);
     setFile(null);
     setOpen(true);
@@ -183,6 +289,9 @@ const AiRepository = () => {
 
   const openEdit = item => {
     setEditingId(item.id);
+    setEditingItem(item);
+    setPreviewUrl(null);
+    setFile(null);
     setForm({
       name: item.name || "",
       displayTitle: item.displayTitle || "",
@@ -200,12 +309,16 @@ const AiRepository = () => {
       useForKnowledge: !!item.useForKnowledge,
       useForDelivery: item.useForDelivery !== false
     });
-    setFile(null);
     setOpen(true);
   };
 
   const handleSave = async () => {
     try {
+      if (needsFile && !editingId && !file) {
+        toast.error("Selecione um arquivo para este tipo de conteúdo.");
+        return;
+      }
+
       const payload = {
         ...form,
         knowledgeDomainId: form.knowledgeDomainId
@@ -225,7 +338,11 @@ const AiRepository = () => {
           }
         });
         data.append("file", file);
-        await api.post("/ai/repository/upload", data);
+        if (editingId) {
+          await api.put(`/ai/repository/${editingId}`, data);
+        } else {
+          await api.post("/ai/repository/upload", data);
+        }
       } else if (editingId) {
         await api.put(`/ai/repository/${editingId}`, payload);
       } else {
@@ -250,9 +367,14 @@ const AiRepository = () => {
     }
   };
 
-  const needsFile = ["pdf", "document", "image", "audio", "video", "file"].includes(
-    form.contentType
-  );
+  const needsFile = [
+    "pdf",
+    "document",
+    "image",
+    "audio",
+    "video",
+    "file"
+  ].includes(form.contentType);
 
   return (
     <MainContainer>
@@ -311,10 +433,28 @@ const AiRepository = () => {
             {items.map(item => (
               <TableRow key={item.id}>
                 <TableCell>
-                  {typeIcon(item.contentType)} {item.contentType}
+                  <Box display="flex" alignItems="center" gridGap={8}>
+                    {item.contentType === "image" && thumbUrls[item.id] ? (
+                      <img
+                        src={thumbUrls[item.id]}
+                        alt=""
+                        style={{
+                          width: 40,
+                          height: 40,
+                          objectFit: "cover",
+                          borderRadius: 4
+                        }}
+                      />
+                    ) : (
+                      <span>{typeIcon(item.contentType)}</span>
+                    )}
+                    <span>{item.contentType}</span>
+                  </Box>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">{item.displayTitle || item.name}</Typography>
+                  <Typography variant="body2">
+                    {item.displayTitle || item.name}
+                  </Typography>
                   <Typography variant="caption" color="textSecondary">
                     {item.sendCaption || item.description || "—"}
                   </Typography>
@@ -322,9 +462,15 @@ const AiRepository = () => {
                 <TableCell>{item.category || "—"}</TableCell>
                 <TableCell>
                   {item.allowHumanUse && (
-                    <Chip size="small" label="Humano" style={{ marginRight: 4 }} />
+                    <Chip
+                      size="small"
+                      label="Humano"
+                      style={{ marginRight: 4 }}
+                    />
                   )}
-                  {item.allowAiUse && <Chip size="small" label="IA" color="primary" />}
+                  {item.allowAiUse && (
+                    <Chip size="small" label="IA" color="primary" />
+                  )}
                   {item.useForKnowledge && (
                     <Chip size="small" label="KB" color="secondary" />
                   )}
@@ -337,7 +483,10 @@ const AiRepository = () => {
                   <IconButton size="small" onClick={() => openEdit(item)}>
                     <Edit fontSize="small" />
                   </IconButton>
-                  <IconButton size="small" onClick={() => handleArchive(item.id)}>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleArchive(item.id)}
+                  >
                     <DeleteOutline fontSize="small" />
                   </IconButton>
                 </TableCell>
@@ -356,7 +505,12 @@ const AiRepository = () => {
         </Table>
       </AiSectionPaper>
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>
           {editingId ? "Editar item" : "Novo item do Repositório"}
         </DialogTitle>
@@ -386,9 +540,7 @@ const AiRepository = () => {
           <AiFormSelect
             label="Categoria"
             value={form.categoryId}
-            onChange={e =>
-              setForm({ ...form, categoryId: e.target.value })
-            }
+            onChange={e => setForm({ ...form, categoryId: e.target.value })}
             options={[
               { value: "", label: "Nenhuma" },
               ...categories.map(cat => ({
@@ -434,8 +586,31 @@ const AiRepository = () => {
             }
             options={[{ value: "", label: "Nenhuma" }, ...baseOptions]}
           />
-          {needsFile && !editingId && (
+          {needsFile && (
             <Box mt={2}>
+              {previewUrl && form.contentType === "image" && (
+                <Box mb={1}>
+                  <img
+                    src={previewUrl}
+                    alt={form.displayTitle || form.name || "Preview"}
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: 180,
+                      borderRadius: 6
+                    }}
+                  />
+                </Box>
+              )}
+              {editingItem?.originalFileName && !file && (
+                <Typography
+                  variant="caption"
+                  color="textSecondary"
+                  display="block"
+                  gutterBottom
+                >
+                  Arquivo atual: {editingItem.originalFileName}
+                </Typography>
+              )}
               <input
                 accept="*/*"
                 style={{ display: "none" }}
@@ -444,8 +619,16 @@ const AiRepository = () => {
                 onChange={e => setFile(e.target.files?.[0] || null)}
               />
               <label htmlFor="repo-file">
-                <Button variant="outlined" component="span" startIcon={<CloudUpload />}>
-                  {file ? file.name : "Selecionar arquivo"}
+                <Button
+                  variant="outlined"
+                  component="span"
+                  startIcon={<CloudUpload />}
+                >
+                  {file
+                    ? file.name
+                    : editingItem?.storageKey
+                      ? "Substituir arquivo"
+                      : "Selecionar arquivo"}
                 </Button>
               </label>
             </Box>
@@ -549,7 +732,8 @@ const AiRepository = () => {
               mb={1}
             >
               <Typography variant="body2">
-                v{version.versionNumber} · {version.originalFileName || "metadados"} ·{" "}
+                v{version.versionNumber} ·{" "}
+                {version.originalFileName || "metadados"} ·{" "}
                 {version.changeReason || "—"}
               </Typography>
               <Button
@@ -562,7 +746,9 @@ const AiRepository = () => {
             </Box>
           ))}
           {!versions.length && (
-            <Typography color="textSecondary">Sem versões registradas.</Typography>
+            <Typography color="textSecondary">
+              Sem versões registradas.
+            </Typography>
           )}
         </DialogContent>
         <DialogActions>

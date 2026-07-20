@@ -1,6 +1,6 @@
 # Manual Oficial da Plataforma Ticketz
 
-**Versão:** 1.5.6 — auditada contra o código  
+**Versão:** 1.5.7 — auditada contra o código  
 **Data:** julho/2026  
 **Status:** documentação oficial — mantida por rule permanente  
 **Repositório:** `ticketz/` (backend + frontend independentes)  
@@ -1432,6 +1432,7 @@ Migration v2 (`20260719200000-content-repository-v2.ts`): `ContentRepositoryCate
 | GET | `/ai/repository/favorites\|recent\|popular` | Listagens agregadas |
 | GET/POST | `/ai/repository/:id/versions/*` | Histórico, comparar, restaurar |
 | GET/POST | `/ai/repository/:id/knowledge/*` | Status KB, reprocessar, desvincular |
+| GET | `/ai/repository/:itemId/preview` | Preview autenticado (admin) |
 | GET | `/tickets/:ticketId/repository/:itemId/preview` | Preview autenticado (blob) na conversa |
 | GET | `/tickets/:ticketId/repository?view=all\|favorites\|recent\|popular` | Busca na conversa |
 | POST | `/tickets/:ticketId/repository/:itemId/send` | Envio manual |

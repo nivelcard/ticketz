@@ -358,11 +358,30 @@ const TicketsListCustom = props => {
         dispatch({ type: "DELETE_TICKET", payload: data.ticket?.id });
       }
 
+      if (
+        data.action === "update" &&
+        data.ticket?.operationalState?.listColumn &&
+        listMode === "ai" &&
+        data.ticket.operationalState.listColumn !== "ai"
+      ) {
+        dispatch({ type: "DELETE_TICKET", payload: data.ticket?.id });
+      }
+
+      if (
+        data.action === "update" &&
+        status === "open" &&
+        data.ticket.status === "open" &&
+        data.ticket.operationalState?.listColumn === "ai"
+      ) {
+        dispatch({ type: "DELETE_TICKET", payload: data.ticket?.id });
+      }
+
       if (data.action === "delete") {
         dispatch({ type: "DELETE_TICKET", payload: data?.ticketId });
       }
 
       if (data.action === "removeFromList") {
+        dispatch({ type: "DELETE_TICKET", payload: data.ticketId });
         return;
       }
     };

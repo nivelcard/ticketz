@@ -148,10 +148,7 @@ aiRoutes.get("/ai/tools/status", AiToolController.toolsStatus);
 aiRoutes.get("/ai/tools", AiToolController.listRegisteredTools);
 aiRoutes.get("/ai/agents/:agentId/tools", AiToolController.listAgentTools);
 aiRoutes.put("/ai/agents/:agentId/tools", AiToolController.updateAgentTools);
-aiRoutes.get(
-  "/ai/contacts/:contactId/memory",
-  ContactAiMemoryController.index
-);
+aiRoutes.get("/ai/contacts/:contactId/memory", ContactAiMemoryController.index);
 aiRoutes.post(
   "/ai/contacts/:contactId/memory",
   ContactAiMemoryController.store
@@ -170,8 +167,14 @@ aiRoutes.delete(
 );
 aiRoutes.get("/ai/tool-executions", AiToolController.toolExecutions);
 
-aiRoutes.get("/ai/repository/categories", ContentRepositoryController.categoriesIndex);
-aiRoutes.post("/ai/repository/categories", ContentRepositoryController.categoriesStore);
+aiRoutes.get(
+  "/ai/repository/categories",
+  ContentRepositoryController.categoriesIndex
+);
+aiRoutes.post(
+  "/ai/repository/categories",
+  ContentRepositoryController.categoriesStore
+);
 aiRoutes.put(
   "/ai/repository/categories/:categoryId",
   ContentRepositoryController.categoriesUpdate
@@ -184,8 +187,14 @@ aiRoutes.get("/ai/repository/favorites", ContentRepositoryController.favorites);
 aiRoutes.get("/ai/repository/recent", ContentRepositoryController.recent);
 aiRoutes.get("/ai/repository/popular", ContentRepositoryController.popular);
 aiRoutes.get("/ai/repository", ContentRepositoryController.index);
-aiRoutes.get("/ai/repository/:itemId/versions/compare", ContentRepositoryController.versionsCompare);
-aiRoutes.get("/ai/repository/:itemId/versions", ContentRepositoryController.versionsIndex);
+aiRoutes.get(
+  "/ai/repository/:itemId/versions/compare",
+  ContentRepositoryController.versionsCompare
+);
+aiRoutes.get(
+  "/ai/repository/:itemId/versions",
+  ContentRepositoryController.versionsIndex
+);
 aiRoutes.post(
   "/ai/repository/:itemId/versions/restore",
   ContentRepositoryController.versionsRestore
@@ -201,6 +210,10 @@ aiRoutes.post(
 aiRoutes.post(
   "/ai/repository/:itemId/knowledge/unlink",
   ContentRepositoryController.knowledgeUnlink
+);
+aiRoutes.get(
+  "/ai/repository/:itemId/preview",
+  ContentRepositoryController.preview
 );
 aiRoutes.get("/ai/repository/:itemId", ContentRepositoryController.show);
 aiRoutes.post("/ai/repository", ContentRepositoryController.store);

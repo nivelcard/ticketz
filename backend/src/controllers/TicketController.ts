@@ -15,6 +15,7 @@ import ListTicketsServiceKanban from "../services/TicketServices/ListTicketsServ
 import reopenClosedTicketManually from "../services/TicketServices/ReopenClosedTicketManuallyService";
 import { serializeTicketWithOperationalState } from "../services/TicketServices/TicketOperationalStateService";
 import User from "../models/User";
+import canViewTicket from "../helpers/canViewTicket";
 
 type IndexQuery = {
   isSearch?: string;
@@ -201,11 +202,16 @@ export const show = async (req: Request, res: Response): Promise<Response> => {
   const { ticketId } = req.params;
   const { companyId } = req.user;
 
-  const contact = await ShowTicketService(ticketId, companyId);
+  const ticket = await ShowTicketService(ticketId, companyId);
+  const user = await ShowUserService(Number(req.user.id));
+
+  if (!canViewTicket(ticket, user)) {
+    throw new AppError("ERR_NO_PERMISSION", 403);
+  }
 
   return res
     .status(200)
-    .json(serializeTicketWithOperationalState(contact, Number(req.user.id)));
+    .json(serializeTicketWithOperationalState(ticket, Number(req.user.id)));
 };
 
 export const showFromUUID = async (
@@ -222,26 +228,8 @@ export const showFromUUID = async (
   }
 
   const user = await ShowUserService(userId);
-  const userQueueIds = user.queues.map(queue => queue.id);
-  const canSupervise = user.profile === "admin" || user.super === true;
-  const isAiTicket =
-    !!ticket.aiAgentId || !!ticket.aiHandoff || !!ticket.aiStartedAt;
-  const isAssignedAgent =
-    ticket.userId && Number(ticket.userId) === Number(userId);
-  const isHandoffPending =
-    !!ticket.aiHandoff && ticket.status === "pending" && !ticket.userId;
 
-  if (ticket.queueId) {
-    if (
-      !userQueueIds.includes(ticket.queueId) &&
-      !isAssignedAgent &&
-      !isHandoffPending &&
-      user.profile !== "admin" &&
-      !user.super
-    ) {
-      throw new AppError("ERR_NO_PERMISSION", 403);
-    }
-  } else if (!canSupervise && !isAiTicket && !isAssignedAgent) {
+  if (!canViewTicket(ticket, user)) {
     throw new AppError("ERR_NO_PERMISSION", 403);
   }
 
@@ -295,7 +283,10 @@ export const remove = async (
   return res.status(200).json({ message: "ticket deleted" });
 };
 
-export const reopen = async (req: Request, res: Response): Promise<Response> => {
+export const reopen = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
   const { ticketId } = req.params;
   const { releaseToAi } = req.body || {};
   const user = await User.findByPk(req.user.id);

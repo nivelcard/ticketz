@@ -29,7 +29,8 @@ import {
   canAssumeFromBot,
   canAcceptTicket,
   canReleaseTicketToAi,
-  isHandoffPendingTicket
+  isHandoffPendingTicket,
+  getTicketListColumn
 } from "../../helpers/aiTicketStatus";
 import { toast } from "react-toastify";
 import AiLearningCloseModal from "../AiLearningCloseModal";
@@ -59,7 +60,8 @@ const TicketActionButtonsCustom = ({
   const [learningModalOpen, setLearningModalOpen] = useState(false);
   const ticketOptionsMenuOpen = Boolean(anchorEl);
   const { user } = useContext(AuthContext);
-  const { setCurrentTicket, setObservationMode } = useContext(TicketsContext);
+  const { setCurrentTicket, setObservationMode, setListSubTab } =
+    useContext(TicketsContext);
   const phoneContext = useContext(PhoneCallContext);
 
   const customTheme = createTheme({
@@ -128,11 +130,18 @@ const TicketActionButtonsCustom = ({
   };
 
   const applyTicketUpdate = updatedTicket => {
+    const column = getTicketListColumn(updatedTicket);
+    if (column === "ai" || column === "pending" || column === "open") {
+      setListSubTab(column);
+    }
+
     if (onTicketUpdated) {
       onTicketUpdated(updatedTicket);
       return;
     }
-    setObservationMode(false);
+
+    const observing = column === "ai" || column === "pending";
+    setObservationMode(observing);
     setCurrentTicket({
       ...updatedTicket,
       code: updatedTicket.status === "open" ? "#open" : "#pending"
@@ -185,7 +194,6 @@ const TicketActionButtonsCustom = ({
     try {
       const { data } = await api.post(`/tickets/${ticket.id}/ai/release`);
       applyTicketUpdate(data);
-      setObservationMode(true);
       toast.success(i18n.t("aiSupervision.actions.releaseSuccess"));
     } catch (err) {
       toastError(err);

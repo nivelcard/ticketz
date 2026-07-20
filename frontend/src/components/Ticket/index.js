@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
 import { useParams, useHistory } from "react-router-dom";
 
-import { toast } from "react-toastify";
 import clsx from "clsx";
 
 import { Paper, makeStyles } from "@material-ui/core";
@@ -24,14 +23,9 @@ import RepositoryPanel from "../RepositoryPanel";
 import TicketAdminPanel from "../TicketAdminPanel";
 import { SocketContext } from "../../context/Socket/SocketContext";
 import useSettings from "../../hooks/useSettings";
-import {
-  isAiHandlingTicket,
-  isHandoffPendingTicket,
-  getTicketListColumn
-} from "../../helpers/aiTicketStatus";
+import { getTicketListColumn } from "../../helpers/aiTicketStatus";
 import { isTicketObservationMode } from "../../helpers/ticketListVisibility";
 import { TicketsContext } from "../../context/Tickets/TicketsContext";
-import { i18n } from "../../translate/i18n";
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -152,39 +146,6 @@ const Ticket = () => {
             ? `/tickets/u/${ticketId}`
             : `/tickets/${ticketId}`;
           const { data } = await api.get(endpoint);
-          const { queueId } = data;
-          const { queues, profile } = user;
-
-          const isAssignedToUser =
-            data.userId && Number(data.userId) === Number(user.id);
-          const isHandoffPending = isHandoffPendingTicket(data);
-
-          if (queueId) {
-            const queueAllowed = queues.find(q => q.id === queueId);
-            if (
-              queueAllowed === undefined &&
-              profile !== "admin" &&
-              !user?.super &&
-              !isAssignedToUser &&
-              !isHandoffPending
-            ) {
-              toast.error(i18n.t("common.accessNotAllowed"));
-              history.push("/tickets");
-              return;
-            }
-          } else if (
-            profile !== "admin" &&
-            !user?.super &&
-            !isAiHandlingTicket(data) &&
-            !isHandoffPendingTicket(data) &&
-            !isAssignedToUser &&
-            data.status !== "closed"
-          ) {
-            toast.error(i18n.t("common.accessNotAllowed"));
-            history.push("/tickets");
-            return;
-          }
-
           setContact(data.contact);
           syncTicketView(data);
           setLoading(false);

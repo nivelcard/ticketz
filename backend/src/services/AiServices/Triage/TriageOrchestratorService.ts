@@ -24,6 +24,7 @@ import {
   HandoffPolicyDecision
 } from "./AiTriageTypes";
 import AiAgent from "../../../models/AiAgent";
+import Message from "../../../models/Message";
 
 export const isTriageV2Active = isTriageV2EnabledForCompany;
 
@@ -77,6 +78,22 @@ export const sendInvestigationResponse = async ({
   const question =
     buildInvestigationQuestion(snapshot) ||
     "Pode me explicar um pouco mais sobre o que aconteceu?";
+
+  const lastOutbound = await Message.findOne({
+    where: { ticketId: ticket.id, fromMe: true },
+    order: [["createdAt", "DESC"]],
+    attributes: ["body", "createdAt"]
+  });
+
+  if (
+    lastOutbound?.body?.trim() === question.trim() ||
+    (lastOutbound?.body?.includes("Pode me explicar o que está acontecendo") &&
+      question.includes("Pode me explicar o que está acontecendo"))
+  ) {
+    await markInboundMessagesReadForAi(ticket, messageId);
+    await ticket.update({ aiProcessingState: "awaiting_customer" } as any);
+    return;
+  }
 
   await SendWhatsAppMessage({
     body: formatBody(question, ticket),

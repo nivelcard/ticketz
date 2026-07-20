@@ -50,6 +50,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+---
+
+## [1.5.7] — 2026-07-19
+
+### Corrigido
+
+- **403 ao abrir ticket Aguardando:** `canViewTicket` unifica permissão de visualização com a lista (observação, fila, handoff, IA)
+- **Abas desalinhadas:** `removeFromList` passa a remover ticket da lista; filtro Atendendo rejeita `status !== open`; devolver para IA muda aba para IA
+- **Botão X não encerrava na lista:** mesmo fix de `removeFromList` + remoção quando coluna operacional muda
+- **OOH repetido com IA ativa:** fora do horário não dispara quando `isAiHandlingTicket`
+- **IA repetindo mesma pergunta:** triagem não reenvia investigação idêntica consecutiva
+- **Repositório admin:** `GET /ai/repository/:id/preview`, miniaturas na lista, preview/substituição de arquivo no editar
+- **Copiloto:** botões do painel avisam quando ticket não está aceito
+
+### Manual
+
+- §45 preview admin; versão manual **1.5.7**
+
+---
+
 ## [1.5.6] — 2026-07-19
 
 ### Corrigido

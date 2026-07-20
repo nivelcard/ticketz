@@ -96,7 +96,10 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
 export const show = async (req: Request, res: Response): Promise<Response> => {
   const user = await loadUser(req);
   await assertRepositoryAccess("read", user, user.companyId);
-  const item = await getRepositoryItem(user.companyId, Number(req.params.itemId));
+  const item = await getRepositoryItem(
+    user.companyId,
+    Number(req.params.itemId)
+  );
   const [enriched] = await attachFavoriteFlags([item], user.companyId, user.id);
   return res.json(enriched);
 };
@@ -328,7 +331,10 @@ export const categoriesRemove = async (
 ): Promise<Response> => {
   const user = await loadUser(req);
   await assertRepositoryAccess("admin", user, user.companyId);
-  await archiveRepositoryCategory(user.companyId, Number(req.params.categoryId));
+  await archiveRepositoryCategory(
+    user.companyId,
+    Number(req.params.categoryId)
+  );
   return res.status(204).send();
 };
 
@@ -548,7 +554,10 @@ export const ticketPreview = async (
     Number(req.params.ticketId),
     user.companyId
   );
-  const item = await getRepositoryItem(user.companyId, Number(req.params.itemId));
+  const item = await getRepositoryItem(
+    user.companyId,
+    Number(req.params.itemId)
+  );
   const access = buildRepositoryAccessForTicket(ticket, user);
 
   if (!canAccessRepositoryItem(item, access)) {
@@ -567,6 +576,44 @@ export const ticketPreview = async (
 
   await StorageService.ensureReady(user.companyId);
   const buffer = await StorageService.download(item.storageKey, user.companyId);
+  const mime = resolveRepositoryMime(item);
+  res.setHeader("Content-Type", mime);
+  res.setHeader("Cache-Control", "private, max-age=300");
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename="${encodeURIComponent(item.originalFileName || item.name)}"`
+  );
+  return res.send(buffer);
+};
+
+export const preview = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const user = await loadUser(req);
+  await assertRepositoryAccess("read", user, user.companyId);
+  const item = await getRepositoryItem(
+    user.companyId,
+    Number(req.params.itemId)
+  );
+
+  if (!item.storageKey) {
+    return res.json({
+      previewType: "text",
+      title: item.displayTitle || item.name,
+      description: item.description,
+      externalUrl: item.externalUrl,
+      contentType: item.contentType
+    });
+  }
+
+  await StorageService.ensureReady(user.companyId);
+  const buffer = await StorageService.download(item.storageKey, user.companyId);
+
+  if (!buffer?.length) {
+    throw new AppError("ERR_REPOSITORY_MEDIA_MISSING", 404);
+  }
+
   const mime = resolveRepositoryMime(item);
   res.setHeader("Content-Type", mime);
   res.setHeader("Cache-Control", "private, max-age=300");

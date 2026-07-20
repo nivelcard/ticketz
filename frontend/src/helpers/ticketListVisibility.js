@@ -62,11 +62,19 @@ export const shouldShowTicketInList = ({
   }
 
   if (status === "open") {
+    if (ticket.status !== "open") {
+      return false;
+    }
+
     if (showAll && profile === "admin") {
       return true;
     }
 
     return !ticket.userId || Number(ticket.userId) === Number(userId);
+  }
+
+  if (status && ticket.status !== status) {
+    return false;
   }
 
   return true;
