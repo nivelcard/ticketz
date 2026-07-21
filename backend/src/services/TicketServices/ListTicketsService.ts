@@ -103,7 +103,9 @@ const ListTicketsService = async ({
     user.super === true ||
     (aiFilter && aiFilter !== AI_TICKET_FILTERS.all);
 
-  const isAiHandlingList = aiFilter === AI_TICKET_FILTERS.ai_handling;
+  const isAiHandlingList =
+    aiFilter === AI_TICKET_FILTERS.ai_handling ||
+    aiFilter === AI_TICKET_FILTERS.ai_supervision;
 
   const canSupervise = user.profile === "admin" || user.super === true;
 
@@ -204,6 +206,12 @@ const ListTicketsService = async ({
     const aiConditions: WhereOptions<Ticket> = {};
 
     switch (filter as AiTicketFilter) {
+      case AI_TICKET_FILTERS.ai_supervision:
+        Object.assign(aiConditions, {
+          aiAgentId: { [Op.ne]: null },
+          status: { [Op.ne]: "closed" }
+        });
+        break;
       case AI_TICKET_FILTERS.ai_handling:
         Object.assign(aiConditions, {
           aiAgentId: { [Op.ne]: null },

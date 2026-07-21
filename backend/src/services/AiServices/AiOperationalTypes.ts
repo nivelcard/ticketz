@@ -60,6 +60,7 @@ export const AI_OPERATIONAL_EVENT_LABELS: Record<AiOperationalEvent, string> = {
 
 export const AI_TICKET_FILTERS = {
   all: "all",
+  ai_supervision: "ai_supervision",
   ai_handling: "ai_handling",
   ai_resolved: "ai_resolved",
   ai_transferred: "ai_transferred",

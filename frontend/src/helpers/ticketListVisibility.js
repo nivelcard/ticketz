@@ -1,5 +1,8 @@
 import { isAiHandlingTicket, isHandoffPendingTicket } from "./aiTicketStatus";
 
+export const isAiSupervisionTicket = ticket =>
+  !!ticket?.aiAgentId && ticket?.status !== "closed";
+
 export const ticketMatchesSelectedQueues = (
   ticket,
   selectedQueueIds = [],
@@ -35,18 +38,27 @@ export const shouldShowTicketInList = ({
   profile,
   showAll,
   userId,
-  superUser
+  superUser,
+  aiFilter
 }) => {
   if (!ticket) {
     return false;
   }
 
+  const bypassQueueScope =
+    superUser || supervision || profile === "admin";
+
   if (listMode === "ai") {
-    if (!isAiHandlingTicket(ticket)) {
+    const inAiScope =
+      aiFilter === "ai_supervision" || bypassQueueScope
+        ? isAiSupervisionTicket(ticket)
+        : isAiHandlingTicket(ticket);
+
+    if (!inAiScope) {
       return false;
     }
 
-    if (superUser || supervision || profile === "admin") {
+    if (bypassQueueScope) {
       return true;
     }
 
@@ -56,13 +68,31 @@ export const shouldShowTicketInList = ({
     });
   }
 
-  if (
-    !ticketMatchesSelectedQueues(ticket, selectedQueueIds, {
-      supervision,
-      listMode
-    })
-  ) {
-    return false;
+  if (!bypassQueueScope) {
+    if (
+      !ticketMatchesSelectedQueues(ticket, selectedQueueIds, {
+        supervision,
+        listMode
+      })
+    ) {
+      return false;
+    }
+  }
+
+  if (bypassQueueScope) {
+    if (status === "pending") {
+      return ticket.status === "pending";
+    }
+
+    if (status === "open") {
+      return ticket.status === "open";
+    }
+
+    if (status && ticket.status !== status) {
+      return false;
+    }
+
+    return true;
   }
 
   if (supervision || superUser) {

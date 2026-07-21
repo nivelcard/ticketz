@@ -56,6 +56,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.5.12] — 2026-07-20
+
+### Corrigido
+
+- **Admin master não acha conversas IA:** aba IA usa filtro `ai_supervision` (qualquer ticket com IA ativa, inclusive já assumido por humano como Thiago)
+- **Filtro de filas:** super/admin ignora filas selecionadas em todas as abas (Atendendo, Aguardando, IA)
+- **Backend:** novo filtro `ai_supervision` em `ListTicketsService`
+
+### Manual
+
+- Versão manual **1.5.12**
+
+---
+
 ## [1.5.11] — 2026-07-20
 
 ### Corrigido

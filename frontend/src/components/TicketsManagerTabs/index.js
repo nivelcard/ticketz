@@ -408,7 +408,7 @@ const TicketsManagerTabs = () => {
           />
           <TicketsList
             listMode="ai"
-            aiFilter="ai_handling"
+            aiFilter={isMasterAdmin ? "ai_supervision" : "ai_handling"}
             supervision={isMasterAdmin}
             selectedQueueIds={selectedQueueIds}
             updateCount={val => setAiCount(val)}

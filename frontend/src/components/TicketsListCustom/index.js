@@ -254,7 +254,8 @@ const TicketsListCustom = props => {
         profile,
         showAll,
         userId: user?.id,
-        superUser: user?.super
+        superUser: user?.super,
+        aiFilter
       })
     );
 
@@ -268,7 +269,8 @@ const TicketsListCustom = props => {
     profile,
     showAll,
     user?.id,
-    user?.super
+    user?.super,
+    aiFilter
   ]);
 
   useEffect(() => {
@@ -286,7 +288,8 @@ const TicketsListCustom = props => {
           profile,
           showAll,
           userId: user?.id,
-          superUser: user?.super
+          superUser: user?.super,
+          aiFilter
         })
       ) {
         return false;
@@ -474,7 +477,8 @@ const TicketsListCustom = props => {
                     profile,
                     showAll,
                     userId: user?.id,
-                    superUser: user?.super
+                    superUser: user?.super,
+                    aiFilter
                   })
                 )
                 .forEach(ticket => {
