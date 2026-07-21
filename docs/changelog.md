@@ -56,6 +56,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.5.10] — 2026-07-20
+
+### Corrigido
+
+- **Produção sem tickets:** deploy patch omitia `helpers/canViewTicket.js` — heavy routes falhavam com `Cannot find module '../helpers/canViewTicket'` e `/tickets` retornava 503 permanente
+- **PATCH_PATHS:** inclui `canViewTicket`, `isAdmin`, `SessionController`, `contactRoutes`
+
+### Manual
+
+- Versão manual **1.5.10**
+
+---
+
 ## [1.5.9] — 2026-07-20
 
 ### Corrigido
