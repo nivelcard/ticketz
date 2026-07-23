@@ -283,7 +283,7 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
       e.stopPropagation();
     }
     try {
-      if (isHandoffPendingTicket(ticket)) {
+      if (isHandoffPendingTicket(ticket) || isAiHandlingTicket(ticket)) {
         await api.post(`/tickets/${id}/ai/assume`);
       } else {
         await api.put(`/tickets/${id}`, {

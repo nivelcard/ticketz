@@ -70,6 +70,14 @@ const toastError = err => {
     return "Já existe um atendimento aberto para este contato. Use a aba Aguardando ou Atendendo.";
   }
 
+  if (
+    typeof err !== "string" &&
+    err?.response?.status === 403 &&
+    /^Request failed with status code 403$/i.test(errorMsg)
+  ) {
+    return i18n.t("backendErrors.ERR_NO_PERMISSION");
+  }
+
   if (errorMsg) {
     const displayMsg =
       errorMsg === "Network Error"

@@ -24,6 +24,7 @@ import { getJidOf } from "../WbotServices/getJidOf";
 import Queue from "../../models/Queue";
 import { _t } from "../TranslationServices/i18nService";
 import { logAiOperationalEvent } from "../AiServices/AiOperationalLogService";
+import { isAiHandlingTicket } from "../AiServices/AiHelpers";
 
 export interface UpdateTicketData {
   status?: string;
@@ -215,14 +216,16 @@ const UpdateTicketService = async ({
     const oldUserId = ticket.user?.id;
     const oldQueueId = ticket.queueId;
 
-    // only admin can accept pending tickets that have no queue (except IA handoff)
+    // only admin can accept pending tickets that have no queue (except IA handoff/assume)
     if (!oldQueueId && userId && oldStatus === "pending" && status === "open") {
       const acceptUser = await User.findByPk(userId);
       const isAiHandoffAccept = Boolean(ticket.aiHandoff);
+      const isAiHandlingAccept = isAiHandlingTicket(ticket);
       if (
         acceptUser.profile !== "admin" &&
         !acceptUser.super &&
-        !isAiHandoffAccept
+        !isAiHandoffAccept &&
+        !isAiHandlingAccept
       ) {
         throw new AppError("ERR_NO_PERMISSION", 403);
       }

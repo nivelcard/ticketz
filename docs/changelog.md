@@ -6,6 +6,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.5.24] — 2026-07-23
+
+### Corrigido
+
+- **403 ao assumir ticket da IA:** `UpdateTicketService` permitia aceite `pending→open` sem fila só para admin ou handoff; tickets `Atendido pela IA` (`isAiHandlingTicket`) agora passam no gate. Frontend usa `POST /tickets/:id/ai/assume` também nesse estado e oculta botão Aceitar genérico para tickets da IA.
+
+---
+
 ## [1.5.23] — 2026-07-23
 
 ### Corrigido

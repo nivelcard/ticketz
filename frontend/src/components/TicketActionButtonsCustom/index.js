@@ -29,6 +29,7 @@ import {
   canAssumeFromBot,
   canAcceptTicket,
   canReleaseTicketToAi,
+  isAiHandlingTicket,
   isHandoffPendingTicket,
   getTicketListColumn
 } from "../../helpers/aiTicketStatus";
@@ -258,7 +259,7 @@ const TicketActionButtonsCustom = ({
     setLoading(true);
     try {
       let data;
-      if (isHandoffPendingTicket(ticket)) {
+      if (isHandoffPendingTicket(ticket) || isAiHandlingTicket(ticket)) {
         ({ data } = await api.post(`/tickets/${ticket.id}/ai/assume`));
       } else {
         ({ data } = await api.put(`/tickets/${ticket.id}`, {

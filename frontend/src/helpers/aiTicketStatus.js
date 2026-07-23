@@ -76,7 +76,11 @@ export const canAcceptTicket = (ticket, user) => {
   if (ticket?.operationalState?.allowedActions) {
     return ticket.operationalState.allowedActions.accept;
   }
-  return ticket?.status === "pending" && !ticket?.userId;
+  return (
+    ticket?.status === "pending" &&
+    !ticket?.userId &&
+    !isAiHandlingTicket(ticket)
+  );
 };
 
 export const canReleaseTicketToAi = (ticket, user) => {

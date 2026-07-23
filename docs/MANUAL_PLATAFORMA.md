@@ -973,6 +973,7 @@ Componentes em `backend/src/services/AiServices/Triage/`:
 - Handoff **definitivo** (`aiHandoffMode=definitive`): IA para (`aiPaused=true`).
 - `aiHandoffOriginalReason` preserva motivo original; assunção humana grava `aiHumanAssumedAt/By` sem sobrescrever motivo original na UI.
 - Assunção manual (`assumeTicketFromBot`) define `aiHandoffMode=definitive` e `aiPaused=true` — a IA **não** responde mais ao cliente; cabe ao atendente humano.
+- Atendentes comuns podem **assumir** tickets em `Atendido pela IA` (sem fila) via `POST /tickets/:id/ai/assume`; o gate legado de `UpdateTicketService` (aceite `pending→open` sem fila) também reconhece `isAiHandlingTicket`, evitando 403 para não-admin.
 - Respostas outbound da IA passam por `sanitizeAiOutboundText` (`ProcessInboundMessageService`) para remover frases proativas de transferência/humano que o modelo possa gerar apesar das regras do prompt.
 - Timeline auditável em `AiTicketTimelineEvents` com `correlationId`.
 
