@@ -23,6 +23,12 @@ import {
   CaseCompletenessSnapshot
 } from "./Triage/AiTriageTypes";
 import { getAiScheduleContext } from "./AiScheduleContextService";
+import {
+  evaluateCaseCompleteness,
+  shouldBlockAutomaticHandoff
+} from "./Triage/CaseCompletenessEngine";
+import { isTriageV2EnabledForCompany } from "./Triage/AiTriageFeatureFlag";
+import { detectHumanHandoffRequest } from "./AiHelpers";
 
 type HandoffParams = {
   ticket: Ticket;
@@ -93,8 +99,46 @@ const HandoffToHumanService = async ({
 }: HandoffParams): Promise<Ticket> => {
   const resolvedReason = normalizeHandoffReason(reason, handoffReason);
   const scheduleContext = await getAiScheduleContext(ticket);
-  const effectiveMode: AiHandoffMode =
-    handoffMode === "operational" ? "operational" : "definitive";
+  const explicitHumanRequest =
+    resolvedReason === AI_HANDOFF_REASONS.customer_requested_human &&
+    detectHumanHandoffRequest(userMessage);
+  const isSensitive = resolvedReason === AI_HANDOFF_REASONS.sensitive_subject;
+
+  if (await isTriageV2EnabledForCompany(ticket.companyId)) {
+    const snapshot =
+      caseCompleteness ||
+      evaluateCaseCompleteness({
+        latestMessage: userMessage,
+        conversationText: conversationText || userMessage,
+        investigationRound: Number((ticket as any).aiInvestigationRound || 0)
+      });
+
+    if (
+      shouldBlockAutomaticHandoff(snapshot, {
+        explicitHumanRequest,
+        sensitive: isSensitive
+      })
+    ) {
+      logger.warn(
+        {
+          ticketId: ticket.id,
+          reason: resolvedReason,
+          investigationRound: snapshot.investigationRound,
+          isVagueStatement: snapshot.isVagueStatement
+        },
+        "Handoff blocked until case has enough diagnostic context"
+      );
+      throw new Error(
+        `Handoff blocked: ticket ${ticket.id} needs more customer context before transfer`
+      );
+    }
+  }
+
+  const effectiveMode: AiHandoffMode = scheduleContext.inBusinessHours
+    ? "definitive"
+    : handoffMode === "operational"
+      ? "operational"
+      : "definitive";
 
   const routing = await ResolveHandoffQueueService({
     companyId: ticket.companyId,

@@ -1,6 +1,6 @@
 # Manual Oficial da Plataforma Ticketz
 
-**Versão:** 1.5.12 — auditada contra o código  
+**Versão:** 1.5.16 — auditada contra o código  
 **Data:** julho/2026  
 **Status:** documentação oficial — mantida por rule permanente  
 **Repositório:** `ticketz/` (backend + frontend independentes)  
@@ -927,7 +927,11 @@ Componentes em `backend/src/services/AiServices/Triage/`:
 **Regras principais:**
 
 - Mensagens genéricas (`Estou com problema`, `Não consigo entrar`) **não** geram handoff imediato.
-- Handoff **operacional** (`aiHandoffMode=operational`): ticket entra na fila, IA continua (`canAiEngageTicket`), sem mensagem legada de fora do horário (`aiSkipLegacyOutOfHoursOnHandoff`).
+- Saudação pura (`Oi`, `Olá`, `Bom dia`) na **primeira rodada** recebe cumprimento por horário + *Em que posso ajudar?* (`buildTimeBasedGreeting`).
+- Handoff automático (tool `request_human_handoff`, baixa confiança, sem base) exige **mínimo 2 rodadas de investigação** e caso `caseReadyForHandoff`; pedido explícito de humano ou assunto sensível continuam liberados.
+- Após handoff (`aiHandoff=true`, `status=pending`, sem `userId`), o ticket aparece na aba **Aguardando** — inclusive handoff operacional fora do horário.
+- Em horário comercial, handoff humano usa modo **definitivo** (`aiPaused=true`).
+- Handoff **operacional** (`aiHandoffMode=operational`, fora do horário): ticket entra na fila, IA pode continuar (`canAiEngageTicket`), sem mensagem legada de fora do horário (`aiSkipLegacyOutOfHoursOnHandoff`).
 - Handoff **definitivo** (`aiHandoffMode=definitive`): IA para (`aiPaused=true`).
 - `aiHandoffOriginalReason` preserva motivo original; assunção humana grava `aiHumanAssumedAt/By` sem sobrescrever motivo original na UI.
 - Assunção manual (`assumeTicketFromBot`) define `aiHandoffMode=definitive` e `aiPaused=true` — a IA **não** responde mais ao cliente; cabe ao atendente humano.

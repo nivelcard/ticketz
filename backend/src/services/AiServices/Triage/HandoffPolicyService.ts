@@ -6,7 +6,8 @@ import { isTransientAiError } from "../isTransientAiError";
 import {
   buildInvestigationQuestion,
   evaluateCaseCompleteness,
-  isVagueCustomerStatement
+  isVagueCustomerStatement,
+  shouldBlockAutomaticHandoff
 } from "./CaseCompletenessEngine";
 import { getAiTriageConfig } from "./AiTriageConfigService";
 import {
@@ -30,11 +31,12 @@ export type HandoffEvaluationContext = {
 };
 
 const buildInvestigateDecision = (
-  snapshot: CaseCompletenessSnapshot
+  snapshot: CaseCompletenessSnapshot,
+  latestMessage = ""
 ): HandoffPolicyDecision => ({
   action: "investigate",
   handoffMode: "none",
-  investigationQuestion: buildInvestigationQuestion(snapshot)
+  investigationQuestion: buildInvestigationQuestion(snapshot, latestMessage)
 });
 
 const buildConfirmHandoffDecision = (
@@ -101,7 +103,11 @@ export const evaluateHandoffPolicy = async (
     }
 
     if (snapshot.investigationRound < config.maxInvestigationRounds) {
-      return buildInvestigateDecision(snapshot);
+      return buildInvestigateDecision(snapshot, context.userText);
+    }
+
+    if (shouldBlockAutomaticHandoff(snapshot)) {
+      return buildInvestigateDecision(snapshot, context.userText);
     }
 
     return buildConfirmHandoffDecision(schedule, "provider_error");
@@ -115,11 +121,14 @@ export const evaluateHandoffPolicy = async (
       snapshot.isVagueStatement ||
       snapshot.investigationRound < config.maxInvestigationRounds
     ) {
-      return buildInvestigateDecision(snapshot);
+      return buildInvestigateDecision(snapshot, context.userText);
     }
 
-    if (!snapshot.caseReadyForHandoff) {
-      return buildInvestigateDecision(snapshot);
+    if (
+      shouldBlockAutomaticHandoff(snapshot) ||
+      !snapshot.caseReadyForHandoff
+    ) {
+      return buildInvestigateDecision(snapshot, context.userText);
     }
 
     return buildConfirmHandoffDecision(schedule, "no_knowledge_found");
@@ -133,22 +142,25 @@ export const evaluateHandoffPolicy = async (
       isVagueCustomerStatement(context.userText) ||
       snapshot.investigationRound < config.maxInvestigationRounds
     ) {
-      return buildInvestigateDecision(snapshot);
+      return buildInvestigateDecision(snapshot, context.userText);
     }
 
     if ((context.confidenceScore || 0) >= config.minConfidenceForHandoff) {
       return { action: "none", handoffMode: "none" };
     }
 
-    if (!snapshot.caseReadyForHandoff) {
-      return buildInvestigateDecision(snapshot);
+    if (
+      shouldBlockAutomaticHandoff(snapshot) ||
+      !snapshot.caseReadyForHandoff
+    ) {
+      return buildInvestigateDecision(snapshot, context.userText);
     }
 
     return buildConfirmHandoffDecision(schedule, "low_confidence");
   }
 
   if (snapshot.isVagueStatement) {
-    return buildInvestigateDecision(snapshot);
+    return buildInvestigateDecision(snapshot, context.userText);
   }
 
   return { action: "none", handoffMode: "none" };

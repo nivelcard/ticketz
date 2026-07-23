@@ -19,6 +19,7 @@ import {
   buildAgentIdentityReply,
   buildHandoffConfirmationQuestion
 } from "./AiHelpers";
+import { isVagueCustomerStatement } from "./Triage/CaseCompletenessEngine";
 import {
   buildAiSchedulePromptBlock,
   getAiScheduleContext
@@ -543,6 +544,27 @@ const ProcessInboundMessageService = async ({
 
       if (handledByTriage) {
         return;
+      }
+
+      if (
+        isVagueCustomerStatement(userText) &&
+        Number((ticket as any).aiInvestigationRound || 0) < 2
+      ) {
+        const forcedInvestigation = await runTriageGate({
+          companyId,
+          ticket,
+          agent,
+          userText,
+          conversationText,
+          messageId: primaryMessageId,
+          messages,
+          proposedReason: AI_HANDOFF_REASONS.low_confidence,
+          confidenceScore: 0
+        });
+
+        if (forcedInvestigation) {
+          return;
+        }
       }
     }
 

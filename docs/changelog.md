@@ -6,6 +6,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.5.16] — 2026-07-23
+
+### Corrigido
+
+- **IA triagem:** saudação inicial por horário (`Olá, boa tarde! Em que posso ajudar?`) em vez de pergunta genérica de módulo após `Oi`
+- **Handoff precoce:** bloqueio de transferência automática até coleta mínima de contexto (2 rodadas + `caseReadyForHandoff`); tool `request_human_handoff` valida completude do caso
+- **Aba IA após transferência:** tickets com `aiHandoff` em `pending` passam para **Aguardando** no frontend e backend (`isHandoffPendingTicketState`, `isAiHandlingTicket`)
+- **Horário comercial:** handoff humano força modo definitivo (`aiPaused=true`)
+
+### Documentação
+
+- Manual §30 (triagem/handoff/listagem) atualizado
+
+---
+
 ## [1.5.15] — 2026-07-23
 
 ### Corrigido

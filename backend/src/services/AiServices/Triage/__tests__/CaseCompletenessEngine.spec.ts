@@ -1,7 +1,10 @@
 import {
   buildInvestigationQuestion,
+  buildTimeBasedGreeting,
   evaluateCaseCompleteness,
-  isVagueCustomerStatement
+  isPureGreetingMessage,
+  isVagueCustomerStatement,
+  shouldBlockAutomaticHandoff
 } from "../CaseCompletenessEngine";
 
 describe("CaseCompletenessEngine", () => {
@@ -27,7 +30,31 @@ describe("CaseCompletenessEngine", () => {
 
     expect(snapshot.isVagueStatement).toBe(true);
     expect(snapshot.caseReadyForHandoff).toBe(false);
-    expect(buildInvestigationQuestion(snapshot)).toContain("sistema ou módulo");
+    expect(buildInvestigationQuestion(snapshot, "Estou com um problema.")).toContain(
+      "sistema ou módulo"
+    );
+  });
+
+  it("returns time-based greeting for pure hello messages", () => {
+    const snapshot = evaluateCaseCompleteness({
+      latestMessage: "Oi",
+      conversationText: "user: Oi"
+    });
+
+    expect(isPureGreetingMessage("Oi")).toBe(true);
+    expect(buildInvestigationQuestion(snapshot, "Oi")).toBe(
+      `${buildTimeBasedGreeting()} Em que posso ajudar?`
+    );
+  });
+
+  it("blocks automatic handoff until enough investigation rounds", () => {
+    const snapshot = evaluateCaseCompleteness({
+      latestMessage: "Oi",
+      conversationText: "user: Oi",
+      investigationRound: 1
+    });
+
+    expect(shouldBlockAutomaticHandoff(snapshot)).toBe(true);
   });
 
   it("collects missing information progressively for login cases", () => {

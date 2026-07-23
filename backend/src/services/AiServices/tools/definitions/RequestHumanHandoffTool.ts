@@ -10,6 +10,14 @@ import HandoffToHumanService from "../../HandoffToHumanService";
 import { AI_HANDOFF_REASONS } from "../../AiOperationalTypes";
 import { getAiInboundQueue } from "../../AiInboundQueueService";
 import { logger } from "../../../../utils/logger";
+import {
+  detectHumanHandoffRequest,
+  detectSensitiveTopic
+} from "../../AiHelpers";
+import {
+  evaluateCaseCompleteness,
+  shouldBlockAutomaticHandoff
+} from "../../Triage/CaseCompletenessEngine";
 
 const definition: ToolDefinition = {
   id: "request_human_handoff",
@@ -121,6 +129,34 @@ export const RequestHumanHandoffTool: AiTool = {
           success: false,
           output: JSON.stringify({ error: "agent_not_found" }),
           errorCode: "agent_not_found"
+        };
+      }
+
+      const userText = context.userText || "";
+      const snapshot = evaluateCaseCompleteness({
+        latestMessage: userText,
+        conversationText: context.conversationText || userText,
+        investigationRound: Number((ticket as any).aiInvestigationRound || 0)
+      });
+      const explicitHumanRequest = detectHumanHandoffRequest(userText);
+      const sensitive = detectSensitiveTopic(userText);
+
+      if (
+        shouldBlockAutomaticHandoff(snapshot, {
+          explicitHumanRequest,
+          sensitive
+        })
+      ) {
+        return {
+          success: false,
+          output: JSON.stringify({
+            error: "case_incomplete",
+            message:
+              "Colete mais detalhes do problema antes de transferir para um humano.",
+            missingInformation: snapshot.missingInformation,
+            investigationRound: snapshot.investigationRound
+          }),
+          errorCode: "case_incomplete"
         };
       }
 

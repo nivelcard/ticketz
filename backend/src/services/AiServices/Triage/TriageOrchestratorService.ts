@@ -76,7 +76,7 @@ export const sendInvestigationResponse = async ({
   userText: string;
 }): Promise<void> => {
   const question =
-    buildInvestigationQuestion(snapshot) ||
+    buildInvestigationQuestion(snapshot, userText) ||
     "Pode me explicar um pouco mais sobre o que aconteceu?";
 
   const lastOutbound = await Message.findOne({
@@ -87,6 +87,8 @@ export const sendInvestigationResponse = async ({
 
   if (
     lastOutbound?.body?.trim() === question.trim() ||
+    (lastOutbound?.body?.includes("Em que posso ajudar") &&
+      question.includes("Em que posso ajudar")) ||
     (lastOutbound?.body?.includes("Pode me explicar o que está acontecendo") &&
       question.includes("Pode me explicar o que está acontecendo"))
   ) {

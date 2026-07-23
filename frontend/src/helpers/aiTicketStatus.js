@@ -10,18 +10,29 @@ const HANDOFF_REASON_LABELS = {
 export const getHandoffReasonLabel = reason =>
   HANDOFF_REASON_LABELS[reason] || reason || null;
 
-export const isAiHandlingTicket = ticket =>
-  !!ticket?.aiAgentId &&
-  (!ticket?.aiHandoff || ticket?.aiHandoffMode === "operational") &&
-  !ticket?.aiPaused &&
-  !ticket?.userId &&
-  ticket?.status !== "closed";
+export const isAiHandlingTicket = ticket => {
+  if (
+    !ticket?.aiAgentId ||
+    ticket?.userId ||
+    ticket?.status === "closed" ||
+    ticket?.aiPaused
+  ) {
+    return false;
+  }
+
+  if (ticket?.aiHandoff && ticket?.status === "pending") {
+    return false;
+  }
+
+  if (ticket?.aiHandoff && ticket?.aiHandoffMode !== "operational") {
+    return false;
+  }
+
+  return true;
+};
 
 export const isHandoffPendingTicket = ticket =>
-  !!ticket?.aiHandoff &&
-  ticket?.aiHandoffMode !== "operational" &&
-  ticket?.status === "pending" &&
-  !ticket?.userId;
+  !!ticket?.aiHandoff && ticket?.status === "pending" && !ticket?.userId;
 
 export const isHumanHandlingTicket = ticket =>
   !!ticket?.userId &&

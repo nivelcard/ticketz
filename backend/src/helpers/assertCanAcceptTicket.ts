@@ -4,10 +4,7 @@ import Ticket from "../models/Ticket";
 import User from "../models/User";
 
 export const isHandoffPendingTicketState = (ticket: Ticket): boolean =>
-  !!ticket.aiHandoff &&
-  ticket.aiHandoffMode !== "operational" &&
-  ticket.status === "pending" &&
-  !ticket.userId;
+  !!ticket.aiHandoff && ticket.status === "pending" && !ticket.userId;
 
 export const assertCanAcceptTicket = async (
   ticket: Ticket,
@@ -27,7 +24,9 @@ export const assertCanAcceptTicket = async (
 
   const needsQueueCheck =
     ticket.queueId ||
-    (!ticket.queueId && ticket.status === "pending" && !isHandoffPendingTicketState(ticket));
+    (!ticket.queueId &&
+      ticket.status === "pending" &&
+      !isHandoffPendingTicketState(ticket));
 
   if (!needsQueueCheck && isHandoffPendingTicketState(ticket)) {
     return;

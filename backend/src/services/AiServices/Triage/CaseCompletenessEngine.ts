@@ -1,7 +1,11 @@
 import { CaseCompletenessSnapshot } from "./AiTriageTypes";
 
+const PURE_GREETING_PATTERNS = [
+  /^\s*(oi|ol[aá]|bom dia|boa tarde|boa noite|e a[ií]|tudo bem)\s*[!.?]*\s*$/i
+];
+
 const VAGUE_PATTERNS = [
-  /^\s*(oi|ol[aá]|bom dia|boa tarde|boa noite|e a[ií]|tudo bem)\s*[!.?]*\s*$/i,
+  ...PURE_GREETING_PATTERNS,
   /^\s*(estou com (um )?problema|tenho (um )?problema|preciso de ajuda)\s*[!.?]*\s*$/i,
   /^\s*(n[aã]o est[aá] funcionando|n[aã]o funciona|parou|deu erro|deu pau)\s*[!.?]*\s*$/i,
   /^\s*(n[aã]o consigo entrar|n[aã]o consigo acessar|n[aã]o consigo logar)\s*[!.?]*\s*$/i,
@@ -96,6 +100,56 @@ const countFilled = (
   >
 ): number => {
   return Object.values(snapshot).filter(Boolean).length;
+};
+
+export const isPureGreetingMessage = (text: string): boolean =>
+  PURE_GREETING_PATTERNS.some(pattern => pattern.test(text.trim()));
+
+export const buildTimeBasedGreeting = (
+  timezone = "America/Sao_Paulo"
+): string => {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      hour12: false,
+      timeZone: timezone
+    }).format(new Date())
+  );
+
+  if (hour >= 5 && hour < 12) {
+    return "Olá, bom dia!";
+  }
+
+  if (hour >= 12 && hour < 18) {
+    return "Olá, boa tarde!";
+  }
+
+  return "Olá, boa noite!";
+};
+
+export const MIN_INVESTIGATION_ROUNDS_BEFORE_HANDOFF = 2;
+
+export const shouldBlockAutomaticHandoff = (
+  snapshot: CaseCompletenessSnapshot,
+  {
+    explicitHumanRequest = false,
+    sensitive = false,
+    minRounds = MIN_INVESTIGATION_ROUNDS_BEFORE_HANDOFF
+  }: {
+    explicitHumanRequest?: boolean;
+    sensitive?: boolean;
+    minRounds?: number;
+  } = {}
+): boolean => {
+  if (explicitHumanRequest || sensitive) {
+    return false;
+  }
+
+  return (
+    snapshot.isVagueStatement ||
+    snapshot.investigationRound < minRounds ||
+    !snapshot.caseReadyForHandoff
+  );
 };
 
 export const isVagueCustomerStatement = (text: string): boolean => {
@@ -231,10 +285,18 @@ export const evaluateCaseCompleteness = ({
 };
 
 export const buildInvestigationQuestion = (
-  snapshot: CaseCompletenessSnapshot
+  snapshot: CaseCompletenessSnapshot,
+  latestMessage = ""
 ): string => {
   if (snapshot.isVagueStatement) {
-    return "Claro, vou ajudar você. Pode me explicar o que está acontecendo e em qual sistema ou módulo?";
+    if (
+      snapshot.investigationRound === 0 &&
+      isPureGreetingMessage(latestMessage)
+    ) {
+      return `${buildTimeBasedGreeting()} Em que posso ajudar?`;
+    }
+
+    return "Entendi. Pode me explicar o que está acontecendo e em qual sistema ou módulo?";
   }
 
   const next = snapshot.missingInformation[0];

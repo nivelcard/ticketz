@@ -1,8 +1,5 @@
 import Ticket from "../../models/Ticket";
-import {
-  canAiEngageTicket,
-  isAiHandlingTicket
-} from "../AiServices/AiHelpers";
+import { canAiEngageTicket, isAiHandlingTicket } from "../AiServices/AiHelpers";
 import { isHandoffPendingTicketState } from "../../helpers/assertCanAcceptTicket";
 
 export type TicketOwnerType = "ai" | "human" | "queue" | "closed";
@@ -70,8 +67,26 @@ export const buildTicketOperationalState = (
         accept: false,
         releaseToAi: Boolean(
           viewerIsOwner &&
-            (ticket.aiAgentId || ticket.aiStartedAt || ticket.aiHandoff)
+          (ticket.aiAgentId || ticket.aiStartedAt || ticket.aiHandoff)
         ),
+        reopen: false
+      }
+    };
+  }
+
+  if (handoffPending) {
+    return {
+      ownerType: "queue",
+      label: "Aguardando atendente",
+      listColumn: "pending",
+      canAiRespond: canAiEngageTicket(ticket),
+      isAiActive: false,
+      isHandoffPending: true,
+      isHumanHandling: false,
+      allowedActions: {
+        assume: true,
+        accept: true,
+        releaseToAi: false,
         reopen: false
       }
     };
@@ -93,24 +108,6 @@ export const buildTicketOperationalState = (
         reopen: false
       },
       blockReason: ticket.aiPaused ? "IA pausada" : null
-    };
-  }
-
-  if (handoffPending) {
-    return {
-      ownerType: "queue",
-      label: "Aguardando atendente",
-      listColumn: "pending",
-      canAiRespond: false,
-      isAiActive: false,
-      isHandoffPending: true,
-      isHumanHandling: false,
-      allowedActions: {
-        assume: true,
-        accept: true,
-        releaseToAi: false,
-        reopen: false
-      }
     };
   }
 
@@ -158,7 +155,7 @@ export const serializeTicketWithOperationalState = (
 ): Record<string, unknown> => {
   const plain = ticket.get
     ? (ticket.get({ plain: true }) as unknown as Record<string, unknown>)
-    : ({ ...(ticket as unknown as Record<string, unknown>) });
+    : { ...(ticket as unknown as Record<string, unknown>) };
 
   return {
     ...plain,

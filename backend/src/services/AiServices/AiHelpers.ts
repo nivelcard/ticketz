@@ -56,12 +56,26 @@ export const canAiEngageTicket = (ticket: Ticket): boolean => {
   return true;
 };
 
-export const isAiHandlingTicket = (ticket: Ticket): boolean =>
-  !!ticket.aiAgentId &&
-  (!ticket.aiHandoff || ticket.aiHandoffMode === "operational") &&
-  !ticket.aiPaused &&
-  !ticket.userId &&
-  ticket.status !== "closed";
+export const isAiHandlingTicket = (ticket: Ticket): boolean => {
+  if (
+    !ticket.aiAgentId ||
+    ticket.userId ||
+    ticket.status === "closed" ||
+    ticket.aiPaused
+  ) {
+    return false;
+  }
+
+  if (ticket.aiHandoff && ticket.status === "pending") {
+    return false;
+  }
+
+  if (ticket.aiHandoff && ticket.aiHandoffMode !== "operational") {
+    return false;
+  }
+
+  return true;
+};
 
 export const shouldSuppressHumanNotification = (ticket: Ticket): boolean =>
   isAiHandlingTicket(ticket);
@@ -386,8 +400,7 @@ export const detectHandoffConfirmationAccept = (message: string): boolean => {
   return (
     /^(sim|ok|pode|quero|prefiro|atendente|humano|transferir|passa|passe)\b/.test(
       text
-    ) ||
-    /\b(atendente|humano|transferir|passar para)\b/.test(text)
+    ) || /\b(atendente|humano|transferir|passar para)\b/.test(text)
   );
 };
 
