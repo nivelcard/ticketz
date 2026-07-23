@@ -69,6 +69,7 @@ PATCH_PATHS = [
     "models/KnowledgeChunk.js",
     "controllers/VersionController.js",
     "controllers/AiAgentController.js",
+    "controllers/AiToolController.js",
     "routes/versionRoutes.js",
     "routes/heavyRoutes.js",
     "services/TicketServices/UpdateTicketService.js",

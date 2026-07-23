@@ -1244,6 +1244,11 @@ const messages = {
         ERR_COPILOT_SUGGESTION_FAILED:
           "Could not generate AI suggestion. Please try again shortly.",
         ERR_AI_AGENT_NOT_FOUND: "No active AI agent found for this ticket.",
+        ERR_AI_INVALID_AGENT_ROLE: "Invalid AI agent role.",
+        ERR_AI_SINGLE_ORCHESTRATOR:
+          "Only one active orchestrator agent is allowed per company.",
+        ERR_AI_TOOLS_DISABLED:
+          "AI tools are disabled — the agent was saved without updating tools.",
         ERR_DELETE_WAPP_MSG: "Could not delete WhatsApp message.",
         ERR_EDITING_WAPP_MSG: "Could not edit WhatsApp message.",
         ERR_OTHER_OPEN_TICKET:

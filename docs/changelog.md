@@ -6,6 +6,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.5.14] — 2026-07-23
+
+### Corrigido
+
+- **Salvar agente IA (403):** sync de ferramentas não bloqueia mais o save quando `AI_TOOLS_ENABLED`/`aiToolsEnabled` estão desligados
+- **Salvar agente IA (400):** orquestrador não rejeita `specialty` herdada do formulário; update não mescla mais relações Sequelize no payload
+- **isAdmin:** super admin via JWT (`req.user.isSuper`) e código `ERR_NO_PERMISSION` traduzível
+
+---
+
 ## [1.5.13] — 2026-07-22
 
 ### Corrigido

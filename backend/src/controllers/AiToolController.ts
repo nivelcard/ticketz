@@ -70,7 +70,12 @@ export const updateAgentTools = async (
 
   const enabled = await isToolsEnabledForCompany(companyId);
   if (!enabled) {
-    throw new AppError("AI tools are disabled", 403);
+    return res.json({
+      agentId,
+      tools: [],
+      skipped: true,
+      reason: "ERR_AI_TOOLS_DISABLED"
+    });
   }
 
   const tools = Array.isArray(req.body.tools) ? req.body.tools : [];

@@ -58,21 +58,14 @@ const assertSingleOrchestrator = async ({
   });
 
   if (existing) {
-    throw new AppError(
-      "Only one active orchestrator agent is allowed per company",
-      400
-    );
+    throw new AppError("ERR_AI_SINGLE_ORCHESTRATOR", 400);
   }
 };
 
 const normalizeAgentPayload = (body: Record<string, unknown>) => {
   const role = String(body.role || "legacy");
   if (!VALID_ROLES.has(role)) {
-    throw new AppError("Invalid agent role", 400);
-  }
-
-  if (role === "orchestrator" && body.specialty) {
-    throw new AppError("Orchestrator agents cannot have specialty", 400);
+    throw new AppError("ERR_AI_INVALID_AGENT_ROLE", 400);
   }
 
   return {
@@ -178,7 +171,27 @@ export const update = async (
 
   const { queueLinks, knowledgeBaseIds, knowledgeBaseLinks, ...rawBody } =
     req.body;
-  const payload = normalizeAgentPayload({ ...agent.toJSON(), ...rawBody });
+  const payload = normalizeAgentPayload({
+    name: agent.name,
+    active: agent.active,
+    role: agent.role,
+    specialty: agent.specialty,
+    provider: agent.provider,
+    textModel: agent.textModel,
+    visionModel: agent.visionModel,
+    transcriptionModel: agent.transcriptionModel,
+    basePrompt: agent.basePrompt,
+    temperature: agent.temperature,
+    maxTokens: agent.maxTokens,
+    fallbackQueueId: agent.fallbackQueueId,
+    handoffMessage: agent.handoffMessage,
+    ackEnabled: agent.ackEnabled,
+    ackMessage: agent.ackMessage,
+    routingDescription: agent.routingDescription,
+    routingKeywords: agent.routingKeywords,
+    priority: agent.priority,
+    ...rawBody
+  });
 
   await assertSingleOrchestrator({
     companyId,

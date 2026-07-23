@@ -297,25 +297,33 @@ const AiAgents = () => {
 
       delete payload.routingKeywordsText;
 
+      if (form.role === "orchestrator") {
+        delete payload.specialty;
+        delete payload.knowledgeBaseIds;
+      }
+
+      let savedAgentId = editingId;
+
       if (editingId) {
         await api.put(`/ai/agents/${editingId}`, payload);
-        if (form.role !== "orchestrator") {
-          await api.put(`/ai/agents/${editingId}/tools`, {
-            tools: registeredTools.map(tool => ({
-              toolId: tool.id,
-              enabled: agentTools[tool.id] !== false
-            }))
-          });
-        }
       } else {
         const { data: created } = await api.post("/ai/agents", payload);
-        if (created?.id && form.role !== "orchestrator") {
-          await api.put(`/ai/agents/${created.id}/tools`, {
+        savedAgentId = created?.id;
+      }
+
+      if (savedAgentId && form.role !== "orchestrator") {
+        try {
+          await api.put(`/ai/agents/${savedAgentId}/tools`, {
             tools: registeredTools.map(tool => ({
               toolId: tool.id,
               enabled: agentTools[tool.id] !== false
             }))
           });
+        } catch (toolsErr) {
+          const toolsErrorCode = toolsErr?.response?.data?.error;
+          if (toolsErrorCode !== "ERR_AI_TOOLS_DISABLED") {
+            throw toolsErr;
+          }
         }
       }
 

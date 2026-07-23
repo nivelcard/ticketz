@@ -1398,6 +1398,11 @@ const messages = {
           "Não foi possível gerar sugestão da IA. Tente novamente em instantes.",
         ERR_AI_AGENT_NOT_FOUND:
           "Nenhum agente de IA ativo encontrado para este atendimento.",
+        ERR_AI_INVALID_AGENT_ROLE: "Papel do agente de IA inválido.",
+        ERR_AI_SINGLE_ORCHESTRATOR:
+          "Só pode existir um agente orquestrador ativo por empresa.",
+        ERR_AI_TOOLS_DISABLED:
+          "Ferramentas de IA desativadas — o agente foi salvo sem alterar ferramentas.",
         ERR_DELETE_WAPP_MSG: "Não foi possível excluir a mensagem do WhatsApp.",
         ERR_EDITING_WAPP_MSG: "Não foi possível editar a mensagem do WhatsApp.",
         ERR_OTHER_OPEN_TICKET: "Já existe um tíquete aberto para este contato.",
