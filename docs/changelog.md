@@ -6,6 +6,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.5.18] — 2026-07-23
+
+### Corrigido
+
+- **Orquestrador IA:** `ProcessInboundMessageService` sempre executa `resolveSpecialistAgent` (antes ignorado quando o agente vinha da fila inbound)
+- **KB vazia / alucinação:** fallback de contexto no modo orquestrador; removido keyword fixo `"fortmax webg3..."` em `KnowledgeContextService`
+- **Handoff implícito:** mensagens da IA simulando transferência (`detectImpliedHandoffMessage`) disparam handoff real e movem ticket para **Aguardando**
+- **Prompt bootstrap:** `EnsureAiFirstResponderService` preserva `basePrompt` existente do agente
+- **403 ao assumir:** `assertCanAcceptTicket` permite assumir tickets em handoff/IA quando o usuário tem `canViewTicket`, sem exigir fila errada
+- **Socket lista IA:** `websocketUpdateTicket` emite `operationalState` serializado para atualizar abas em tempo real
+
+### Documentação
+
+- Changelog §1.5.18; manual §30 pendente sincronização completa na entrega B2
+
+---
+
 ## [1.5.16] — 2026-07-23
 
 ### Corrigido

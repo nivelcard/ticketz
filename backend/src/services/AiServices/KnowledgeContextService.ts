@@ -190,11 +190,11 @@ export const buildKnowledgeContextForQuery = async ({
     );
   }
 
-  if (!merged.length) {
+  if (!merged.length && userText.trim().length >= 3) {
     merged = await searchKnowledgeChunksByText(
       companyId,
       knowledgeBaseIds,
-      "fortmax webg3 mercado 1998 esquadrias vidro",
+      userText,
       8
     );
   }

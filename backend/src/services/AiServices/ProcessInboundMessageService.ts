@@ -66,6 +66,7 @@ import {
 import { HandoffPolicyDecision } from "./Triage/AiTriageTypes";
 import { logAiTicketTimelineEvent } from "./Triage/AiTicketTimelineService";
 import { sanitizeAiOutboundText } from "./sanitizeAiOutboundText";
+import { responseMimicsHumanHandoff } from "./Triage/detectImpliedHandoffMessage";
 
 export type InboundMessageItem = {
   messageBody: string;
@@ -606,17 +607,15 @@ const ProcessInboundMessageService = async ({
       return;
     }
 
-    if (!providedAgent) {
-      const resolved = await resolveSpecialistAgent({
-        companyId,
-        ticket,
-        userText,
-        conversationSummary: conversationText,
-        messageId: primaryMessageId
-      });
-      agent = resolved.agent;
-      routingMeta = resolved.routing;
-    }
+    const resolved = await resolveSpecialistAgent({
+      companyId,
+      ticket,
+      userText,
+      conversationSummary: conversationText,
+      messageId: primaryMessageId
+    });
+    agent = resolved.agent;
+    routingMeta = resolved.routing;
 
     const orchestratorMode = await isOrchestratorEnabledForCompany(companyId);
 
@@ -692,8 +691,8 @@ const ProcessInboundMessageService = async ({
     const contextHint = contextBlock
       ? contextBlock
       : knowledgeContext.hasReadyDocuments
-        ? "Documentos existem na base, mas nenhum trecho foi recuperado. Responda com base no histórico e peça detalhes se necessário."
-        : "Base de conhecimento ainda sem documentos prontos. Responda com cordialidade e peça detalhes.";
+        ? "Documentos existem na base, mas nenhum trecho relevante foi recuperado para esta pergunta. Não invente fatos. Faça perguntas objetivas para entender o caso ou use a ferramenta de handoff se o cliente pedir humano."
+        : "A base de conhecimento ainda não tem documentos publicados para este tema. Não invente políticas, preços ou procedimentos. Seja cordial, peça detalhes específicos e não afirme transferência para humano sem acionar handoff.";
 
     const systemPrompt = buildAiSystemPrompt({
       agent,
@@ -797,6 +796,35 @@ const ProcessInboundMessageService = async ({
       hasReliableContext,
       responseLength: outboundText.length
     });
+
+    await ticket.reload({ include: ["contact", "queue", "whatsapp", "user"] });
+
+    if (
+      responseMimicsHumanHandoff(outboundText) &&
+      !ticket.aiHandoff &&
+      !ticket.userId
+    ) {
+      await HandoffToHumanService({
+        ticket,
+        agent,
+        userMessage: maskSensitiveLog(userText),
+        messageId: primaryMessageId,
+        handoffReason: AI_HANDOFF_REASONS.low_confidence,
+        reason: "implied_handoff_message",
+        conversationText,
+        usedChunks,
+        model: completion.model,
+        handoffMessageOverride: outboundText,
+        skipCustomerMessage: true
+      });
+
+      await SendWhatsAppMessage({
+        body: formatBody(outboundText, ticket),
+        ticket
+      });
+
+      return;
+    }
 
     const responseCost = estimateAiCostUsd(
       completion.model,

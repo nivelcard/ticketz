@@ -204,6 +204,14 @@ export const getKnowledgeBaseIdsForAgent = async (
   }
 
   if (orchestratorMode) {
+    const legacyIds = await getLegacyKnowledgeBaseIdsForAgent(
+      companyId,
+      agentId,
+      queueId
+    );
+    if (legacyIds.length) {
+      return legacyIds;
+    }
     return [];
   }
 
@@ -414,8 +422,13 @@ export const detectHandoffConfirmationDecline = (message: string): boolean => {
   );
 };
 
-export const buildAgentIdentityReply = (agentName: string): string =>
-  `Sou ${agentName}, assistente virtual da Fortmax. Estou aqui para ajudar com dúvidas sobre nossos sistemas. Como posso te ajudar hoje?`;
+export const buildAgentIdentityReply = (
+  agentName: string,
+  companyName?: string
+): string => {
+  const org = companyName?.trim() || "nossa equipe";
+  return `Sou ${agentName}, assistente virtual da ${org}. Estou aqui para ajudar. Como posso te ajudar hoje?`;
+};
 
 export const buildHandoffConfirmationQuestion = (): string =>
   "Não encontrei uma resposta segura na nossa base de conhecimento. Você prefere me explicar melhor sua necessidade ou prefere que eu passe para um atendente humano? Responda *explicar* ou *atendente*.";

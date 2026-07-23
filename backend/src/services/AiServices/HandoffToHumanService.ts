@@ -43,6 +43,8 @@ type HandoffParams = {
   handoffMode?: AiHandoffMode;
   skipLegacyOutOfHours?: boolean;
   caseCompleteness?: CaseCompletenessSnapshot;
+  handoffMessageOverride?: string;
+  skipCustomerMessage?: boolean;
 };
 
 const normalizeHandoffReason = (
@@ -95,7 +97,9 @@ const HandoffToHumanService = async ({
   conversationText,
   handoffMode = "definitive",
   skipLegacyOutOfHours = false,
-  caseCompleteness
+  caseCompleteness,
+  handoffMessageOverride,
+  skipCustomerMessage = false
 }: HandoffParams): Promise<Ticket> => {
   const resolvedReason = normalizeHandoffReason(reason, handoffReason);
   const scheduleContext = await getAiScheduleContext(ticket);
@@ -161,21 +165,24 @@ const HandoffToHumanService = async ({
   }
 
   const handoffMessage =
-    effectiveMode === "operational" && !scheduleContext.inBusinessHours
+    handoffMessageOverride?.trim() ||
+    (effectiveMode === "operational" && !scheduleContext.inBusinessHours
       ? "Não consegui concluir esta solução com segurança. Nosso suporte humano atende de segunda a sexta-feira, das 08h às 17h. Seu atendimento já ficou registrado e será analisado no próximo período disponível. Enquanto isso, posso continuar coletando informações ou ajudar em outras dúvidas."
       : agent.handoffMessage?.trim() ||
-        "Entendi. Para resolver isso com segurança, vou transferir seu atendimento para o setor responsável. Um atendente dará continuidade em instantes.";
+        "Entendi. Para resolver isso com segurança, vou transferir seu atendimento para o setor responsável. Um atendente dará continuidade em instantes.");
 
-  try {
-    await SendWhatsAppMessage({
-      body: formatBody(handoffMessage, ticket),
-      ticket
-    });
-  } catch (error) {
-    logger.error(
-      { error, ticketId: ticket.id },
-      "Failed to send handoff message"
-    );
+  if (!skipCustomerMessage) {
+    try {
+      await SendWhatsAppMessage({
+        body: formatBody(handoffMessage, ticket),
+        ticket
+      });
+    } catch (error) {
+      logger.error(
+        { error, ticketId: ticket.id },
+        "Failed to send handoff message"
+      );
+    }
   }
 
   const now = new Date();

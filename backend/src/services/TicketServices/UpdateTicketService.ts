@@ -4,6 +4,7 @@ import SetTicketMessagesAsRead from "../../helpers/SetTicketMessagesAsRead";
 import { getIO } from "../../libs/socket";
 import Ticket from "../../models/Ticket";
 import ShowTicketService from "./ShowTicketService";
+import { serializeTicketWithOperationalState } from "./TicketOperationalStateService";
 import { assertCanAcceptTicket } from "../../helpers/assertCanAcceptTicket";
 import SendWhatsAppMessage from "../WbotServices/SendWhatsAppMessage";
 import FindOrCreateATicketTrakingService from "./FindOrCreateATicketTrakingService";
@@ -114,7 +115,7 @@ export function websocketUpdateTicket(ticket: Ticket, moreChannels?: string[]) {
 
   ioStack.emit(`company-${ticket.companyId}-ticket`, {
     action: "update",
-    ticket
+    ticket: serializeTicketWithOperationalState(ticket)
   });
 }
 
@@ -178,11 +179,9 @@ const UpdateTicketService = async ({
     if (user && ticket.status !== "pending") {
       const isAiTakeover =
         !ticket.userId && userId && (ticket.aiAgentId || ticket.aiHandoff);
-      const isReopeningClosed =
-        ticket.status === "closed" && status === "open";
+      const isReopeningClosed = ticket.status === "closed" && status === "open";
       const isAssignedAgent =
-        ticket.userId &&
-        Number(ticket.userId) === Number(user.id);
+        ticket.userId && Number(ticket.userId) === Number(user.id);
 
       if (
         !isAiTakeover &&
@@ -220,7 +219,11 @@ const UpdateTicketService = async ({
     if (!oldQueueId && userId && oldStatus === "pending" && status === "open") {
       const acceptUser = await User.findByPk(userId);
       const isAiHandoffAccept = Boolean(ticket.aiHandoff);
-      if (acceptUser.profile !== "admin" && !acceptUser.super && !isAiHandoffAccept) {
+      if (
+        acceptUser.profile !== "admin" &&
+        !acceptUser.super &&
+        !isAiHandoffAccept
+      ) {
         throw new AppError("ERR_NO_PERMISSION", 403);
       }
     }

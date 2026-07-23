@@ -2,6 +2,8 @@ import AppError from "../errors/AppError";
 import Queue from "../models/Queue";
 import Ticket from "../models/Ticket";
 import User from "../models/User";
+import canViewTicket from "./canViewTicket";
+import { isAiHandlingTicket } from "../services/AiServices/AiHelpers";
 
 export const isHandoffPendingTicketState = (ticket: Ticket): boolean =>
   !!ticket.aiHandoff && ticket.status === "pending" && !ticket.userId;
@@ -22,13 +24,18 @@ export const assertCanAcceptTicket = async (
     throw new AppError("ERR_TICKET_ALREADY_ASSIGNED", 409);
   }
 
-  const needsQueueCheck =
-    ticket.queueId ||
-    (!ticket.queueId &&
-      ticket.status === "pending" &&
-      !isHandoffPendingTicketState(ticket));
+  if (isHandoffPendingTicketState(ticket)) {
+    return;
+  }
 
-  if (!needsQueueCheck && isHandoffPendingTicketState(ticket)) {
+  if (isAiHandlingTicket(ticket) && canViewTicket(ticket, user)) {
+    return;
+  }
+
+  const needsQueueCheck =
+    ticket.queueId || (!ticket.queueId && ticket.status === "pending");
+
+  if (!needsQueueCheck) {
     return;
   }
 
