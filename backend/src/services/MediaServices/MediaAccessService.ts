@@ -18,7 +18,8 @@ export const buildClientMediaUrl = async ({
   media: MessageMediaFile;
   user: User;
 }): Promise<string> => {
-  if (media.status !== "available" && media.status !== "pending") {
+  const status = media.status || "available";
+  if (status !== "available" && status !== "pending") {
     return `${backendBaseUrl()}/media/unavailable/${media.id}`;
   }
 

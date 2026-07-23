@@ -6,6 +6,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.5.22] — 2026-07-23
+
+### Corrigido
+
+- **500 em tickets:** schema de media lifecycle (`permanentDelete*` / `MessageMediaFiles.status`) agora é aplicado no `apply-db-schema` (idempotente)
+- **Deploy Contabo:** `verify-runtime-ready.js` bloqueia restart se faltar módulo npm ou coluna no banco
+- Listagem de mensagens não cai se resolução de URL de mídia falhar
+
+---
+
 ## [1.5.21] — 2026-07-23
 
 ### Corrigido

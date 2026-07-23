@@ -417,6 +417,7 @@ def main() -> int:
         enable_script = BACKEND / "scripts" / "enable-triage-v2-company.js"
         ensure_wa_script = BACKEND / "scripts" / "ensure-whatsapp-sessions.js"
         report_wa_script = BACKEND / "scripts" / "report-whatsapp-status.js"
+        verify_script = BACKEND / "scripts" / "verify-runtime-ready.js"
         for script in (
             reset_script,
             schema_script,
@@ -425,6 +426,7 @@ def main() -> int:
             enable_script,
             ensure_wa_script,
             report_wa_script,
+            verify_script,
         ):
             if script.is_file():
                 extra_scripts.append(script)
@@ -463,23 +465,36 @@ Start-Sleep 2
 $redis = @("$Root\\start-redis.cmd","$Root\\run-redis.cmd") | Where-Object { Test-Path $_ } | Select-Object -First 1
 if ($redis) { Start-Process $redis -WindowStyle Hidden }
 Start-Sleep 3
-if (Test-Path "$Root\\backend\\scripts\\apply-db-schema.js") {
-  Push-Location "$Root\\backend"
+$ErrorActionPreference='Stop'
+Push-Location "$Root\\backend"
+try {
+  Write-Output "apply-db-schema..."
+  if (-not (Test-Path "scripts\\apply-db-schema.js")) { throw "apply-db-schema.js missing" }
   node scripts\\apply-db-schema.js 2>&1
-  if (Test-Path "$Root\\backend\\scripts\\apply-triage-v2-schema.js") {
+  if ($LASTEXITCODE -ne 0) { throw "apply-db-schema failed exit=$LASTEXITCODE" }
+
+  if (Test-Path "scripts\\apply-triage-v2-schema.js") {
     node scripts\\apply-triage-v2-schema.js 2>&1
   }
-  if (Test-Path "$Root\\backend\\scripts\\ensure-whatsapp-sessions.js") {
+  if (Test-Path "scripts\\ensure-whatsapp-sessions.js") {
     node scripts\\ensure-whatsapp-sessions.js 2>&1
   }
+
+  Write-Output "npm install storage deps..."
+  npm install @aws-sdk/s3-request-presigner@3.1093.0 @aws-sdk/client-s3@3.1080.0 --omit=dev --no-audit --no-fund 2>&1
+  if ($LASTEXITCODE -ne 0) { throw "npm install storage deps failed exit=$LASTEXITCODE" }
+
+  Write-Output "verify-runtime-ready..."
+  if (-not (Test-Path "scripts\\verify-runtime-ready.js")) { throw "verify-runtime-ready.js missing" }
+  node scripts\\verify-runtime-ready.js 2>&1
+  if ($LASTEXITCODE -ne 0) { throw "verify-runtime-ready failed exit=$LASTEXITCODE" }
+} catch {
+  Write-Output "PRESTART_FAIL $($_.Exception.Message)"
   Pop-Location
+  exit 1
 }
-# Instala deps novas sem rebuild completo (necessário para signed URLs B2)
-Push-Location "$Root\\backend"
-Write-Output "npm install storage deps..."
-npm install @aws-sdk/s3-request-presigner@3.1093.0 @aws-sdk/client-s3@3.1080.0 --omit=dev --no-audit --no-fund 2>&1
-if ($LASTEXITCODE -ne 0) { Write-Output "WARN: npm install storage deps failed exit=$LASTEXITCODE" }
 Pop-Location
+$ErrorActionPreference='Continue'
 $backend = @("$Root\\start-backend-watch.cmd","$Root\\start-backend.cmd","$Root\\run-backend.cmd") | Where-Object { Test-Path $_ } | Select-Object -First 1
 if ($backend) { Start-Process $backend -WindowStyle Hidden } else {
   Start-Process node -ArgumentList 'dist\\server.js' -WorkingDirectory 'C:\\ticketz\\backend' -WindowStyle Hidden

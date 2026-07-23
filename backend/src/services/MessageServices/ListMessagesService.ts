@@ -7,6 +7,7 @@ import ShowTicketService from "../TicketServices/ShowTicketService";
 import Queue from "../../models/Queue";
 import { GetCompanySetting } from "../../helpers/CheckSettings";
 import { resolveMessageMediaUrls } from "../MediaServices/MediaAccessService";
+import { logger } from "../../utils/logger";
 
 interface Request {
   ticketId: string;
@@ -133,11 +134,19 @@ const ListMessagesService = async ({
   const orderedMessages = visibleMessages.reverse();
 
   if (user) {
-    await resolveMessageMediaUrls({
-      messages: orderedMessages,
-      user,
-      companyId
-    });
+    try {
+      await resolveMessageMediaUrls({
+        messages: orderedMessages,
+        user,
+        companyId
+      });
+    } catch (error) {
+      // Media URL resolution must never take tickets offline.
+      logger.warn(
+        { error },
+        "ListMessagesService: resolveMessageMediaUrls failed"
+      );
+    }
   }
 
   return {

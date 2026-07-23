@@ -76,7 +76,8 @@ const ensureOperationalFlowColumns = async (schema: string): Promise<void> => {
     ["aiLastSlaAlertAt", "TIMESTAMPTZ"]
   ];
 
-  for (const [name, type] of ticketColumns) {
+  for (let i = 0; i < ticketColumns.length; i += 1) {
+    const [name, type] = ticketColumns[i];
     await sequelize.query(`
       ALTER TABLE ${q(schema, "Tickets")}
       ADD COLUMN IF NOT EXISTS "${name}" ${type};
@@ -284,6 +285,81 @@ const ensureAckColumns = async (schema: string): Promise<void> => {
   `);
 };
 
+const ensureMediaLifecycleSchema = async (schema: string): Promise<void> => {
+  // MessageMediaFiles lifecycle columns (private B2 / retention)
+  const mediaColumns: Array<[string, string]> = [
+    ['"status"', "VARCHAR(32) NOT NULL DEFAULT 'available'"],
+    ['"expiresAt"', "TIMESTAMPTZ"],
+    ['"deletedAt"', "TIMESTAMPTZ"],
+    ['"deleteRequestedAt"', "TIMESTAMPTZ"],
+    ['"deleteAttempts"', "INTEGER NOT NULL DEFAULT 0"],
+    ['"lastDeleteError"', "TEXT"],
+    ['"retentionExempt"', "BOOLEAN NOT NULL DEFAULT false"],
+    ['"contactId"', "INTEGER"],
+    ['"metadata"', "JSONB"],
+    ['"direction"', "VARCHAR(32) DEFAULT 'inbound'"]
+  ];
+
+  for (let i = 0; i < mediaColumns.length; i += 1) {
+    const [name, type] = mediaColumns[i];
+    await sequelize.query(`
+      ALTER TABLE ${q(schema, "MessageMediaFiles")}
+      ADD COLUMN IF NOT EXISTS ${name} ${type};
+    `);
+  }
+
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS message_media_files_company_status_idx
+    ON ${q(schema, "MessageMediaFiles")} ("companyId", "status");
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS message_media_files_status_expires_idx
+    ON ${q(schema, "MessageMediaFiles")} ("status", "expiresAt");
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS message_media_files_ticket_status_idx
+    ON ${q(schema, "MessageMediaFiles")} ("ticketId", "status");
+  `);
+
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS ${q(schema, "MediaDeletionAudits")} (
+      id SERIAL PRIMARY KEY,
+      "companyId" INTEGER NOT NULL REFERENCES ${q(schema, "Companies")}(id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+      "ticketId" INTEGER,
+      "requestedByUserId" INTEGER,
+      operation VARCHAR(64) NOT NULL,
+      reason VARCHAR(255),
+      "messageCount" INTEGER NOT NULL DEFAULT 0,
+      "mediaCount" INTEGER NOT NULL DEFAULT 0,
+      "bytesRemoved" BIGINT NOT NULL DEFAULT 0,
+      status VARCHAR(32) NOT NULL DEFAULT 'pending',
+      details JSONB,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS media_deletion_audits_company_ticket_idx
+    ON ${q(schema, "MediaDeletionAudits")} ("companyId", "ticketId");
+  `);
+
+  const ticketColumns: Array<[string, string]> = [
+    ['"permanentDeleteRequestedAt"', "TIMESTAMPTZ"],
+    ['"permanentDeleteRequestedBy"', "INTEGER"],
+    ['"permanentDeletedAt"', "TIMESTAMPTZ"]
+  ];
+
+  for (let i = 0; i < ticketColumns.length; i += 1) {
+    const [name, type] = ticketColumns[i];
+    await sequelize.query(`
+      ALTER TABLE ${q(schema, "Tickets")}
+      ADD COLUMN IF NOT EXISTS ${name} ${type};
+    `);
+  }
+};
+
 export const applyAiSchema = async (): Promise<void> => {
   const schema = getSchema();
 
@@ -292,6 +368,7 @@ export const applyAiSchema = async (): Promise<void> => {
   await ensureOperationalFlowColumns(schema);
   await ensureAiTables(schema);
   await ensureAckColumns(schema);
+  await ensureMediaLifecycleSchema(schema);
 
   await markMigrationExecuted(
     schema,
@@ -309,12 +386,13 @@ export const applyAiSchema = async (): Promise<void> => {
     schema,
     "20260710120000-add-ai-professional-features.js"
   );
+  await markMigrationExecuted(schema, "20260711120000-ai-gen2-intelligence.js");
   await markMigrationExecuted(
     schema,
-    "20260711120000-ai-gen2-intelligence.js"
+    "20260723130000-media-lifecycle-b2-private.js"
   );
 
-  logger.info({ schema }, "AI schema ensured");
+  logger.info({ schema }, "AI + media lifecycle schema ensured");
 };
 
 export const isAiSchemaApplied = async (): Promise<boolean> => {
@@ -369,7 +447,24 @@ export const isAiSchemaApplied = async (): Promise<boolean> => {
       { replacements: { schema } }
     );
 
-    return (ackColumns as { column_name: string }[]).length === 2;
+    if ((ackColumns as { column_name: string }[]).length !== 2) {
+      return false;
+    }
+
+    const [mediaLifecycleColumns] = await sequelize.query(
+      `
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = :schema
+        AND (
+          (table_name = 'Tickets' AND column_name = 'permanentDeleteRequestedAt')
+          OR (table_name = 'MessageMediaFiles' AND column_name = 'status')
+        )
+      `,
+      { replacements: { schema } }
+    );
+
+    return (mediaLifecycleColumns as { column_name: string }[]).length >= 2;
   } catch (error) {
     logger.warn({ error }, "Failed to verify AI schema");
     return false;
