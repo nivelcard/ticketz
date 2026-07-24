@@ -13,7 +13,9 @@ import {
   DialogContent,
   DialogActions,
   FormControlLabel,
-  Switch
+  Switch,
+  Typography,
+  makeStyles
 } from "@material-ui/core";
 import { Link as RouterLink } from "react-router-dom";
 import { DeleteOutline, Edit } from "@material-ui/icons";
@@ -38,8 +40,63 @@ const defaultForm = {
   active: true
 };
 
+const DESCRIPTION_PREVIEW_LEN = 120;
+
+const useLocalStyles = makeStyles(theme => ({
+  descriptionCell: {
+    maxWidth: 320,
+    verticalAlign: "top",
+    wordBreak: "break-word"
+  },
+  descriptionPreview: {
+    whiteSpace: "pre-wrap",
+    fontSize: "0.875rem",
+    lineHeight: 1.45,
+    color: theme.palette.text.secondary
+  },
+  expandButton: {
+    marginTop: theme.spacing(0.5),
+    padding: 0,
+    minWidth: 0,
+    textTransform: "none",
+    fontSize: "0.8rem"
+  }
+}));
+
+const CollapsibleDescription = ({ text, classes }) => {
+  const [expanded, setExpanded] = useState(false);
+  const normalized = (text || "").trim();
+
+  if (!normalized) {
+    return "—";
+  }
+
+  if (normalized.length <= DESCRIPTION_PREVIEW_LEN) {
+    return <span className={classes.descriptionPreview}>{normalized}</span>;
+  }
+
+  return (
+    <div>
+      <Typography component="div" className={classes.descriptionPreview}>
+        {expanded
+          ? normalized
+          : `${normalized.slice(0, DESCRIPTION_PREVIEW_LEN).trim()}…`}
+      </Typography>
+      <Button
+        size="small"
+        color="primary"
+        className={classes.expandButton}
+        onClick={() => setExpanded(prev => !prev)}
+      >
+        {expanded ? "Ocultar" : "Ver tudo"}
+      </Button>
+    </div>
+  );
+};
+
 const AiKnowledgeBases = () => {
   const classes = useAiPageStyles();
+  const localClasses = useLocalStyles();
   const [bases, setBases] = useState([]);
   const [domains, setDomains] = useState([]);
   const [assetCounts, setAssetCounts] = useState({});
@@ -187,7 +244,12 @@ const AiKnowledgeBases = () => {
                     <TableCell>
                       {domainNameById[base.knowledgeDomainId] || "—"}
                     </TableCell>
-                    <TableCell>{base.description}</TableCell>
+                    <TableCell className={localClasses.descriptionCell}>
+                      <CollapsibleDescription
+                        text={base.description}
+                        classes={localClasses}
+                      />
+                    </TableCell>
                     <TableCell>
                       {counts
                         ? `${counts.published} pub. / ${counts.total} total`
@@ -254,7 +316,7 @@ const AiKnowledgeBases = () => {
             rows={3}
             value={form.description}
             onChange={e => setForm({ ...form, description: e.target.value })}
-            helperText="Resumo do conteúdo ou finalidade desta base."
+            helperText="Resumo curto (1–3 linhas). O conteúdo completo fica nos documentos da base."
           />
           <div className={classes.switchRow}>
             <FormControlLabel
@@ -270,7 +332,10 @@ const AiKnowledgeBases = () => {
           </div>
           {editingId && (
             <div style={{ marginTop: 12 }}>
-              <Link component={RouterLink} to={`/ai/assets?knowledgeBaseId=${editingId}`}>
+              <Link
+                component={RouterLink}
+                to={`/ai/assets?knowledgeBaseId=${editingId}`}
+              >
                 Gerenciar documentos desta base (PDF, DOCX, imagens)
               </Link>
               <br />
