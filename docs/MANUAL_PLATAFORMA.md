@@ -704,6 +704,8 @@ Idiomas em `translate/languages/`: **pt, pt_PT, en, es, fr, de, it, id** (8 arqu
 
 CI: `.github/workflows/build-docker.yml` → GHCR multi-arch.
 
+**VPS Contabo (Fortmax):** `.github/workflows/deploy-prod.yml` → `scripts/deploy-vps-backend.py` (WinRM, **1 ZIP**). Lock exclusivo em `C:\ticketz\deploy-cache\.deploy.lock`; env `DEPLOY_LOCK_MAX_AGE_SEC` (padrão 2400), `DEPLOY_LOCK_WAIT_SEC` (CI: 1800), `DEPLOY_FORCE_LOCK=1` para forçar.
+
 ### Auditoria §20
 
 | **Verificado** | 6 compose files na raiz |

@@ -33,7 +33,14 @@ BACKEND = ROOT / "backend"
 DIST = BACKEND / "dist"
 CHUNK = int(os.environ.get("DEPLOY_B64_CHUNK", "1500"))
 DEPLOY_LOCK = r"C:\ticketz\deploy-cache\.deploy.lock"
-LOCK_STALE_SEC = int(os.environ.get("DEPLOY_LOCK_STALE_SEC", "120"))
+UPLOAD_STAGING = r"C:\ticketz\dc"
+# Lock file younger than this → another deploy is still running.
+LOCK_MAX_AGE_SEC = int(
+    os.environ.get("DEPLOY_LOCK_MAX_AGE_SEC")
+    or os.environ.get("DEPLOY_LOCK_STALE_SEC", "2400")
+)
+LOCK_WAIT_SEC = int(os.environ.get("DEPLOY_LOCK_WAIT_SEC", "0"))
+LOCK_POLL_SEC = int(os.environ.get("DEPLOY_LOCK_POLL_SEC", "30"))
 
 # Hotfix paths — full dist sync is too slow over WinRM (600+ files).
 PATCH_PATHS = [
@@ -177,39 +184,75 @@ def run_ps(s, ps):
     return r.status_code, out, err
 
 
+def cleanup_upload_staging(s) -> None:
+    run_ps(
+        s,
+        f"""
+Get-ChildItem '{UPLOAD_STAGING}' -Directory -EA SilentlyContinue |
+  Remove-Item -Recurse -Force -EA SilentlyContinue
+""",
+    )
+
+
 def acquire_deploy_lock(s) -> None:
     force = os.environ.get("DEPLOY_FORCE_LOCK", "").lower() in ("1", "true", "yes")
     force_ps = "$true" if force else "$false"
-    code, out, err = run_ps(
-        s,
-        f"""
+    deadline = time.time() + max(0, LOCK_WAIT_SEC)
+
+    while True:
+        code, out, err = run_ps(
+            s,
+            f"""
 $lock = '{DEPLOY_LOCK}'
-$staleSec = {LOCK_STALE_SEC}
+$staging = '{UPLOAD_STAGING}'
+$maxAgeSec = {LOCK_MAX_AGE_SEC}
 $force = {force_ps}
 New-Item -ItemType Directory -Force -Path (Split-Path $lock) | Out-Null
 if (Test-Path $lock) {{
   if ($force) {{
     Remove-Item $lock -Force
+    Get-ChildItem $staging -Directory -EA SilentlyContinue |
+      Remove-Item -Recurse -Force -EA SilentlyContinue
   }} else {{
-    $recentFiles = @(Get-ChildItem 'C:\\ticketz\\dc' -Recurse -File -EA SilentlyContinue |
-      Where-Object {{ $_.LastWriteTime -gt (Get-Date).AddSeconds(-$staleSec) }}).Count
-    if ($recentFiles -gt 0) {{
-      throw "deploy in progress ($recentFiles recent upload files): $(Get-Content $lock -Raw)"
+    $age = ((Get-Date) - (Get-Item $lock).LastWriteTime).TotalSeconds
+    if ($age -lt $maxAgeSec) {{
+      throw "LOCK_HELD:$(Get-Content $lock -Raw)"
     }}
     Remove-Item $lock -Force
+    Get-ChildItem $staging -Directory -EA SilentlyContinue |
+      Remove-Item -Recurse -Force -EA SilentlyContinue
   }}
 }}
 Set-Content -Path $lock -Value "pid={os.getpid()} ts={int(time.time())}" -NoNewline
+Write-Output "LOCK_ACQUIRED"
 """,
-    )
-    if code != 0:
-        raise RuntimeError(f"Could not acquire deploy lock: {out} {err}")
+        )
+        if code == 0:
+            return
+        held = "LOCK_HELD:" in out
+        if held and time.time() < deadline:
+            remaining = int(deadline - time.time())
+            print(
+                f"Deploy lock held ({out.strip()}), retry in {LOCK_POLL_SEC}s "
+                f"(up to {remaining}s left)...",
+                flush=True,
+            )
+            time.sleep(LOCK_POLL_SEC)
+            continue
+        detail = out.strip() or err.strip()
+        if held:
+            detail = detail.replace("LOCK_HELD:", "deploy in progress: ", 1)
+        raise RuntimeError(f"Could not acquire deploy lock: {detail}")
 
 
 def release_deploy_lock(s) -> None:
     run_ps(
         s,
-        f"Remove-Item '{DEPLOY_LOCK}' -Force -ErrorAction SilentlyContinue",
+        f"""
+Remove-Item '{DEPLOY_LOCK}' -Force -ErrorAction SilentlyContinue
+Get-ChildItem '{UPLOAD_STAGING}' -Directory -EA SilentlyContinue |
+  Remove-Item -Recurse -Force -EA SilentlyContinue
+""",
     )
 
 

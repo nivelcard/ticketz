@@ -25,6 +25,7 @@
 ## CI/CD
 
 - `.github/workflows/build-docker.yml`
+- `.github/workflows/deploy-prod.yml` — VPS Contabo (lock: `DEPLOY_LOCK_*` em `deploy-vps-backend.py`)
 - Imagens: `ghcr.io/ticketz-oss/ticketz-backend`, `ticketz-frontend`
 
 ## Documentos complementares

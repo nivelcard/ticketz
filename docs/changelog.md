@@ -6,6 +6,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.5.30] — 2026-07-24
+
+### Corrigido
+
+- **Deploy Contabo — lock:** `acquire_deploy_lock` usa idade do arquivo `.deploy.lock` (não resíduos em `C:\ticketz\dc`); CI aguarda até 30 min (`DEPLOY_LOCK_WAIT_SEC=1800`); limpeza de staging ao liberar lock.
+
+---
+
 ## [1.5.29] — 2026-07-24
 
 ### Corrigido / alterado
