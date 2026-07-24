@@ -6,6 +6,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.5.28] — 2026-07-24
+
+### Corrigido
+
+- **Aceitar conversa (409):** `assumeTicketFromBot` idempotente para o mesmo atendente; elegibilidade ampliada (`isAssumeEligibleTicket`); master admin reconhecido em `assertCanAcceptTicket`.
+- **Fechar conversa na lista:** diálogo com nota opcional, toast de confirmação e atualização imediata da lista.
+- **Zerar base de clientes:** broadcast socket `wipe` + `refreshTicketLists` — UI limpa sem F5.
+
+---
+
 ## [1.5.27] — 2026-07-23
 
 ### Corrigido

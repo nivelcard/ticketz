@@ -200,7 +200,8 @@ const Ticket = () => {
     socket.on(`company-${companyId}-contact`, onCompanyContact);
 
     return () => {
-      socket.disconnect();
+      socket.off(`company-${companyId}-ticket`, onCompanyTicket);
+      socket.off(`company-${companyId}-contact`, onCompanyContact);
     };
   }, [ticketId, ticket, history, socketManager, user, setObservationMode]);
 

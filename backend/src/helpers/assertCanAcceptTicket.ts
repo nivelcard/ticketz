@@ -3,6 +3,7 @@ import Queue from "../models/Queue";
 import Ticket from "../models/Ticket";
 import User from "../models/User";
 import canViewTicket from "./canViewTicket";
+import { isMasterAdminUser } from "./isMasterAdmin";
 import { isAiHandlingTicket } from "../services/AiServices/AiHelpers";
 
 export const isHandoffPendingTicketState = (ticket: Ticket): boolean =>
@@ -12,7 +13,7 @@ export const assertCanAcceptTicket = async (
   ticket: Ticket,
   user: User
 ): Promise<void> => {
-  if (user.profile === "admin" || user.super) {
+  if (user.profile === "admin" || user.super || isMasterAdminUser(user)) {
     return;
   }
 

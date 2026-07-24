@@ -80,6 +80,14 @@ const toastError = err => {
 
   if (
     typeof err !== "string" &&
+    err?.response?.status === 409 &&
+    /^Request failed with status code 409$/i.test(errorMsg)
+  ) {
+    return i18n.t("backendErrors.ERR_TICKET_ALREADY_ASSIGNED");
+  }
+
+  if (
+    typeof err !== "string" &&
     err?.response?.status === 500 &&
     /^Request failed with status code 500$/i.test(errorMsg)
   ) {

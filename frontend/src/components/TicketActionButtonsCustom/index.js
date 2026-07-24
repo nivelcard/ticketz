@@ -61,8 +61,12 @@ const TicketActionButtonsCustom = ({
   const [learningModalOpen, setLearningModalOpen] = useState(false);
   const ticketOptionsMenuOpen = Boolean(anchorEl);
   const { user } = useContext(AuthContext);
-  const { setCurrentTicket, setObservationMode, setListSubTab } =
-    useContext(TicketsContext);
+  const {
+    setCurrentTicket,
+    setObservationMode,
+    setListSubTab,
+    refreshTicketLists
+  } = useContext(TicketsContext);
   const phoneContext = useContext(PhoneCallContext);
 
   const customTheme = createTheme({
@@ -147,6 +151,7 @@ const TicketActionButtonsCustom = ({
       ...updatedTicket,
       code: updatedTicket.status === "open" ? "#open" : "#pending"
     });
+    refreshTicketLists?.();
   };
 
   const handleAssumeFromBot = async () => {
@@ -268,7 +273,8 @@ const TicketActionButtonsCustom = ({
         }));
       }
       applyTicketUpdate(data);
-      toast.success("Atendimento aceito.");
+      refreshTicketLists?.();
+      toast.success(i18n.t("ticketsList.acceptSuccess"));
     } catch (err) {
       toastError(err);
     } finally {

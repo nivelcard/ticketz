@@ -16,6 +16,7 @@ import TicketsListSkeleton from "../TicketsListSkeleton";
 import useTickets from "../../hooks/useTickets";
 import { i18n } from "../../translate/i18n";
 import { AuthContext } from "../../context/Auth/AuthContext";
+import { TicketsContext } from "../../context/Tickets/TicketsContext";
 import { SocketContext } from "../../context/Socket/SocketContext";
 import toastError from "../../errors/toastError";
 import { isApiWarmupError } from "../../helpers/apiWarmup";
@@ -197,6 +198,7 @@ const TicketsListCustom = props => {
   const [ticketsListUpdated, setTicketsListUpdated] = useState([]);
   const { user } = useContext(AuthContext);
   const { profile, queues } = user || {};
+  const { listRevision } = useContext(TicketsContext);
   const safeQueues = queues ?? [];
 
   const socketManager = useContext(SocketContext);
@@ -216,7 +218,8 @@ const TicketsListCustom = props => {
     aiFilter,
     supervision,
     listMode,
-    showAll
+    showAll,
+    listRevision
   ]);
 
   const {
@@ -329,6 +332,13 @@ const TicketsListCustom = props => {
     };
 
     const onCompanyTicket = data => {
+      if (data.action === "wipe") {
+        dispatch({ type: "RESET" });
+        setPaginationCursor({ nextUpdatedAt: null, nextTicketId: null });
+        refetchTickets();
+        return;
+      }
+
       if (data.action === "updateUnread") {
         dispatch({
           type: "RESET_UNREAD",

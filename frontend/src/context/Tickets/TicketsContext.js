@@ -10,6 +10,11 @@ const TicketsContextProvider = ({ children }) => {
   });
   const [observationMode, setObservationMode] = useState(false);
   const [listSubTab, setListSubTab] = useState("open");
+  const [listRevision, setListRevision] = useState(0);
+
+  const refreshTicketLists = () => {
+    setListRevision(value => value + 1);
+  };
 
   return (
     <TicketsContext.Provider
@@ -19,7 +24,9 @@ const TicketsContextProvider = ({ children }) => {
         observationMode,
         setObservationMode,
         listSubTab,
-        setListSubTab
+        setListSubTab,
+        listRevision,
+        refreshTicketLists
       }}
     >
       {children}

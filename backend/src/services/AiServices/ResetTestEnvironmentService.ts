@@ -357,5 +357,23 @@ export const resetTestEnvironmentForCompany = async (
   summary.redisKeysCleared = await clearAiRedisState();
 
   logger.info({ summary, wipeContacts }, "Test environment reset completed");
+
+  try {
+    const { getIO } = await import("../../libs/socket");
+    const io = getIO();
+    io.to(`company-${companyId}-mainchannel`).emit(
+      `company-${companyId}-ticket`,
+      {
+        action: "wipe",
+        summary
+      }
+    );
+  } catch (socketError) {
+    logger.warn(
+      { socketError, companyId },
+      "Failed to broadcast wipe event over socket"
+    );
+  }
+
   return summary;
 };

@@ -6,12 +6,36 @@ import SendWhatsAppMessage from "../WbotServices/SendWhatsAppMessage";
 import formatBody from "../../helpers/Mustache";
 import { AI_HANDOFF_REASONS } from "./AiOperationalTypes";
 import { logAiOperationalEvent } from "./AiOperationalLogService";
-import { assertCanAcceptTicket, isHandoffPendingTicketState } from "../../helpers/assertCanAcceptTicket";
+import {
+  assertCanAcceptTicket,
+  isHandoffPendingTicketState
+} from "../../helpers/assertCanAcceptTicket";
 import { isAiHandlingTicket } from "./AiHelpers";
 import ShowTicketService from "../TicketServices/ShowTicketService";
 
 const canManageAi = (user: User): boolean =>
   user.profile === "admin" || user.super === true;
+
+export const isAssumeEligibleTicket = (ticket: Ticket): boolean => {
+  if (ticket.status === "closed") {
+    return false;
+  }
+
+  if (isAiHandlingTicket(ticket) || isHandoffPendingTicketState(ticket)) {
+    return true;
+  }
+
+  return (
+    ticket.status === "pending" &&
+    !ticket.userId &&
+    Boolean(
+      ticket.aiHandoff ||
+        ticket.aiAgentId ||
+        ticket.aiStartedAt ||
+        ticket.aiHandoffReason
+    )
+  );
+};
 
 type AssumeFromBotParams = {
   ticket: Ticket;
@@ -24,18 +48,23 @@ export const assumeTicketFromBot = async ({
   user,
   notifyCustomer = true
 }: AssumeFromBotParams): Promise<Ticket> => {
-  if (ticket.userId) {
-    throw new AppError("ERR_TICKET_ALREADY_ASSIGNED", 409);
-  }
+  await ticket.reload();
 
   if (ticket.status === "closed") {
     throw new AppError("ERR_TICKET_CLOSED", 400);
   }
 
-  if (
-    !isAiHandlingTicket(ticket) &&
-    !isHandoffPendingTicketState(ticket)
-  ) {
+  if (ticket.userId) {
+    if (Number(ticket.userId) === Number(user.id)) {
+      if (ticket.status === "open") {
+        return ShowTicketService(ticket.id, user.companyId);
+      }
+    } else {
+      throw new AppError("ERR_TICKET_ALREADY_ASSIGNED", 409);
+    }
+  }
+
+  if (!isAssumeEligibleTicket(ticket)) {
     throw new AppError("ERR_TICKET_NOT_AI_HANDLING", 409);
   }
 
@@ -49,7 +78,7 @@ export const assumeTicketFromBot = async ({
       status: "open",
       userId: user.id,
       aiHandoff: true,
-      aiHandoffMode: "operational",
+      aiHandoffMode: "definitive",
       aiHandoffOriginalReason:
         ticket.aiHandoffOriginalReason || ticket.aiHandoffReason,
       aiHandoffReason: AI_HANDOFF_REASONS.manual_takeover,

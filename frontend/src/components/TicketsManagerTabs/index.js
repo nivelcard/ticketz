@@ -161,7 +161,8 @@ const TicketsManagerTabs = () => {
   const [showAllTickets, setShowAllTickets] = useState(false);
   const searchInputRef = useRef();
   const { user } = useContext(AuthContext);
-  const { listSubTab, setListSubTab } = useContext(TicketsContext);
+  const { listSubTab, setListSubTab, setCurrentTicket, refreshTicketLists } =
+    useContext(TicketsContext);
   const { profile } = user || {};
   const permissionRole = resolvePermissionRole(user);
   const isSuperAdmin = user?.super === true;
@@ -267,8 +268,9 @@ const TicketsManagerTabs = () => {
           tickets: summary.ticketsDeleted ?? 0
         })
       );
+      setCurrentTicket({ id: null, code: null, uuid: null });
+      refreshTicketLists?.();
       history.push("/tickets");
-      window.location.reload();
     } catch (err) {
       toastError(err);
     } finally {

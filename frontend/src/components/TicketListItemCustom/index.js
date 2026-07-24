@@ -50,6 +50,8 @@ import {
   isTicketObservationMode
 } from "../../helpers/ticketListVisibility";
 import { isMasterAdminUser } from "../../helpers/isMasterAdmin";
+import TicketCloseConfirmDialog from "../TicketCloseConfirmDialog";
+import { toast } from "react-toastify";
 
 const useStyles = makeStyles(theme => ({
   ticket: {
@@ -185,6 +187,11 @@ const useStyles = makeStyles(theme => ({
     boxSizing: "border-box"
   },
 
+  actionDisabled: {
+    opacity: 0.45,
+    pointerEvents: "none"
+  },
+
   ticketRowButton: {
     position: "relative",
     zIndex: 1
@@ -249,9 +256,12 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
   const [openTicketMessageDialog, setOpenTicketMessageDialog] = useState(false);
   const { ticketId } = useParams();
   const isMounted = useRef(true);
-  const { setCurrentTicket, setObservationMode } = useContext(TicketsContext);
+  const { setCurrentTicket, setObservationMode, refreshTicketLists } =
+    useContext(TicketsContext);
   const { user } = useContext(AuthContext);
   const { profile } = user;
+  const [actionLoading, setActionLoading] = useState(false);
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
 
   useEffect(() => {
     if (ticket.userId && ticket.user) {
@@ -267,45 +277,74 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
     };
   }, [ticket]);
 
-  const handleCloseTicket = async (id, e) => {
-    if (e) {
-      e.stopPropagation();
-    }
+  const handleCloseTicket = async (note = "") => {
+    setActionLoading(true);
     try {
-      await api.put(`/tickets/${id}`, {
+      if (note) {
+        await api.post("/ticket-notes", {
+          note,
+          ticketId: ticket.id,
+          contactId: ticket.contactId
+        });
+      }
+
+      await api.put(`/tickets/${ticket.id}`, {
         status: "closed",
         justClose: true,
         userId: ticket.userId || user?.id
       });
-      if (String(ticketId) !== String(id)) {
-        history.push(`/tickets/`);
+
+      toast.success(i18n.t("ticketsList.closeDialog.success"));
+      setCloseDialogOpen(false);
+      setObservationMode(false);
+      setCurrentTicket({ id: null, code: null, uuid: null });
+      refreshTicketLists?.();
+
+      if (String(ticketId) === String(ticket.uuid || ticket.id)) {
+        history.push("/tickets");
       }
     } catch (err) {
       toastError(err);
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleAcceptTicket = async (id, e) => {
     if (e) {
+      e.preventDefault();
       e.stopPropagation();
     }
-    try {
-      if (isHandoffPendingTicket(ticket) || isAiHandlingTicket(ticket)) {
-        await api.post(`/tickets/${id}/ai/assume`);
-      } else {
-        await api.put(`/tickets/${id}`, {
-          status: "open",
-          userId: user?.id
-        });
-      }
-    } catch (err) {
-      toastError(err);
+    if (actionLoading) {
       return;
     }
 
-    setObservationMode(false);
-    history.push(`/tickets/${ticket.uuid || ticket.id}`);
-    setTabOpen("open");
+    setActionLoading(true);
+    try {
+      let data;
+      if (isHandoffPendingTicket(ticket) || isAiHandlingTicket(ticket)) {
+        ({ data } = await api.post(`/tickets/${id}/ai/assume`));
+      } else {
+        ({ data } = await api.put(`/tickets/${id}`, {
+          status: "open",
+          userId: user?.id
+        }));
+      }
+
+      setObservationMode(false);
+      setCurrentTicket({
+        ...data,
+        code: "#open"
+      });
+      refreshTicketLists?.();
+      toast.success(i18n.t("ticketsList.acceptSuccess"));
+      history.push(`/tickets/${data.uuid || data.id || ticket.uuid || id}`);
+      setTabOpen("open");
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleReopenTicket = async (id, e) => {
@@ -343,7 +382,19 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
     history.push(`/tickets/${routeId}`);
   };
 
+  const openCloseDialog = e => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (actionLoading) {
+      return;
+    }
+    setCloseDialogOpen(true);
+  };
+
   const stopCardClick = e => {
+    e.preventDefault();
     e.stopPropagation();
   };
 
@@ -479,9 +530,11 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
           <Tooltip title={i18n.t("ticketsList.tooltips.closeConversation")}>
             <ClearOutlinedIcon
               onMouseDown={stopCardClick}
-              onClick={e => handleCloseTicket(ticket.id, e)}
+              onClick={openCloseDialog}
               fontSize="small"
-              className={clsx(classes.actionIcon, classes.closeActionIcon)}
+              className={clsx(classes.actionIcon, classes.closeActionIcon, {
+                [classes.actionDisabled]: actionLoading
+              })}
             />
           </Tooltip>
         )}
@@ -490,9 +543,11 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
           <Tooltip title={i18n.t("ticketsList.tooltips.closeConversation")}>
             <ClearOutlinedIcon
               onMouseDown={stopCardClick}
-              onClick={e => handleCloseTicket(ticket.id, e)}
+              onClick={openCloseDialog}
               fontSize="small"
-              className={clsx(classes.actionIcon, classes.closeActionIcon)}
+              className={clsx(classes.actionIcon, classes.closeActionIcon, {
+                [classes.actionDisabled]: actionLoading
+              })}
             />
           </Tooltip>
         )}
@@ -506,7 +561,9 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
                 onMouseDown={stopCardClick}
                 onClick={e => handleAcceptTicket(ticket.id, e)}
                 fontSize="small"
-                className={clsx(classes.actionIcon, classes.acceptActionIcon)}
+                className={clsx(classes.actionIcon, classes.acceptActionIcon, {
+                  [classes.actionDisabled]: actionLoading
+                })}
               />
             </Tooltip>
           )}
@@ -611,6 +668,13 @@ const TicketListItemCustom = ({ ticket, setTabOpen, groupActionButtons }) => {
         handleClose={() => setOpenTicketMessageDialog(false)}
         ticketId={ticket.id}
       ></TicketMessagesDialog>
+      <TicketCloseConfirmDialog
+        open={closeDialogOpen}
+        ticket={ticket}
+        loading={actionLoading}
+        onCancel={() => setCloseDialogOpen(false)}
+        onConfirm={handleCloseTicket}
+      />
       <ListItem
         dense
         button

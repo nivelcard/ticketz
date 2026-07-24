@@ -496,6 +496,18 @@ const messages = {
         },
         buttons: {
           accept: "Aceitar"
+        },
+        acceptSuccess: "Atendimento aceito com sucesso.",
+        closeDialog: {
+          title: "Encerrar conversa",
+          description:
+            "Esta conversa será encerrada. Se quiser, deixe uma nota interna sobre este atendimento.",
+          noteLabel: "Nota do atendimento (opcional)",
+          notePlaceholder: "Ex.: cliente pediu retorno amanhã, dúvida sobre financeiro...",
+          cancel: "Cancelar",
+          confirm: "Encerrar conversa",
+          closing: "Encerrando...",
+          success: "Conversa encerrada com sucesso."
         }
       },
       aiSupervision: {
