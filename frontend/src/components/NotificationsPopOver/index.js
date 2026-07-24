@@ -25,6 +25,19 @@ import useSettings from "../../hooks/useSettings";
 import brandTokens from "../../theme/brandTokens";
 import { getHandoffReasonLabel } from "../../helpers/aiTicketStatus";
 
+const MAX_NOTIFICATIONS = 40;
+
+const dedupeNotifications = (items, isViewingTicket) => {
+  const seen = new Map();
+  for (const ticket of items) {
+    if (!ticket?.id || isViewingTicket(ticket)) {
+      continue;
+    }
+    seen.set(ticket.id, ticket);
+  }
+  return Array.from(seen.values()).slice(0, MAX_NOTIFICATIONS);
+};
+
 const defaultLogoFavicon = brandTokens.logo.favicon;
 
 const useStyles = makeStyles(theme => ({
@@ -129,17 +142,20 @@ const NotificationsPopOver = props => {
   }, [play]);
 
   useEffect(() => {
-    setNotifications(tickets.filter(t => !isViewingTicket(t)));
+    setNotifications(dedupeNotifications(tickets, isViewingTicket));
   }, [tickets, routeTicketId]);
 
   useEffect(() => {
     ticketIdRef.current = routeTicketId;
     if (routeTicketId) {
       setNotifications(prevState =>
-        prevState.filter(
-          t =>
-            String(t.id) !== String(routeTicketId) &&
-            (!t.uuid || t.uuid !== routeTicketId)
+        dedupeNotifications(
+          prevState.filter(
+            t =>
+              String(t.id) !== String(routeTicketId) &&
+              (!t.uuid || t.uuid !== routeTicketId)
+          ),
+          isViewingTicket
         )
       );
     }
@@ -177,20 +193,23 @@ const NotificationsPopOver = props => {
             if (ticketIndex === -1) {
               return prevState;
             }
-            return prevState.filter(t => t.id !== data.ticket.id);
+            return dedupeNotifications(
+              prevState.filter(t => t.id !== data.ticket.id),
+              isViewingTicket
+            );
           }
 
+          let next;
           if (ticketIndex !== -1) {
-            const next = [...prevState];
+            next = [...prevState];
             next[ticketIndex] = data.ticket;
-            return next;
+          } else if (data.ticket.unreadMessages > 0) {
+            next = [data.ticket, ...prevState];
+          } else {
+            return prevState;
           }
 
-          if (data.ticket.unreadMessages > 0) {
-            return [data.ticket, ...prevState];
-          }
-
-          return prevState;
+          return dedupeNotifications(next, isViewingTicket);
         });
       }
     };
@@ -217,11 +236,14 @@ const NotificationsPopOver = props => {
 
         setNotifications(prevState => {
           const ticketIndex = prevState.findIndex(t => t.id === data.ticket.id);
+          let next;
           if (ticketIndex !== -1) {
-            prevState[ticketIndex] = data.ticket;
-            return [...prevState];
+            next = [...prevState];
+            next[ticketIndex] = data.ticket;
+          } else {
+            next = [data.ticket, ...prevState];
           }
-          return [data.ticket, ...prevState];
+          return dedupeNotifications(next, isViewingTicket);
         });
 
         const shouldNotNotificate =
@@ -257,11 +279,14 @@ const NotificationsPopOver = props => {
 
       setNotifications(prevState => {
         const ticketIndex = prevState.findIndex(t => t.id === ticket.id);
+        let next;
         if (ticketIndex !== -1) {
-          prevState[ticketIndex] = ticket;
-          return [...prevState];
+          next = [...prevState];
+          next[ticketIndex] = ticket;
+        } else {
+          next = [ticket, ...prevState];
         }
-        return [ticket, ...prevState];
+        return dedupeNotifications(next, isViewingTicket);
       });
 
       const reasonLabel =
@@ -445,7 +470,7 @@ const NotificationsPopOver = props => {
           url={
             theme?.appLogoFavicon ? theme.appLogoFavicon : defaultLogoFavicon
           }
-          alertCount={notifications.length}
+          alertCount={Math.min(notifications.length, 99)}
           iconSize={195}
         />
       </>
@@ -464,13 +489,11 @@ const NotificationsPopOver = props => {
         <ChatIcon style={{ color: theme.palette.primary.contrastText }} />
         {notifications.length > 0 ? (
           <Badge
-            variant="dot"
+            badgeContent={Math.min(notifications.length, 99)}
             color="secondary"
-            style={{ marginTop: "-25px" }}
-          ></Badge>
-        ) : (
-          ""
-        )}
+            style={{ marginTop: "-25px", marginLeft: 8 }}
+          />
+        ) : null}
       </IconButton>
       <Popover
         disableScrollLock

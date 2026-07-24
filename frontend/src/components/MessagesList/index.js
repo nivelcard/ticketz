@@ -773,7 +773,7 @@ const MessagesList = ({ ticket, ticketId, isGroup, markAsRead, readOnly }) => {
         }
       };
       fetchMessages();
-    }, 500);
+    }, 200);
     return () => {
       clearTimeout(delayDebounceFn);
     };

@@ -168,6 +168,8 @@ const socketManager = {
   wsRefreshRequiredActive: false,
   wsRefreshRequiredListeners: [],
   wsRefreshRequiredReconnectThreshold: 2,
+  wsRefreshDebounceTimer: null,
+  wsUpgradeFailures: 0,
   wsConnectionStableTimer: null,
   wsConnectionStabilityDelayMs: 5000,
 
@@ -199,8 +201,15 @@ const socketManager = {
   },
 
   triggerWsRefreshRequired: function () {
-    this.setWsRefreshRequired(true);
-    this.setWsRefreshRequired(false);
+    if (this.wsRefreshDebounceTimer) {
+      return;
+    }
+
+    this.wsRefreshDebounceTimer = setTimeout(() => {
+      this.wsRefreshDebounceTimer = null;
+      this.setWsRefreshRequired(true);
+      this.setWsRefreshRequired(false);
+    }, 3000);
   },
 
   syncWsRefreshRequired: function () {
@@ -228,7 +237,6 @@ const socketManager = {
 
     this.wsReconnectAttemptCount = count;
     this.notifyWsReconnectAttempt();
-    this.syncWsRefreshRequired();
   },
 
   incrementWsReconnectAttemptCount: function () {
@@ -465,18 +473,19 @@ const socketManager = {
         this.markWsConnectionStable();
       });
 
+      this.currentSocket.io.on("upgradeError", () => {
+        this.wsUpgradeFailures += 1;
+        if (this.wsUpgradeFailures >= 2 && this.currentSocket?.io?.opts) {
+          this.currentSocket.io.opts.transports = ["polling"];
+          this.currentSocket.io.opts.upgrade = false;
+        }
+      });
+
       this.currentSocket.on("error", payload => {
         const message = payload?.message;
         if (typeof message === "string" && message.trim()) {
           toast.error(message);
         }
-      });
-
-      this.currentSocket.onAny((event, ...args) => {
-        if (event === "backendlog") {
-          return;
-        }
-        console.debug("Event: ", { socket: this.currentSocket, event, args });
       });
 
       this.onReady(() => {

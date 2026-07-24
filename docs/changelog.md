@@ -6,6 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.5.33] — 2026-07-24
+
+### Corrigido / performance
+
+- **Lentidão extrema:** removido log `onAny` do socket (centenas de milhares de mensagens no console); refresh debounced; ticket não recarrega com spinner a cada sync de lista; WebSocket cai para polling após falhas.
+- **Notificações:** deduplicadas e limitadas a 40; badge capped em 99.
+
+---
+
 ## [1.5.32] — 2026-07-24
 
 ### Corrigido / performance

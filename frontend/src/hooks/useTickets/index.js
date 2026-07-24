@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import toastError from "../../errors/toastError";
 import { isApiWarmupError } from "../../helpers/apiWarmup";
 
@@ -29,8 +29,11 @@ const useTickets = ({
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const skipDebounceRef = useRef(false);
 
   useEffect(() => {
+    const debounceMs = skipDebounceRef.current ? 0 : 200;
+    skipDebounceRef.current = false;
     setLoading(true);
     const delayDebounceFn = setTimeout(() => {
       const fetchTickets = async () => {
@@ -83,7 +86,7 @@ const useTickets = ({
         }
       };
       fetchTickets();
-    }, 500);
+    }, debounceMs);
     return () => clearTimeout(delayDebounceFn);
   }, [
     searchParam,
@@ -108,6 +111,7 @@ const useTickets = ({
   ]);
 
   const refetch = useCallback(() => {
+    skipDebounceRef.current = true;
     setRefreshTrigger(prevState => prevState + 1);
   }, []);
 

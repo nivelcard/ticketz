@@ -248,8 +248,10 @@ const TicketsListCustom = props => {
 
   useEffect(() => {
     if (listRevision > 0) {
-      refetchTickets();
+      const timer = setTimeout(() => refetchTickets(), 300);
+      return () => clearTimeout(timer);
     }
+    return undefined;
   }, [listRevision, refetchTickets]);
 
   useEffect(() => {

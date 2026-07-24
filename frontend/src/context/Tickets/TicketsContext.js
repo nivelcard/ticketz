@@ -1,5 +1,7 @@
 import React, { useState, useRef, useCallback, createContext } from "react";
 
+const LIST_REFRESH_DEBOUNCE_MS = 400;
+
 const TicketsContext = createContext();
 
 const TicketsContextProvider = ({ children }) => {
@@ -12,10 +14,17 @@ const TicketsContextProvider = ({ children }) => {
   const [listSubTab, setListSubTab] = useState("open");
   const [listRevision, setListRevision] = useState(0);
   const messageHandlersRef = useRef({});
+  const listRefreshTimerRef = useRef(null);
 
-  const refreshTicketLists = () => {
-    setListRevision(value => value + 1);
-  };
+  const refreshTicketLists = useCallback(() => {
+    if (listRefreshTimerRef.current) {
+      clearTimeout(listRefreshTimerRef.current);
+    }
+    listRefreshTimerRef.current = setTimeout(() => {
+      setListRevision(value => value + 1);
+      listRefreshTimerRef.current = null;
+    }, LIST_REFRESH_DEBOUNCE_MS);
+  }, []);
 
   const registerMessageHandlers = useCallback(handlers => {
     messageHandlersRef.current = handlers || {};

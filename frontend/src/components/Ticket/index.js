@@ -175,7 +175,7 @@ const Ticket = () => {
       fetchTicket();
     }, 150);
     return () => clearTimeout(delayDebounceFn);
-  }, [ticketId, user, authLoading, history, setObservationMode, listRevision]);
+  }, [ticketId, user, authLoading, history, setObservationMode]);
 
   useEffect(() => {
     if (!currentTicket?.id || authLoading || !user?.id) {
@@ -197,14 +197,6 @@ const Ticket = () => {
     }
 
     const companyId = localStorage.getItem("companyId");
-    const socket = socketManager.GetSocket(companyId);
-    socket.emit("joinChatBox", `${ticket.id}`);
-
-    return undefined;
-  }, [ticket.id, ticket.userId, ticket.status, socketManager]);
-
-  useEffect(() => {
-    const companyId = localStorage.getItem("companyId");
 
     const socket = socketManager.GetSocket(companyId);
 
@@ -213,6 +205,7 @@ const Ticket = () => {
     };
 
     socketManager.onConnect(onConnectTicket);
+    onConnectTicket();
 
     const onCompanyTicket = data => {
       if (data.action === "update" && data.ticket.id === ticket.id) {
