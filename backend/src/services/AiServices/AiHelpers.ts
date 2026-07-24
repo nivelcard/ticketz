@@ -394,12 +394,20 @@ const normalizeForMatch = (message: string): string =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
+export const AI_ASSISTANT_DISPLAY_NAME = "Webin";
+export const AI_ASSISTANT_IDENTITY_REPLY =
+  "Me chamo Webin, Assistente Virtual da Fortmax.";
+
 export const detectAgentIdentityQuestion = (message: string): boolean => {
   const text = normalizeForMatch(message);
+  if (!text || text.length > 120) {
+    return false;
+  }
+
   return (
-    /quem (e|esta|está)|vc e|voce e|você é|seu nome|quem fala|quem esta|quem está|com quem falo|e voce|é você|e vc/i.test(
+    /quem (e|esta|está)|vc e|voce e|você é|seu nome|qual (o |)(seu )?nome|quem fala|quem esta|quem está|com quem falo|e voce|é você|e vc|como (voce|você|vc) se chama|precisa ter um nome|sera webin|será webin|me chame de webin|chamar de webin/i.test(
       text
-    ) && text.length <= 80
+    )
   );
 };
 
@@ -423,12 +431,9 @@ export const detectHandoffConfirmationDecline = (message: string): boolean => {
 };
 
 export const buildAgentIdentityReply = (
-  agentName: string,
-  companyName?: string
-): string => {
-  const org = companyName?.trim() || "nossa equipe";
-  return `Sou ${agentName}, assistente virtual da ${org}. Estou aqui para ajudar. Como posso te ajudar hoje?`;
-};
+  _agentName?: string,
+  _companyName?: string
+): string => AI_ASSISTANT_IDENTITY_REPLY;
 
 export const buildHandoffConfirmationQuestion = (): string =>
   "Não encontrei uma resposta segura na nossa base de conhecimento. Você prefere me explicar melhor sua necessidade ou prefere que eu passe para um atendente humano? Responda *explicar* ou *atendente*.";

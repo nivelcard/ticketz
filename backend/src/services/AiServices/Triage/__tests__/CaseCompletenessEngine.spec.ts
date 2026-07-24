@@ -3,8 +3,10 @@ import {
   buildTimeBasedGreeting,
   evaluateCaseCompleteness,
   isInformationalIntent,
+  isMetaConversationIntent,
   isPureGreetingMessage,
   isSubstantiveAiReply,
+  shouldSkipSupportInvestigation,
   isVagueCustomerStatement,
   shouldBlockAutomaticHandoff
 } from "../CaseCompletenessEngine";
@@ -103,6 +105,23 @@ describe("CaseCompletenessEngine", () => {
       "Estou com um problema no login do WebG3, aparece usuário não encontrado.";
 
     expect(isInformationalIntent(userText)).toBe(false);
+    expect(shouldSkipSupportInvestigation(userText)).toBe(false);
+  });
+
+  it("skips investigation for bot naming and identity chat", () => {
+    expect(isMetaConversationIntent("Qual seu nome")).toBe(true);
+    expect(isMetaConversationIntent("Vc precisa ter um nome. Será Webin")).toBe(
+      true
+    );
+    expect(
+      buildInvestigationQuestion(
+        evaluateCaseCompleteness({
+          latestMessage: "Qual seu nome",
+          conversationText: "user: Qual seu nome"
+        }),
+        "Qual seu nome"
+      )
+    ).toBeNull();
   });
 
   it("recognizes substantive AI replies", () => {

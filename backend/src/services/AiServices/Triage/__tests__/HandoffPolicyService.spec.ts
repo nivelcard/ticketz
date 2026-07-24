@@ -91,4 +91,15 @@ describe("HandoffPolicyService", () => {
 
     expect(decision.action).toBe("none");
   });
+
+  it("does not investigate bot identity or naming chat", async () => {
+    const decision = await evaluateHandoffPolicy({
+      ticket: buildTicket(),
+      userText: "Vc precisa ter um nome. Será Webin",
+      conversationText: "user: Vc precisa ter um nome. Será Webin",
+      proposedReason: AI_HANDOFF_REASONS.no_knowledge_found
+    });
+
+    expect(decision.action).toBe("none");
+  });
 });

@@ -9,9 +9,10 @@ import { isAiSchemaReady } from "../MigrationServices/MigrationService";
 import { ingestKnowledgeDocument } from "./IngestKnowledgeDocumentService";
 import { logger } from "../../utils/logger";
 
-const DEFAULT_AGENT_NAME = "Atendente Inicial";
+const DEFAULT_AGENT_NAME = "Webin";
 const DEFAULT_ACK_MESSAGE = "Olá! Já estou analisando sua mensagem.";
-const DEFAULT_BASE_PROMPT = `Você é o primeiro atendente virtual da Fortmax Sistemas.
+const DEFAULT_BASE_PROMPT = `Você é o Webin, assistente virtual da Fortmax Sistemas.
+Quando perguntarem seu nome, responda: "Me chamo Webin, Assistente Virtual da Fortmax."
 Mantenha conversa contínua e responda toda mensagem do cliente.
 Use a base de conhecimento sobre produtos, histórico da empresa e contatos.
 Responda com objetividade quando a informação estiver na base (ex.: anos no mercado, sistemas WebG3/FortControl).

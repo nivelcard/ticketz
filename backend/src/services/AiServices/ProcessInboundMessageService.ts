@@ -415,9 +415,9 @@ const ProcessInboundMessageService = async ({
     const conversationText = await buildConversationText(ticket.id, userText);
 
     if (detectAgentIdentityQuestion(userText)) {
-      const agentName = agent.name?.trim() || "assistente virtual";
+      const identityReply = buildAgentIdentityReply();
       await SendWhatsAppMessage({
-        body: formatBody(buildAgentIdentityReply(agentName), ticket),
+        body: formatBody(identityReply, ticket),
         ticket
       });
 
@@ -432,7 +432,7 @@ const ProcessInboundMessageService = async ({
         action: "respond",
         reason: "agent_identity_question",
         userMessage: maskSensitiveLog(userText),
-        aiResponse: buildAgentIdentityReply(agentName)
+        aiResponse: identityReply
       });
       return;
     }

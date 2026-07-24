@@ -95,6 +95,19 @@ const INFORMATIONAL_INTENT_PATTERNS = [
   /funcionalidades|recursos/i
 ];
 
+const META_CONVERSATION_PATTERNS = [
+  /qual (?:é |e )?(?:o |)(?:seu )?nome/i,
+  /como (?:voc[eê]|vc) se chama/i,
+  /quem (?:é |e )(?:voc[eê]|vc)/i,
+  /(?:ser[aá]|chame?|me chame)(?:\s+de)?\s+webin/i,
+  /precisa ter um nome/i,
+  /(?:^|\s)webin(?:\s|$)/i,
+  /^obrigad[oa][!.?\s]*$/i,
+  /vou aguardar/i,
+  /hor[aá]rio comercial/i,
+  /pr[oó]ximo hor[aá]rio/i
+];
+
 const SUPPORT_PROBLEM_PATTERNS = [
   /problema/i,
   /erro/i,
@@ -141,6 +154,15 @@ const countFilled = (
 export const isPureGreetingMessage = (text: string): boolean =>
   PURE_GREETING_PATTERNS.some(pattern => pattern.test(text.trim()));
 
+export const isMetaConversationIntent = (text: string): boolean => {
+  const normalized = text.trim();
+  if (!normalized) {
+    return false;
+  }
+
+  return META_CONVERSATION_PATTERNS.some(pattern => pattern.test(normalized));
+};
+
 export const isInformationalIntent = (text: string): boolean => {
   const normalized = text.trim();
   if (!normalized) {
@@ -151,10 +173,17 @@ export const isInformationalIntent = (text: string): boolean => {
     return false;
   }
 
+  if (isMetaConversationIntent(normalized)) {
+    return true;
+  }
+
   return INFORMATIONAL_INTENT_PATTERNS.some(pattern =>
     pattern.test(normalized)
   );
 };
+
+export const shouldSkipSupportInvestigation = (text: string): boolean =>
+  isInformationalIntent(text);
 
 export const isInvestigationTemplateMessage = (body: string): boolean =>
   INVESTIGATION_TEMPLATE_PATTERNS.some(pattern => pattern.test(body.trim()));
@@ -242,7 +271,7 @@ export const evaluateCaseCompleteness = ({
 }): CaseCompletenessSnapshot => {
   const text = `${conversationText}\n${latestMessage}`.toLowerCase();
   const latest = latestMessage.trim();
-  const informationalIntent = isInformationalIntent(latest);
+  const informationalIntent = shouldSkipSupportInvestigation(latest);
 
   const intentIdentified =
     !isVagueCustomerStatement(latest) ||
@@ -355,7 +384,7 @@ export const buildInvestigationQuestion = (
   snapshot: CaseCompletenessSnapshot,
   latestMessage = ""
 ): string | null => {
-  if (isInformationalIntent(latestMessage)) {
+  if (shouldSkipSupportInvestigation(latestMessage)) {
     return null;
   }
 

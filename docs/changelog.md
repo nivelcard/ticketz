@@ -6,6 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.5.29] — 2026-07-24
+
+### Corrigido / alterado
+
+- **Identidade Webin:** resposta fixa *Me chamo Webin, Assistente Virtual da Fortmax.* para perguntas sobre nome; agente renomeado de `Atendente Inicial` → `Webin` (migration).
+- **Triagem fora de contexto:** conversas sobre nome/agradecimento/aguardar horário não disparam mais *Em qual sistema ou produto isso está acontecendo?*
+
+---
+
 ## [1.5.28] — 2026-07-24
 
 ### Corrigido

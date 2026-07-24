@@ -6,7 +6,7 @@ import { isTransientAiError } from "../isTransientAiError";
 import {
   buildInvestigationQuestion,
   evaluateCaseCompleteness,
-  isInformationalIntent,
+  shouldSkipSupportInvestigation,
   isVagueCustomerStatement,
   shouldBlockAutomaticHandoff
 } from "./CaseCompletenessEngine";
@@ -85,7 +85,7 @@ export const evaluateHandoffPolicy = async (
     hasMediaEvidence: context.hasMediaEvidence
   });
 
-  if (isInformationalIntent(context.userText)) {
+  if (shouldSkipSupportInvestigation(context.userText)) {
     return { action: "none", handoffMode: "none" };
   }
 

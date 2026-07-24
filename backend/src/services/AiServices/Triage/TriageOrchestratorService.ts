@@ -8,7 +8,7 @@ import { buildHandoffConfirmationQuestion } from "../AiHelpers";
 import {
   evaluateCaseCompleteness,
   buildInvestigationQuestion,
-  isInformationalIntent,
+  shouldSkipSupportInvestigation,
   isSubstantiveAiReply
 } from "./CaseCompletenessEngine";
 import {
@@ -77,7 +77,7 @@ export const sendInvestigationResponse = async ({
   companyId: number;
   userText: string;
 }): Promise<void> => {
-  if (isInformationalIntent(userText)) {
+  if (shouldSkipSupportInvestigation(userText)) {
     await markInboundMessagesReadForAi(ticket, messageId);
     await ticket.update({ aiProcessingState: "awaiting_customer" } as any);
     return;
