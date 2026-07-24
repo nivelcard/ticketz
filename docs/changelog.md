@@ -8,10 +8,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [1.5.35] — 2026-07-24
 
-### Corrigido
+### Corrigido / adicionado
 
-- **Erro 400 ao cadastrar WhatsApp:** handler global de erros no `appFast` (mensagens legíveis no toast); códigos `ERR_WAPP_NAME_IN_USE`, `ERR_WAPP_TOKEN_IN_USE`, `ERR_WAPP_CONNECTION_LIMIT`; token opcional e validado por empresa; campo Token com texto de ajuda no modal.
-- **IA → Base de Conhecimento:** descrição longa na listagem truncada com botão "Ver tudo" / "Ocultar" (evita parede de texto na tabela).
+- **Erro 400 ao cadastrar WhatsApp:** handler global de erros no `appFast`; códigos `ERR_WAPP_*`; token opcional por empresa.
+- **IA → Base de Conhecimento:** descrição truncada com "Ver tudo".
+- **IA → Agentes:** bases de conhecimento visíveis também para tipo **Legado**; campo **Fila de atendimento (WhatsApp)** liga agente ↔ fila ↔ bases; vínculo exclusivo por fila no backend.
+- **Script:** `npm run wire:nivel-support` (COMPANY_ID=1) — liga Nivelton + Suporte Nível + bases clientes/empresa + WhatsApp Nível Velo.
 
 ---
 

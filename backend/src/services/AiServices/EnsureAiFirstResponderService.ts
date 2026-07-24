@@ -112,6 +112,14 @@ const ensureQueueLinks = async (
 
   await Promise.all(
     queues.map(async queue => {
+      const dedicated = await AiAgentQueue.findOne({
+        where: { companyId, queueId: queue.id }
+      });
+
+      if (dedicated && dedicated.aiAgentId !== agent.id) {
+        return;
+      }
+
       const existing = await AiAgentQueue.findOne({
         where: { companyId, queueId: queue.id, aiAgentId: agent.id }
       });

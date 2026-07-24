@@ -32,7 +32,8 @@
     "fix:agent-memory": "ts-node-dev --transpile-only src/scripts/fixAgentMemorySemantics.ts",
     "test:isolated": "DB_DIALECT=postgres DB_HOST=127.0.0.1 DB_PORT=5433 DB_USER=ticketz_test DB_PASS=ticketz_test DB_NAME=ticketz_test DB_SCHEMA=ticketz REDIS_URI=redis://127.0.0.1:6380 npm test",
     "reset:test-env": "ts-node-dev --transpile-only scripts/reset-test-environment.ts",
-    "set:user-password": "ts-node-dev --transpile-only scripts/set-user-password.ts"
+    "set:user-password": "ts-node-dev --transpile-only scripts/set-user-password.ts",
+    "wire:nivel-support": "ts-node-dev --transpile-only scripts/wireNivelSupport.ts"
   },
   "author": "",
   "license": "MIT",

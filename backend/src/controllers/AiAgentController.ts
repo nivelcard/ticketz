@@ -10,6 +10,7 @@ import {
   listAgentKnowledgeBaseIds,
   syncAgentKnowledgeBases
 } from "../services/AiServices/AiAgentKnowledgeBaseService";
+import { syncExclusiveAgentQueueLinks } from "../services/AiServices/syncExclusiveAgentQueueLinks";
 import KnowledgeBase from "../models/KnowledgeBase";
 
 const VALID_ROLES = new Set(["legacy", "orchestrator", "specialist"]);
@@ -128,19 +129,14 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
   });
 
   if (Array.isArray(queueLinks)) {
-    await Promise.all(
-      queueLinks.map(link =>
-        AiAgentQueue.create({
-          companyId,
-          aiAgentId: agent.id,
-          queueId: link.queueId,
-          knowledgeBaseId: link.knowledgeBaseId || null
-        })
-      )
-    );
+    await syncExclusiveAgentQueueLinks({
+      companyId,
+      aiAgentId: agent.id,
+      queueLinks
+    });
   }
 
-  if (payload.role === "specialist") {
+  if (payload.role !== "orchestrator") {
     await syncAgentKnowledgeBases({
       companyId,
       aiAgentId: agent.id,
@@ -203,19 +199,11 @@ export const update = async (
   await agent.update(payload);
 
   if (Array.isArray(queueLinks)) {
-    await AiAgentQueue.destroy({
-      where: { aiAgentId: agent.id, companyId }
+    await syncExclusiveAgentQueueLinks({
+      companyId,
+      aiAgentId: agent.id,
+      queueLinks
     });
-    await Promise.all(
-      queueLinks.map(link =>
-        AiAgentQueue.create({
-          companyId,
-          aiAgentId: agent.id,
-          queueId: link.queueId,
-          knowledgeBaseId: link.knowledgeBaseId || null
-        })
-      )
-    );
   }
 
   if (payload.role === "orchestrator") {

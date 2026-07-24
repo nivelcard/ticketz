@@ -55,6 +55,7 @@ const defaultAgent = {
   temperature: 0.3,
   maxTokens: 1024,
   fallbackQueueId: "",
+  serviceQueueId: "",
   handoffMessage:
     "Vou transferir você para um atendente humano. Por favor, aguarde.",
   ackEnabled: false,
@@ -154,6 +155,7 @@ const AiAgents = () => {
   const [agents, setAgents] = useState([]);
   const [queues, setQueues] = useState([]);
   const [knowledgeBases, setKnowledgeBases] = useState([]);
+  const [knowledgeDomains, setKnowledgeDomains] = useState([]);
   const [publishedAssetsByBase, setPublishedAssetsByBase] = useState({});
   const [orchestratorStatus, setOrchestratorStatus] = useState(null);
   const [registeredTools, setRegisteredTools] = useState([]);
@@ -192,11 +194,14 @@ const AiAgents = () => {
 
   const loadKnowledgeBases = useCallback(async () => {
     try {
-      const [{ data: kbData }, { data: assetsData }] = await Promise.all([
-        api.get("/ai/knowledge-bases"),
-        api.get("/ai/assets", { params: { lifecycleStatus: "published" } })
-      ]);
+      const [{ data: kbData }, { data: assetsData }, { data: domainData }] =
+        await Promise.all([
+          api.get("/ai/knowledge-bases"),
+          api.get("/ai/assets", { params: { lifecycleStatus: "published" } }),
+          api.get("/ai/knowledge-domains")
+        ]);
       setKnowledgeBases(Array.isArray(kbData) ? kbData : []);
+      setKnowledgeDomains(Array.isArray(domainData) ? domainData : []);
 
       const counts = {};
       (Array.isArray(assetsData) ? assetsData : []).forEach(asset => {
@@ -209,6 +214,7 @@ const AiAgents = () => {
     } catch (err) {
       toastError(err);
       setKnowledgeBases([]);
+      setKnowledgeDomains([]);
       setPublishedAssetsByBase({});
     }
   }, []);
@@ -310,10 +316,18 @@ const AiAgents = () => {
       };
 
       delete payload.routingKeywordsText;
+      delete payload.serviceQueueId;
 
       if (form.role === "orchestrator") {
         delete payload.specialty;
         delete payload.knowledgeBaseIds;
+      } else if (form.serviceQueueId) {
+        payload.queueLinks = [
+          {
+            queueId: Number(form.serviceQueueId),
+            knowledgeBaseId: payload.knowledgeBaseIds?.[0] || null
+          }
+        ];
       }
 
       let savedAgentId = editingId;
@@ -380,6 +394,9 @@ const AiAgents = () => {
       fallbackQueueId: agent.fallbackQueueId
         ? String(agent.fallbackQueueId)
         : "",
+      serviceQueueId: agent.agentQueues?.[0]?.queueId
+        ? String(agent.agentQueues[0].queueId)
+        : "",
       handoffMessage: agent.handoffMessage || defaultAgent.handoffMessage,
       ackEnabled: !!agent.ackEnabled,
       ackMessage: agent.ackMessage || ""
@@ -416,6 +433,106 @@ const AiAgents = () => {
     .filter(baseId => !publishedAssetsByBase[baseId])
     .map(baseId => knowledgeBases.find(base => base.id === baseId)?.name)
     .filter(Boolean);
+
+  const domainNameById = knowledgeDomains.reduce((map, domain) => {
+    map[domain.id] = domain.name;
+    return map;
+  }, {});
+
+  const queueNameById = queues.reduce((map, queue) => {
+    map[queue.id] = queue.name;
+    return map;
+  }, {});
+
+  const renderServiceQueueField = () => {
+    if (queuesLoading) {
+      return null;
+    }
+
+    return (
+      <FormControl fullWidth variant="outlined" margin="normal">
+        <InputLabel id="service-queue-label">
+          Fila de atendimento (WhatsApp)
+        </InputLabel>
+        <Select
+          labelId="service-queue-label"
+          label="Fila de atendimento (WhatsApp)"
+          value={form.serviceQueueId}
+          onChange={e => {
+            const serviceQueueId = String(e.target.value);
+            setForm(prev => ({
+              ...prev,
+              serviceQueueId,
+              fallbackQueueId: prev.fallbackQueueId || serviceQueueId
+            }));
+          }}
+        >
+          <MenuItem value="">
+            <em>Nenhuma (não responde WhatsApp direto)</em>
+          </MenuItem>
+          {queues.map(queue => (
+            <MenuItem key={queue.id} value={String(queue.id)}>
+              {queue.name}
+            </MenuItem>
+          ))}
+        </Select>
+        <Typography variant="caption" color="textSecondary">
+          Conexões WhatsApp ligadas a esta fila usarão este agente. Ex.: Suporte
+          Nível para o número Nível Velo.
+        </Typography>
+      </FormControl>
+    );
+  };
+
+  const renderKnowledgeBaseField = () => (
+    <>
+      <FormControl fullWidth variant="outlined" margin="normal">
+        <InputLabel id="agent-kb-label">Bases de conhecimento</InputLabel>
+        <Select
+          labelId="agent-kb-label"
+          label="Bases de conhecimento"
+          multiple
+          value={form.knowledgeBaseIds}
+          onChange={e =>
+            setForm({
+              ...form,
+              knowledgeBaseIds: e.target.value
+            })
+          }
+          renderValue={selected =>
+            knowledgeBases
+              .filter(base => selected.includes(base.id))
+              .map(base => base.name)
+              .join(", ")
+          }
+        >
+          {knowledgeBases.map(base => (
+            <MenuItem key={base.id} value={base.id}>
+              {base.name}
+              {domainNameById[base.knowledgeDomainId]
+                ? ` · ${domainNameById[base.knowledgeDomainId]}`
+                : ""}
+              {publishedAssetsByBase[base.id]
+                ? ` (${publishedAssetsByBase[base.id]} pub.)`
+                : " (sem ativos publicados)"}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      {emptyPublishedBases.length > 0 && (
+        <Box mt={1}>
+          <Alert severity="warning">
+            Bases sem ativos publicados no RAG: {emptyPublishedBases.join(", ")}
+            . Publique ativos em{" "}
+            <Link component={RouterLink} to="/ai/assets">
+              Ativos de Conhecimento
+            </Link>{" "}
+            para o agente consultar conteúdo.
+          </Alert>
+        </Box>
+      )}
+    </>
+  );
 
   const renderQueueField = () => {
     if (queuesLoading) {
@@ -507,6 +624,7 @@ const AiAgents = () => {
               <TableCell>Nome</TableCell>
               <TableCell>Tipo</TableCell>
               <TableCell>Especialidade</TableCell>
+              <TableCell>Fila WhatsApp</TableCell>
               <TableCell>Bases</TableCell>
               <TableCell>Modelo</TableCell>
               <TableCell>Ativo</TableCell>
@@ -519,6 +637,13 @@ const AiAgents = () => {
                 <TableCell>{agent.name}</TableCell>
                 <TableCell>{agent.role || "legacy"}</TableCell>
                 <TableCell>{agent.specialty || "—"}</TableCell>
+                <TableCell>
+                  {(agent.agentQueues || [])
+                    .map(
+                      link => queueNameById[link.queueId] || `#${link.queueId}`
+                    )
+                    .join(", ") || "—"}
+                </TableCell>
                 <TableCell>
                   {(agent.knowledgeBases || [])
                     .map(base => base.name)
@@ -611,26 +736,28 @@ const AiAgents = () => {
                 </FormControl>
               </Grid>
               {form.role === "specialist" && (
-                <Grid item xs={12} md={4}>
-                  <FormControl fullWidth variant="outlined" margin="normal">
-                    <InputLabel id="agent-specialty-label">
-                      Especialidade
-                    </InputLabel>
-                    <Select
-                      labelId="agent-specialty-label"
-                      label="Especialidade"
-                      value={form.specialty}
-                      onChange={e =>
-                        setForm({ ...form, specialty: e.target.value })
-                      }
-                    >
-                      <MenuItem value="faq">FAQ</MenuItem>
-                      <MenuItem value="financeiro">Financeiro</MenuItem>
-                      <MenuItem value="suporte">Suporte Técnico</MenuItem>
-                      <MenuItem value="geral">Atendimento Geral</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
+                <>
+                  <Grid item xs={12} md={4}>
+                    <FormControl fullWidth variant="outlined" margin="normal">
+                      <InputLabel id="agent-specialty-label">
+                        Especialidade
+                      </InputLabel>
+                      <Select
+                        labelId="agent-specialty-label"
+                        label="Especialidade"
+                        value={form.specialty}
+                        onChange={e =>
+                          setForm({ ...form, specialty: e.target.value })
+                        }
+                      >
+                        <MenuItem value="faq">FAQ</MenuItem>
+                        <MenuItem value="financeiro">Financeiro</MenuItem>
+                        <MenuItem value="suporte">Suporte Técnico</MenuItem>
+                        <MenuItem value="geral">Atendimento Geral</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </>
               )}
               <Grid item xs={12} md={4}>
                 <AiFormTextField
@@ -644,74 +771,43 @@ const AiAgents = () => {
             </Grid>
             {form.role !== "orchestrator" && (
               <>
-                <AiFormTextField
-                  label="Descrição para roteamento"
-                  multiline
-                  rows={2}
-                  value={form.routingDescription}
-                  onChange={e =>
-                    setForm({ ...form, routingDescription: e.target.value })
-                  }
-                  helperText="Explica ao orquestrador quando usar este agente."
-                />
-                <AiFormTextField
-                  label="Palavras-chave (separadas por vírgula)"
-                  value={form.routingKeywordsText}
-                  onChange={e =>
-                    setForm({ ...form, routingKeywordsText: e.target.value })
-                  }
-                />
-              </>
-            )}
-            {form.role === "specialist" && (
-              <>
-                <FormControl fullWidth variant="outlined" margin="normal">
-                  <InputLabel id="agent-kb-label">
-                    Bases de conhecimento
-                  </InputLabel>
-                  <Select
-                    labelId="agent-kb-label"
-                    label="Bases de conhecimento"
-                    multiple
-                    value={form.knowledgeBaseIds}
-                    onChange={e =>
-                      setForm({
-                        ...form,
-                        knowledgeBaseIds: e.target.value
-                      })
-                    }
-                    renderValue={selected =>
-                      knowledgeBases
-                        .filter(base => selected.includes(base.id))
-                        .map(base => base.name)
-                        .join(", ")
-                    }
-                  >
-                    {knowledgeBases.map(base => (
-                      <MenuItem key={base.id} value={base.id}>
-                        {base.name}
-                        {publishedAssetsByBase[base.id]
-                          ? ` (${publishedAssetsByBase[base.id]} pub.)`
-                          : " (sem ativos publicados)"}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                {emptyPublishedBases.length > 0 && (
-                  <Box mt={1}>
-                    <Alert severity="warning">
-                      Bases sem ativos publicados no RAG:{" "}
-                      {emptyPublishedBases.join(", ")}. Publique ativos em{" "}
-                      <Link component={RouterLink} to="/ai/assets">
-                        Ativos de Conhecimento
-                      </Link>{" "}
-                      para o especialista consultar conteúdo.
-                    </Alert>
-                  </Box>
+                {orchestratorStatus?.active && (
+                  <>
+                    <AiFormTextField
+                      label="Descrição para roteamento"
+                      multiline
+                      rows={2}
+                      value={form.routingDescription}
+                      onChange={e =>
+                        setForm({ ...form, routingDescription: e.target.value })
+                      }
+                      helperText="Explica ao orquestrador quando usar este agente."
+                    />
+                    <AiFormTextField
+                      label="Palavras-chave (separadas por vírgula)"
+                      value={form.routingKeywordsText}
+                      onChange={e =>
+                        setForm({
+                          ...form,
+                          routingKeywordsText: e.target.value
+                        })
+                      }
+                    />
+                  </>
                 )}
+                {renderKnowledgeBaseField()}
               </>
             )}
           </SectionBlock>
+
+          {form.role !== "orchestrator" && (
+            <SectionBlock
+              title="Atendimento WhatsApp"
+              subtitle="Liga este agente à fila usada pela conexão WhatsApp (ex.: Nível Velo → Suporte Nível)."
+            >
+              {renderServiceQueueField()}
+            </SectionBlock>
+          )}
 
           {form.role !== "orchestrator" && registeredTools.length > 0 && (
             <SectionBlock
