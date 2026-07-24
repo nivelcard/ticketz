@@ -2,7 +2,9 @@ import {
   buildInvestigationQuestion,
   buildTimeBasedGreeting,
   evaluateCaseCompleteness,
+  isInformationalIntent,
   isPureGreetingMessage,
+  isSubstantiveAiReply,
   isVagueCustomerStatement,
   shouldBlockAutomaticHandoff
 } from "../CaseCompletenessEngine";
@@ -78,5 +80,37 @@ describe("CaseCompletenessEngine", () => {
 
     expect(snapshot.caseReadyForResolution).toBe(true);
     expect(snapshot.confidence).toBeGreaterThan(0.4);
+  });
+
+  it("detects informational sales intent and skips support investigation", () => {
+    const userText =
+      "Eu quero saber como que eu posso fazer para saber mais do sistema de vocês, como ele pode ajudar a minha serralheria.";
+
+    expect(isInformationalIntent(userText)).toBe(true);
+
+    const snapshot = evaluateCaseCompleteness({
+      latestMessage: userText,
+      conversationText: `user: ${userText}`
+    });
+
+    expect(snapshot.missingInformation).toEqual([]);
+    expect(snapshot.caseReadyForResolution).toBe(true);
+    expect(buildInvestigationQuestion(snapshot, userText)).toBeNull();
+  });
+
+  it("still treats explicit support problems as non-informational", () => {
+    const userText =
+      "Estou com um problema no login do WebG3, aparece usuário não encontrado.";
+
+    expect(isInformationalIntent(userText)).toBe(false);
+  });
+
+  it("recognizes substantive AI replies", () => {
+    const shortGreeting = "Olá, boa noite! Em que posso ajudar?";
+    const longAnswer =
+      "O WebG3 é um sistema voltado para serralherias e esquadrias, com cálculos de esquadrias, orçamentos e uma base com milhares de projetos. Posso te ajudar com alguma dúvida específica ou agendar uma demonstração.";
+
+    expect(isSubstantiveAiReply(shortGreeting)).toBe(false);
+    expect(isSubstantiveAiReply(longAnswer)).toBe(true);
   });
 });

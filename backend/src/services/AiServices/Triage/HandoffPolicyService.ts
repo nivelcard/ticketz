@@ -6,6 +6,7 @@ import { isTransientAiError } from "../isTransientAiError";
 import {
   buildInvestigationQuestion,
   evaluateCaseCompleteness,
+  isInformationalIntent,
   isVagueCustomerStatement,
   shouldBlockAutomaticHandoff
 } from "./CaseCompletenessEngine";
@@ -33,11 +34,31 @@ export type HandoffEvaluationContext = {
 const buildInvestigateDecision = (
   snapshot: CaseCompletenessSnapshot,
   latestMessage = ""
-): HandoffPolicyDecision => ({
-  action: "investigate",
-  handoffMode: "none",
-  investigationQuestion: buildInvestigationQuestion(snapshot, latestMessage)
-});
+): HandoffPolicyDecision | null => {
+  const investigationQuestion = buildInvestigationQuestion(
+    snapshot,
+    latestMessage
+  );
+
+  if (!investigationQuestion) {
+    return null;
+  }
+
+  return {
+    action: "investigate",
+    handoffMode: "none",
+    investigationQuestion
+  };
+};
+
+const investigateOrNone = (
+  snapshot: CaseCompletenessSnapshot,
+  latestMessage = ""
+): HandoffPolicyDecision =>
+  buildInvestigateDecision(snapshot, latestMessage) || {
+    action: "none",
+    handoffMode: "none"
+  };
 
 const buildConfirmHandoffDecision = (
   schedule: Awaited<ReturnType<typeof getAiScheduleContext>>,
@@ -63,6 +84,10 @@ export const evaluateHandoffPolicy = async (
       Number((context.ticket as any).aiInvestigationRound || 0),
     hasMediaEvidence: context.hasMediaEvidence
   });
+
+  if (isInformationalIntent(context.userText)) {
+    return { action: "none", handoffMode: "none" };
+  }
 
   if (detectSensitiveTopic(context.userText)) {
     return {
@@ -103,11 +128,11 @@ export const evaluateHandoffPolicy = async (
     }
 
     if (snapshot.investigationRound < config.maxInvestigationRounds) {
-      return buildInvestigateDecision(snapshot, context.userText);
+      return investigateOrNone(snapshot, context.userText);
     }
 
     if (shouldBlockAutomaticHandoff(snapshot)) {
-      return buildInvestigateDecision(snapshot, context.userText);
+      return investigateOrNone(snapshot, context.userText);
     }
 
     return buildConfirmHandoffDecision(schedule, "provider_error");
@@ -121,14 +146,14 @@ export const evaluateHandoffPolicy = async (
       snapshot.isVagueStatement ||
       snapshot.investigationRound < config.maxInvestigationRounds
     ) {
-      return buildInvestigateDecision(snapshot, context.userText);
+      return investigateOrNone(snapshot, context.userText);
     }
 
     if (
       shouldBlockAutomaticHandoff(snapshot) ||
       !snapshot.caseReadyForHandoff
     ) {
-      return buildInvestigateDecision(snapshot, context.userText);
+      return investigateOrNone(snapshot, context.userText);
     }
 
     return buildConfirmHandoffDecision(schedule, "no_knowledge_found");
@@ -142,7 +167,7 @@ export const evaluateHandoffPolicy = async (
       isVagueCustomerStatement(context.userText) ||
       snapshot.investigationRound < config.maxInvestigationRounds
     ) {
-      return buildInvestigateDecision(snapshot, context.userText);
+      return investigateOrNone(snapshot, context.userText);
     }
 
     if ((context.confidenceScore || 0) >= config.minConfidenceForHandoff) {
@@ -153,14 +178,14 @@ export const evaluateHandoffPolicy = async (
       shouldBlockAutomaticHandoff(snapshot) ||
       !snapshot.caseReadyForHandoff
     ) {
-      return buildInvestigateDecision(snapshot, context.userText);
+      return investigateOrNone(snapshot, context.userText);
     }
 
     return buildConfirmHandoffDecision(schedule, "low_confidence");
   }
 
   if (snapshot.isVagueStatement) {
-    return buildInvestigateDecision(snapshot, context.userText);
+    return investigateOrNone(snapshot, context.userText);
   }
 
   return { action: "none", handoffMode: "none" };

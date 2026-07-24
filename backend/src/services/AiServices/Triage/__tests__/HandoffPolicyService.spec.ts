@@ -77,4 +77,18 @@ describe("HandoffPolicyService", () => {
 
     expect(decision.action).toBe("investigate");
   });
+
+  it("does not investigate informational sales questions", async () => {
+    const userText =
+      "Eu quero saber como que eu posso fazer para saber mais do sistema de vocês, como ele pode ajudar a minha serralheria.";
+
+    const decision = await evaluateHandoffPolicy({
+      ticket: buildTicket(),
+      userText,
+      conversationText: `user: ${userText}`,
+      proposedReason: AI_HANDOFF_REASONS.no_knowledge_found
+    });
+
+    expect(decision.action).toBe("none");
+  });
 });

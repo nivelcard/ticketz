@@ -7,7 +7,9 @@ import { persistAiDecisionLog } from "../AiDecisionLogger";
 import { buildHandoffConfirmationQuestion } from "../AiHelpers";
 import {
   evaluateCaseCompleteness,
-  buildInvestigationQuestion
+  buildInvestigationQuestion,
+  isInformationalIntent,
+  isSubstantiveAiReply
 } from "./CaseCompletenessEngine";
 import {
   evaluateHandoffPolicy,
@@ -75,15 +77,27 @@ export const sendInvestigationResponse = async ({
   companyId: number;
   userText: string;
 }): Promise<void> => {
-  const question =
-    buildInvestigationQuestion(snapshot, userText) ||
-    "Pode me explicar um pouco mais sobre o que aconteceu?";
+  if (isInformationalIntent(userText)) {
+    await markInboundMessagesReadForAi(ticket, messageId);
+    await ticket.update({ aiProcessingState: "awaiting_customer" } as any);
+    return;
+  }
 
   const lastOutbound = await Message.findOne({
     where: { ticketId: ticket.id, fromMe: true },
     order: [["createdAt", "DESC"]],
     attributes: ["body", "createdAt"]
   });
+
+  if (lastOutbound?.body && isSubstantiveAiReply(lastOutbound.body)) {
+    await markInboundMessagesReadForAi(ticket, messageId);
+    await ticket.update({ aiProcessingState: "awaiting_customer" } as any);
+    return;
+  }
+
+  const question =
+    buildInvestigationQuestion(snapshot, userText) ||
+    "Pode me explicar um pouco mais sobre o que aconteceu?";
 
   if (
     lastOutbound?.body?.trim() === question.trim() ||

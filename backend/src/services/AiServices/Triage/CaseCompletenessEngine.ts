@@ -81,6 +81,42 @@ const EVIDENCE_HINTS = [
   "vídeo"
 ];
 
+const INFORMATIONAL_INTENT_PATTERNS = [
+  /quero saber/i,
+  /gostaria de saber/i,
+  /saber mais/i,
+  /conhecer (?:o |melhor )?(?:sistema|produto|software|programa)/i,
+  /como (?:que )?(?:eu )?(?:posso|faço)/i,
+  /como (?:ele |o sistema |voc[eê]s )?(?:pode|podem|ajuda)/i,
+  /(?:demo|demonstraç)/i,
+  /(?:o que [eé]|como funciona)/i,
+  /(?:me fale|me conte) sobre/i,
+  /ajudar (?:a )?(?:minha|meu)/i,
+  /funcionalidades|recursos/i
+];
+
+const SUPPORT_PROBLEM_PATTERNS = [
+  /problema/i,
+  /erro/i,
+  /n[aã]o (?:est[aá] |)(?:funcionando|funciona|consigo|abre|entra)/i,
+  /deu (?:erro|pau)/i,
+  /bug/i,
+  /travou/i,
+  /encontrei (?:esse |um )?problema/i
+];
+
+const INVESTIGATION_TEMPLATE_PATTERNS = [
+  /Em qual tela, m[oó]dulo ou funcionalidade/i,
+  /Em qual sistema ou produto/i,
+  /Entendi\. Pode me explicar o que est[aá] acontecendo/i,
+  /Em que posso ajudar/i,
+  /O que voc[eê] estava tentando fazer/i,
+  /Depois dessa a[cç][aã]o/i,
+  /mensagem de erro/i,
+  /celular ou computador/i,
+  /print, [aá]udio ou comprovante/i
+];
+
 const hasAny = (text: string, patterns: (string | RegExp)[]): boolean =>
   patterns.some(pattern =>
     typeof pattern === "string"
@@ -104,6 +140,33 @@ const countFilled = (
 
 export const isPureGreetingMessage = (text: string): boolean =>
   PURE_GREETING_PATTERNS.some(pattern => pattern.test(text.trim()));
+
+export const isInformationalIntent = (text: string): boolean => {
+  const normalized = text.trim();
+  if (!normalized) {
+    return false;
+  }
+
+  if (SUPPORT_PROBLEM_PATTERNS.some(pattern => pattern.test(normalized))) {
+    return false;
+  }
+
+  return INFORMATIONAL_INTENT_PATTERNS.some(pattern =>
+    pattern.test(normalized)
+  );
+};
+
+export const isInvestigationTemplateMessage = (body: string): boolean =>
+  INVESTIGATION_TEMPLATE_PATTERNS.some(pattern => pattern.test(body.trim()));
+
+export const isSubstantiveAiReply = (body: string): boolean => {
+  const normalized = body.trim();
+  if (!normalized || normalized.length < 120) {
+    return false;
+  }
+
+  return !isInvestigationTemplateMessage(normalized);
+};
 
 export const buildTimeBasedGreeting = (
   timezone = "America/Sao_Paulo"
@@ -179,6 +242,7 @@ export const evaluateCaseCompleteness = ({
 }): CaseCompletenessSnapshot => {
   const text = `${conversationText}\n${latestMessage}`.toLowerCase();
   const latest = latestMessage.trim();
+  const informationalIntent = isInformationalIntent(latest);
 
   const intentIdentified =
     !isVagueCustomerStatement(latest) ||
@@ -208,29 +272,31 @@ export const evaluateCaseCompleteness = ({
 
   const missingInformation: string[] = [];
 
-  if (!productIdentified) {
-    missingInformation.push("produto ou sistema envolvido");
-  }
-  if (!affectedModule) {
-    missingInformation.push("módulo, tela ou funcionalidade afetada");
-  }
-  if (!problemDescription) {
-    missingInformation.push("descrição objetiva do problema");
-  }
-  if (!attemptedAction) {
-    missingInformation.push("ação que o cliente estava tentando realizar");
-  }
-  if (!actualBehavior && !errorMessage) {
-    missingInformation.push("resultado observado ou mensagem de erro");
-  }
-  if (!errorMessage && /login|acesso|entrada|senha/i.test(text)) {
-    missingInformation.push("mensagem de erro exibida, se houver");
-  }
-  if (!environmentInformation && investigationRound >= 1) {
-    missingInformation.push("dispositivo ou navegador utilizado");
-  }
-  if (!evidenceAvailable && investigationRound >= 2) {
-    missingInformation.push("print, áudio ou comprovante, se disponível");
+  if (!informationalIntent) {
+    if (!productIdentified) {
+      missingInformation.push("produto ou sistema envolvido");
+    }
+    if (!affectedModule) {
+      missingInformation.push("módulo, tela ou funcionalidade afetada");
+    }
+    if (!problemDescription) {
+      missingInformation.push("descrição objetiva do problema");
+    }
+    if (!attemptedAction) {
+      missingInformation.push("ação que o cliente estava tentando realizar");
+    }
+    if (!actualBehavior && !errorMessage) {
+      missingInformation.push("resultado observado ou mensagem de erro");
+    }
+    if (!errorMessage && /login|acesso|entrada|senha/i.test(text)) {
+      missingInformation.push("mensagem de erro exibida, se houver");
+    }
+    if (!environmentInformation && investigationRound >= 1) {
+      missingInformation.push("dispositivo ou navegador utilizado");
+    }
+    if (!evidenceAvailable && investigationRound >= 2) {
+      missingInformation.push("print, áudio ou comprovante, se disponível");
+    }
   }
 
   const filledCount = countFilled({
@@ -251,11 +317,12 @@ export const evaluateCaseCompleteness = ({
   const confidence = Math.min(1, filledCount / 8);
   const isVagueStatement = isVagueCustomerStatement(latest);
 
-  const caseReadyForResolution =
-    !isVagueStatement &&
-    problemDescription &&
-    (actualBehavior || errorMessage) &&
-    (productIdentified || affectedModule);
+  const caseReadyForResolution = informationalIntent
+    ? true
+    : !isVagueStatement &&
+      problemDescription &&
+      (actualBehavior || errorMessage) &&
+      (productIdentified || affectedModule);
 
   const caseReadyForHandoff =
     caseReadyForResolution &&
@@ -287,7 +354,11 @@ export const evaluateCaseCompleteness = ({
 export const buildInvestigationQuestion = (
   snapshot: CaseCompletenessSnapshot,
   latestMessage = ""
-): string => {
+): string | null => {
+  if (isInformationalIntent(latestMessage)) {
+    return null;
+  }
+
   if (snapshot.isVagueStatement) {
     if (
       snapshot.investigationRound === 0 &&

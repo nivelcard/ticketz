@@ -6,6 +6,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.5.27] — 2026-07-23
+
+### Corrigido
+
+- **IA enviando pergunta de suporte após resposta comercial:** triagem v2 deixava de reconhecer intenção informativa (`quero saber`, `como pode ajudar`, etc.) e disparava *Em qual tela, módulo ou funcionalidade você encontrou esse problema?* logo após resposta útil. `CaseCompletenessEngine.isInformationalIntent` + guarda em `sendInvestigationResponse` para aguardar o cliente.
+
+---
+
 ## [1.5.26] — 2026-07-23
 
 ### Corrigido

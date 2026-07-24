@@ -967,6 +967,8 @@ Componentes em `backend/src/services/AiServices/Triage/`:
 **Regras principais:**
 
 - Mensagens genéricas (`Estou com problema`, `Não consigo entrar`) **não** geram handoff imediato.
+- Perguntas **informativas/comerciais** (`quero saber`, `como funciona`, `saber mais`, `como pode ajudar minha empresa`) **não** disparam investigação de suporte (ex.: *Em qual tela/módulo você encontrou esse problema?*). A IA responde e aguarda o cliente; `isInformationalIntent` em `CaseCompletenessEngine`.
+- Após resposta substantiva da IA (≥120 caracteres, fora de templates de investigação), `sendInvestigationResponse` não envia nova pergunta de triagem no mesmo turno — evita mensagem duplicada fora de contexto.
 - Saudação pura (`Oi`, `Olá`, `Bom dia`) na **primeira rodada** recebe cumprimento por horário + *Em que posso ajudar?* (`buildTimeBasedGreeting`).
 - Handoff automático (tool `request_human_handoff`, baixa confiança, sem base) exige **mínimo 2 rodadas de investigação** e caso `caseReadyForHandoff`; pedido explícito de humano ou assunto sensível continuam liberados.
 - Após handoff (`aiHandoff=true`, `status=pending`, sem `userId`), o ticket aparece na aba **Aguardando** — inclusive handoff operacional fora do horário.
